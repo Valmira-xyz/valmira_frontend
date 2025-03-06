@@ -14,6 +14,7 @@ import {
 import Link from "next/link"
 import { useSelector } from "react-redux"
 import { WalletConnectionButton } from "@/components/wallet/wallet-connection-button"
+import { RootState } from "@/store/store"
 
 import {
   Sidebar,
@@ -38,14 +39,12 @@ const sampleProjects = [
 ]
 
 export function DashboardSidebar() {
-
   const { isConnected } = useAccount()
-
   const [openProjects, setOpenProjects] = useState(false)
   const [openKnowledge, setOpenKnowledge] = useState(false)
 
-  // Get wallet info from Redux store
-  const { walletAddress, isAuthenticated, projects } = useSelector((state: any) => state.user)
+  // Get auth state from Redux store
+  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth)
 
   // Sample stats - replace with real data
   const stats = {
@@ -60,11 +59,11 @@ export function DashboardSidebar() {
       </SidebarHeader>
       <SidebarContent className="flex flex-col h-full">
         <div className="p-4">
-      {isConnected ? (
-          <WalletDisplay variant="sidebar" />
-        ) : (
-          <WalletConnectionButton />
-        )}
+          {isConnected ? (
+            <WalletDisplay variant="sidebar" />
+          ) : (
+            <WalletConnectionButton />
+          )}
         </div>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -164,21 +163,19 @@ export function DashboardSidebar() {
 
         {/* Profile section at the bottom */}
         <div className="mt-auto border-t border-border p-4 space-y-4">
-          {isAuthenticated ? (
+          {isAuthenticated && user ? (
             <>
               <div className="flex items-center space-x-3">
                 <Avatar className="h-10 w-10">
                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    {walletAddress ? walletAddress.substring(0, 2) : "WA"}
+                    {user.name ? user.name.substring(0, 2).toUpperCase() : user.walletAddress.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {walletAddress
-                      ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`
-                      : "Not connected"}
+                    {user.name || `${user.walletAddress.substring(0, 6)}...${user.walletAddress.substring(user.walletAddress.length - 4)}`}
                   </p>
-                  <p className="text-xs text-muted-foreground">Ethereum</p>
+                  <p className="text-xs text-muted-foreground">{user.role}</p>
                 </div>
               </div>
 
@@ -192,11 +189,6 @@ export function DashboardSidebar() {
                   <span className="font-medium">{stats.cumulativeProfit}</span>
                 </div>
               </div>
-
-              <button className="flex items-center justify-center w-full text-sm text-destructive hover:text-destructive/90">
-                <LogOut className="mr-2 h-4 w-4" />
-                Disconnect Wallet
-              </button>
             </>
           ) : (
             <div className="text-center text-sm text-muted-foreground">

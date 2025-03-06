@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAccount, useDisconnect } from 'wagmi'
-
+import { useDispatch } from 'react-redux'
+import { setUser, clearUser } from '@/store/authSlice'
 
 interface WalletDisplayProps {
   variant: "header" | "sidebar"
@@ -21,6 +22,7 @@ interface WalletDisplayProps {
 export function WalletDisplay({ variant }: WalletDisplayProps) {
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
+  const dispatch = useDispatch()
 
   // Format address for display (0x1234...5678)
   const formatAddress = (address: string) => {
@@ -45,6 +47,15 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
     }
   }
 
+  const handleDisconnect = async () => {
+    try {
+      dispatch(clearUser())
+      disconnect()
+    } catch (error) {
+      console.error('Error during disconnect:', error)
+    }
+  }
+
   if (variant === "sidebar") {
     return (
       <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
@@ -57,7 +68,7 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
           <span className="text-xs font-medium">{formatAddress(address || "")}</span>
           <span className="text-xs text-muted-foreground">Connected</span>
         </div>
-        <Button variant="ghost" size="icon" className="ml-auto h-6 w-6" onClick={() => disconnect()}>
+        <Button variant="ghost" size="icon" className="ml-auto h-6 w-6" onClick={handleDisconnect}>
           <LogOut className="h-3 w-3" />
           <span className="sr-only">Disconnect</span>
         </Button>
@@ -85,7 +96,7 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
           <span>Copy Address</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => disconnect()}>
+        <DropdownMenuItem onClick={handleDisconnect}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Disconnect</span>
         </DropdownMenuItem>
