@@ -5,19 +5,49 @@ import { store } from "@/lib/redux/store"
 import { SessionProvider } from "@/components/session-provider"
 import { QueryProvider } from "@/components/query-provider"
 import { ThemeProvider } from "@/components/theme-provider"
-import { WalletProvider } from "@/components/wallet/wallet-provider"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { DashboardHeader } from "@/components/layout/dashboard-header"
 import { Toaster } from "@/components/ui/toaster"
+import {wagmiConfig, wagmiAdapter, projectId } from "@/lib/web3modal"
+import { createAppKit } from '@reown/appkit/react' 
+import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
+import { bsc, bscTestnet } from "viem/chains"
+import { ReactNode } from "react"
 
-export function Providers({ children }: { children: React.ReactNode }) {
+if (!projectId) {
+  throw new Error('Project ID is not defined')
+}
+
+// Set up metadata
+const metadata = {
+  name: 'valmira_frontend',
+  description: 'The first innovated multi chain meme launchpad',
+  url: 'https://reown.com/appkit', // origin must match your domain & subdomain
+  icons: ['https://assets.reown.com/reown-profile-pic.png']
+}
+
+// Create the modal
+const modal = createAppKit({
+  adapters: [wagmiAdapter],
+  projectId,
+  networks: [bsc, bscTestnet],
+  defaultNetwork: bsc,
+  metadata: metadata,
+  features: {
+    analytics: true, // Optional - defaults to your Cloud configuration
+  }
+})
+
+export function Providers({ children, cookies }: { children: ReactNode; cookies: string | null }){
+  const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies)
+
   return (
     <Provider store={store}>
       <SessionProvider>
+        <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
         <QueryProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <WalletProvider>
               <SidebarProvider>
                 <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80">
                   <DashboardSidebar />
@@ -27,9 +57,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
               </SidebarProvider>
-            </WalletProvider>
           </ThemeProvider>
         </QueryProvider>
+        </WagmiProvider>
       </SessionProvider>
       <Toaster />
     </Provider>

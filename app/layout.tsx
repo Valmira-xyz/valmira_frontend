@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
+import { headers } from "next/headers"; // added
 
 export const metadata: Metadata = {
   title: "Valmira.xyz Dashboard",
@@ -16,10 +17,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const cookies = headers().get('cookie')
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers cookies={cookies}>{children}</Providers>
       </body>
     </html>
   )

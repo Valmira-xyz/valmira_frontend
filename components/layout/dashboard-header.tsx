@@ -4,12 +4,12 @@ import { Bell, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { useWallet } from "@/components/wallet/wallet-provider"
+import { useAccount } from 'wagmi'
 import { WalletDisplay } from "@/components/wallet/wallet-display"
 import { WalletConnectionButton } from "@/components/wallet/wallet-connection-button"
 
 export function DashboardHeader() {
-  const { isConnected, walletAddress, onDisconnect } = useWallet()
+  const { isConnected } = useAccount()
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -29,7 +29,7 @@ export function DashboardHeader() {
         </Button>
 
         {isConnected ? (
-          <WalletDisplay address={walletAddress} variant="header" onDisconnect={onDisconnect} />
+          <WalletDisplay variant="header" />
         ) : (
           <WalletConnectionButton />
         )}
