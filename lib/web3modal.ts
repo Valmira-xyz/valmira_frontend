@@ -26,6 +26,3 @@ export const wagmiAdapter = new WagmiAdapter({
 })
 
 export const wagmiConfig = wagmiAdapter.wagmiConfig
-
-// 3. Create modal
-createWeb3Modal({ wagmiConfig, projectId }) 

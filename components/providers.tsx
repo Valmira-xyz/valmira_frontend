@@ -28,7 +28,7 @@ const metadata = {
 }
 
 // Create the modal
-const modal = createAppKit({
+export const web3modal = createAppKit({
   adapters: [wagmiAdapter],
   projectId,
   networks: [bsc, bscTestnet],
