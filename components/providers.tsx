@@ -7,13 +7,13 @@ import { QueryProvider } from "@/components/query-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
-import { DashboardHeader } from "@/components/layout/dashboard-header"
 import { Toaster } from "@/components/ui/toaster"
-import {wagmiConfig, wagmiAdapter, projectId } from "@/lib/web3modal"
+import { wagmiAdapter, projectId } from "@/lib/web3modal"
 import { createAppKit } from '@reown/appkit/react' 
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
 import { bsc, bscTestnet } from "viem/chains"
 import { ReactNode } from "react"
+import { WalletProvider } from "@/components/wallet/wallet-provider"
 
 if (!projectId) {
   throw new Error('Project ID is not defined')
@@ -46,18 +46,20 @@ export function Providers({ children, cookies }: { children: ReactNode; cookies:
     <Provider store={store}>
       <SessionProvider>
         <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
-        <QueryProvider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-              <SidebarProvider>
-                <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80">
-                  <DashboardSidebar />
-                  <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out">
-                    <main className="flex-1 px-6 py-6">{children}</main>
+          <QueryProvider>
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+              <WalletProvider>
+                <SidebarProvider>
+                  <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80">
+                    <DashboardSidebar />
+                    <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out">
+                      <main className="flex-1 px-6 py-6">{children}</main>
+                    </div>
                   </div>
-                </div>
-              </SidebarProvider>
-          </ThemeProvider>
-        </QueryProvider>
+                </SidebarProvider>
+              </WalletProvider>
+            </ThemeProvider>
+          </QueryProvider>
         </WagmiProvider>
       </SessionProvider>
       <Toaster />

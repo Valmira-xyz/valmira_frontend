@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useTheme } from "next-themes"
 import { HelpCircle, FileQuestion, MessageCircle } from "lucide-react"
-import { useWallet } from "@/components/wallet/wallet-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,6 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { WalletConnectionButton } from "@/components/wallet/wallet-connection-button"
 import { PageHeader } from "@/components/layout/page-header"
+import { useWallet } from "@/components/wallet/wallet-provider"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
