@@ -13,22 +13,27 @@ import { useProject } from "@/hooks/use-project"
 export default function ProjectDetailPage() {
   const params = useParams()
   const pathname = usePathname()
-  const { data: project, isLoading, error } = useProject(params.id)
+  const projectId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : ''
+  const { data: project, isLoading, error } = useProject(projectId)
 
   if (error) {
     return <div>Error loading project: {error.message}</div>
   }
 
+  if (isLoading || !project) {
+    return <div>Loading...</div>
+  }
+
   return (
     <div className="space-y-6 p-6">
-      <PageHeader title={isLoading ? "Loading..." : `Project ${project?.name || params.id}`}>
-        <ProjectRefreshButton projectId={params.id as string} />
+      <PageHeader title={`Project ${project.name}`}>
+        <ProjectRefreshButton projectId={projectId} />
       </PageHeader>
-      <ProjectHeader project={project} walletAddress={project?.walletAddress} />
+      <ProjectHeader project={project} walletAddress={project.walletAddress} />
       <ProjectMetrics project={project} />
       <ProjectAnalytics project={project} />
       <ProjectAddOns project={project} />
-      {project && <ProjectDangerZone projectName={project.name} projectId={params.id as string} />}
+      <ProjectDangerZone projectName={project.name} projectId={projectId} />
     </div>
   )
 }

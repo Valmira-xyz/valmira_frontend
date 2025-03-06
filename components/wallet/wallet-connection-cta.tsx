@@ -6,12 +6,17 @@ import { useEffect } from "react"
 import { ArrowRight, Wallet } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { WalletConnectionButton } from "@/components/wallet/wallet-connection-button"
+import { useAccount } from "wagmi"
+import { WalletDisplay } from "./wallet-display"
 
 export function WalletConnectionCTA({
   onConnect,
 }: {
   onConnect: (address: string) => void
 }) {
+  
+  const { isConnected } = useAccount()
+
   // Listen for wallet connection events
   useEffect(() => {
     const handleWalletConnected = (event: Event) => {
@@ -56,7 +61,12 @@ export function WalletConnectionCTA({
         </div>
       </CardContent>
       <CardFooter className="flex justify-center md:justify-start">
-        <WalletConnectionButton />
+        
+      {isConnected ? (
+          <WalletDisplay variant="header" />
+        ) : (
+          <WalletConnectionButton />
+        )}
       </CardFooter>
     </Card>
   )

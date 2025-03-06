@@ -234,7 +234,7 @@ export const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, 
         size="icon"
         className={cn(
           "h-9 w-9",
-          "absolute left-4 top-3 z-50",
+          "z-50",
           "transition-all duration-300 ease-in-out",
           "group-data-[collapsible=icon]:left-1/2 group-data-[collapsible=icon]:-translate-x-1/2",
           className,

@@ -52,7 +52,6 @@ export function Providers({ children, cookies }: { children: ReactNode; cookies:
                 <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80">
                   <DashboardSidebar />
                   <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out">
-                    <DashboardHeader />
                     <main className="flex-1 px-6 py-6">{children}</main>
                   </div>
                 </div>

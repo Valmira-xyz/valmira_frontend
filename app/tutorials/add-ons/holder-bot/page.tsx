@@ -1,22 +1,13 @@
 "use client"
 
 import { Bell } from "lucide-react"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/layout/page-header"
 
 export default function HolderBotTutorialPage() {
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="relative z-20" />
-          <h1 className="text-3xl font-bold">Holder Bot Tutorial</h1>
-        </div>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Bell className="h-5 w-5" />
-          <span className="sr-only">Notifications</span>
-        </Button>
-      </div>
+    <div className="container mx-auto py-6">   
+      <PageHeader title="Holder Bot Tutorial" />      
 
       <div className="prose dark:prose-invert max-w-none">
         <p className="text-lg">

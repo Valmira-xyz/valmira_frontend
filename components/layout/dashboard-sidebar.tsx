@@ -27,6 +27,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useAccount } from "wagmi"
+import { WalletDisplay } from "../wallet/wallet-display"
 
 // Sample data for active projects - replace with real data from your state
 const sampleProjects = [
@@ -36,6 +38,9 @@ const sampleProjects = [
 ]
 
 export function DashboardSidebar() {
+
+  const { isConnected } = useAccount()
+
   const [openProjects, setOpenProjects] = useState(false)
   const [openKnowledge, setOpenKnowledge] = useState(false)
 
@@ -55,7 +60,11 @@ export function DashboardSidebar() {
       </SidebarHeader>
       <SidebarContent className="flex flex-col h-full">
         <div className="p-4">
+      {isConnected ? (
+          <WalletDisplay variant="sidebar" />
+        ) : (
           <WalletConnectionButton />
+        )}
         </div>
         <SidebarMenu>
           <SidebarMenuItem>

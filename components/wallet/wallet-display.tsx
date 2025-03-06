@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAccount, useDisconnect } from 'wagmi'
-import { useWeb3Modal } from '@web3modal/react'
 
 
 interface WalletDisplayProps {
@@ -22,7 +21,6 @@ interface WalletDisplayProps {
 export function WalletDisplay({ variant }: WalletDisplayProps) {
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
-  const { open } = useWeb3Modal()
 
   // Format address for display (0x1234...5678)
   const formatAddress = (address: string) => {
@@ -85,10 +83,6 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
         <DropdownMenuItem onClick={copyAddress}>
           <Copy className="mr-2 h-4 w-4" />
           <span>Copy Address</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <ExternalLink className="mr-2 h-4 w-4" />
-          <span>View on Explorer</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => disconnect()}>
