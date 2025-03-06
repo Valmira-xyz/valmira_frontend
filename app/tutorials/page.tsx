@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function TutorialsPage() {
   return (
-    <div>
+    <div className="w-[calc(100vw-320px)]">
       <PageHeader title="Tutorials & Resources" />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

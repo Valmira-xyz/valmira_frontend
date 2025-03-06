@@ -8,7 +8,7 @@ import { WalletConnectionCTA } from "@/components/wallet/wallet-connection-cta"
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 w-[calc(100vw-320px)]">
       <PageHeader title="Dashboard">
         <CreateProjectButton />
       </PageHeader>

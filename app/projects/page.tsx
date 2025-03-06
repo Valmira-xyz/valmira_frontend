@@ -42,7 +42,7 @@ export default function ProjectsPage() {
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-[calc(100vw-320px)]">
       <PageHeader title="Projects">
         <CreateProjectButton />
       </PageHeader>

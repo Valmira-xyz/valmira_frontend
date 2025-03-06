@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function FAQsPage() {
   return (
-    <div>
+    <div className="w-[calc(100vw-320px)]">
       <PageHeader title="Frequently Asked Questions" />
 
       <div className="grid gap-6">

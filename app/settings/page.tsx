@@ -26,7 +26,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className=" mx-auto py-6 w-[calc(100vw-320px)]">
       <PageHeader title="Settings" />
       <div className="space-y-6">
         <Card>

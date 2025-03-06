@@ -11,7 +11,7 @@ import {
   Circle,
   LogOut,
 } from "lucide-react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useSelector } from "react-redux"
 import { WalletConnectionButton } from "@/components/wallet/wallet-connection-button"
 import { RootState } from "@/store/store"
@@ -35,10 +35,10 @@ import { WalletDisplay } from "../wallet/wallet-display"
 const sampleProjects = [
   { id: "1", name: "PEPE", status: "active", tokenSymbol: "PEPE" },
   { id: "2", name: "SHIB", status: "paused", tokenSymbol: "SHIB" },
-  { id: "3", name: "DOGE", status: "active", tokenSymbol: "DOGE" },
 ]
 
 export function DashboardSidebar() {
+  const router = useRouter()
   const { isConnected } = useAccount()
   const [openProjects, setOpenProjects] = useState(false)
   const [openKnowledge, setOpenKnowledge] = useState(false)
@@ -67,11 +67,9 @@ export function DashboardSidebar() {
         </div>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/" className="flex items-center pl-5">
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                <span>Dashboard</span>
-              </Link>
+            <SidebarMenuButton onClick={() => router.push("/")} className="flex items-center pl-5">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              <span>Dashboard</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
 
@@ -91,10 +89,10 @@ export function DashboardSidebar() {
             <CollapsibleContent>
               <div className="ml-7 space-y-1">
                 {sampleProjects.map((project) => (
-                  <Link
+                  <button
                     key={project.id}
-                    href={`/projects/${project.id}`}
-                    className="flex items-center justify-between px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
+                    onClick={() => router.push(`/projects/${project.id}`)}
+                    className="flex items-center justify-between w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                   >
                     <div className="flex items-center">
                       <Circle
@@ -106,14 +104,14 @@ export function DashboardSidebar() {
                       <span>{project.tokenSymbol}</span>
                     </div>
                     <Badge variant={project.status === "active" ? "default" : "outline"}>{project.status}</Badge>
-                  </Link>
+                  </button>
                 ))}
-                <Link
-                  href="/projects"
-                  className="flex items-center px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
+                <button
+                  onClick={() => router.push("/projects")}
+                  className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
                 >
                   View all projects...
-                </Link>
+                </button>
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -133,30 +131,28 @@ export function DashboardSidebar() {
             </SidebarMenuItem>
             <CollapsibleContent>
               <div className="ml-7 space-y-1">
-                <Link
-                  href="/tutorials"
-                  className="flex items-center px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
+                <button
+                  onClick={() => router.push("/tutorials")}
+                  className="flex items-center w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                 >
                   <HelpCircle className="mr-2 h-4 w-4" />
                   <span>Tutorials</span>
-                </Link>
-                <Link
-                  href="/faqs"
-                  className="flex items-center px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
+                </button>
+                <button
+                  onClick={() => router.push("/faqs")}
+                  className="flex items-center w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                 >
                   <HelpCircleIcon className="mr-2 h-4 w-4" />
                   <span>FAQs</span>
-                </Link>
+                </button>
               </div>
             </CollapsibleContent>
           </Collapsible>
 
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/settings" className="flex items-center pl-5">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </Link>
+            <SidebarMenuButton onClick={() => router.push("/settings")} className="flex items-center pl-5">
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

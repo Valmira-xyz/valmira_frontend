@@ -19,12 +19,19 @@ export function LatestProjects() {
         <div className="flex justify-center items-center h-[200px]">Loading...</div>
       ) : error ? (
         <div className="text-red-500">Error loading projects</div>
-      ) : projects?.length > 0 ? (
+      ) : (projects ?? []).length > 0 ? (
         <div className="overflow-x-auto pb-4 -mx-6 px-6">
           <div className="flex gap-6 min-w-max">
-            {projects.map((project) => (
+            {(projects ?? []).map((project) => (
               <div key={project.id} className="w-[320px] flex-shrink-0">
-                <ProjectSummaryCard project={project} />
+                <ProjectSummaryCard 
+                  project={{
+                    ...project,
+                    logo: project.logo ?? '/default-project-logo.png',
+                    profitTrend: project.profitTrend ?? [],
+                    volumeTrend: project.volumeTrend ?? []
+                  }} 
+                />
               </div>
             ))}
           </div>
