@@ -14,6 +14,7 @@ import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
 import { bsc, bscTestnet } from "viem/chains"
 import { ReactNode } from "react"
 import { WalletProvider } from "@/components/wallet/wallet-provider"
+import { AuthProvider } from "../src/components/AuthProvider"
 
 if (!projectId) {
   throw new Error('Project ID is not defined')
@@ -49,14 +50,16 @@ export function Providers({ children, cookies }: { children: ReactNode; cookies:
           <QueryProvider>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
               <WalletProvider>
-                <SidebarProvider>
-                  <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80">
-                    <DashboardSidebar />
-                    <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out">
-                      <main className="flex-1 px-6 py-6">{children}</main>
+                <AuthProvider>
+                  <SidebarProvider>
+                    <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80">
+                      <DashboardSidebar />
+                      <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out">
+                        <main className="flex-1 px-6 py-6">{children}</main>
+                      </div>
                     </div>
-                  </div>
-                </SidebarProvider>
+                  </SidebarProvider>
+                </AuthProvider>
               </WalletProvider>
             </ThemeProvider>
           </QueryProvider>
