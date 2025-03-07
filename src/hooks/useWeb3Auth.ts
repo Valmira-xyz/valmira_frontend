@@ -19,7 +19,7 @@ export const useWeb3Auth = () => {
         
         // Get nonce from backend
         const nonce = await authService.getNonce(address);
-        const message = `Sign this message to verify your wallet ownership. Nonce: ${nonce}`;
+        const message = `Sign this message to verify your wallet ownership & login to Valmira. Nonce: ${nonce}`;
 
         // Sign message with wagmi
         const signature = await signMessageAsync({ message });

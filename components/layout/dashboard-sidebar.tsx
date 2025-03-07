@@ -190,7 +190,7 @@ export function DashboardSidebar() {
             </>
           ) : (
             <div className="text-center text-sm text-muted-foreground">
-              <p>Connect your wallet to see your profile</p>
+              <p>Connect your wallet and login to see your profile</p>
             </div>
           )}
         </div>
