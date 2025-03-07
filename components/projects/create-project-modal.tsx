@@ -68,6 +68,27 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
   const handleDeployNewToken = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate percentage values
+    const percentageFields = [
+      { value: newTokenBuyTax, name: "Buy Tax" },
+      { value: newTokenSellTax, name: "Sell Tax" },
+      { value: newTokenMaxHoldingRate, name: "Max Holding Rate" },
+      { value: newTokenMaxBuySellRate, name: "Max Buy/Sell Rate" }
+    ]
+
+    for (const field of percentageFields) {
+      const value = parseFloat(field.value)
+      if (value > 10) {
+        toast({
+          title: "Invalid Percentage",
+          description: `${field.name} must be less than or equal to 10%`,
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     setDeploymentStatus("deploying")
     setDeploymentError("")
 
@@ -243,8 +264,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         value={newTokenBuyTax}
                         onChange={(e) => setNewTokenBuyTax(e.target.value)}
                         required
+                        min="0"
+                        max="10"
+                        step="0.1"
                         disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
                       />
+                      <p className="text-xs text-muted-foreground">Must be less than or equal to 10%</p>
                     </div>
                   </div>
                   <div className="space-y-4">
@@ -256,30 +281,42 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         value={newTokenSellTax}
                         onChange={(e) => setNewTokenSellTax(e.target.value)}
                         required
+                        min="0"
+                        max="10"
+                        step="0.1"
                         disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
                       />
+                      <p className="text-xs text-muted-foreground">Must be less than or equal to 10%</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="newTokenMaxHoldingRate">Max Holding Rate (%)</Label>
+                      <Label htmlFor="newTokenMaxHoldingRate">Max Holding (% of Total Supply)</Label>
                       <Input
                         id="newTokenMaxHoldingRate"
                         type="number"
                         value={newTokenMaxHoldingRate}
                         onChange={(e) => setNewTokenMaxHoldingRate(e.target.value)}
                         required
+                        min="0"
+                        max="5"
+                        step="0.1"
                         disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
                       />
+                      <p className="text-xs text-muted-foreground">Maximum amount a wallet can hold (must be ≤ 5% of total supply)</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="newTokenMaxBuySellRate">Max Buy/Sell Rate (%)</Label>
+                      <Label htmlFor="newTokenMaxBuySellRate">Max Buy/Sell (% of Total Supply)</Label>
                       <Input
                         id="newTokenMaxBuySellRate"
                         type="number"
                         value={newTokenMaxBuySellRate}
                         onChange={(e) => setNewTokenMaxBuySellRate(e.target.value)}
                         required
+                        min="0"
+                        max="5"
+                        step="0.1"
                         disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
                       />
+                      <p className="text-xs text-muted-foreground">Maximum amount per transaction (must be ≤ 5% of total supply)</p>
                     </div>
                   </div>
                 </div>
