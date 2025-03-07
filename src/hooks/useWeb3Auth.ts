@@ -3,6 +3,7 @@ import { useAccount, useSignMessage } from 'wagmi';
 import { useDispatch } from 'react-redux';
 import { setUser, setLoading, setError, logout } from '../store/authSlice';
 import { authService } from '../services/authService';
+import { web3modal } from '@/components/providers';
 
 export const useWeb3Auth = () => {
   const dispatch = useDispatch();
@@ -29,7 +30,9 @@ export const useWeb3Auth = () => {
         dispatch(setUser(response.user));
       } catch (error) {
         dispatch(setError('Authentication failed'));
+        dispatch(logout());
         console.error('Authentication error:', error);
+        web3modal.disconnect();
       } finally {
         dispatch(setLoading(false));
       }

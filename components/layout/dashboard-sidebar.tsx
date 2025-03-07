@@ -9,7 +9,6 @@ import {
   BookOpen,
   HelpCircleIcon,
   Circle,
-  LogOut,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useSelector } from "react-redux"
