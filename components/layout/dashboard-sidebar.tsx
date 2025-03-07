@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation"
 import { useSelector } from "react-redux"
 import { WalletConnectionButton } from "@/components/wallet/wallet-connection-button"
 import { RootState } from "@/store/store"
+import { generateAvatarColor } from '@/lib/utils/wallet'
 
 import {
   Sidebar,
@@ -51,6 +52,8 @@ export function DashboardSidebar() {
     activeProjects: 2,
     cumulativeProfit: "$1,245.67",
   }
+
+  const avatarColor = generateAvatarColor(user?.walletAddress || "")
 
   return (
     <Sidebar>
@@ -163,9 +166,9 @@ export function DashboardSidebar() {
             <>
               <div className="flex items-center space-x-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    {user.name ? user.name.substring(0, 2).toUpperCase() : user.walletAddress.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
+          <AvatarFallback style={{ backgroundColor: avatarColor }}>
+            {user.walletAddress?.substring(2, 4).toUpperCase()}
+          </AvatarFallback>
                 </Avatar>
                 <div className="space-y-1">
                   <p className="text-sm font-medium leading-none">

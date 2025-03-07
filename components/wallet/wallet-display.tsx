@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAccount, useDisconnect } from 'wagmi'
 import { useDispatch } from 'react-redux'
 import { setUser, clearUser } from '@/store/authSlice'
+import { generateAvatarColor } from '@/lib/utils/wallet'
 
 interface WalletDisplayProps {
   variant: "header" | "sidebar"
@@ -28,14 +29,6 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
   const formatAddress = (address: string) => {
     if (!address) return ""
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`
-  }
-
-  // Generate a color based on the address for the avatar
-  const generateAvatarColor = (address: string) => {
-    const hash = address.split("").reduce((a, b) => {
-      return ((a << 5) - a + b.charCodeAt(0)) | 0
-    }, 0)
-    return `hsl(${Math.abs(hash) % 360}, 70%, 60%)`
   }
 
   const avatarColor = generateAvatarColor(address || "")
