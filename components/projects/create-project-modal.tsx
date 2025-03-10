@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Loader2, AlertCircle, ChevronDown, Globe, Send, Twitter } from "lucide-react"
+import { Loader2, AlertCircle, ChevronDown, Globe, Send, Twitter, Copy, ExternalLink } from "lucide-react"
 import { FaDiscord } from "react-icons/fa"
 import {
   Dialog,
@@ -23,7 +23,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AddressDisplay } from "@/components/ui/address-display"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-
+import { TokenDeploymentService } from "@/src/lib/deploy-token/service"
+import { createProject } from "@/src/lib/deploy-token/api"
+import { useWalletClient, usePublicClient, useChainId } from "wagmi"
+import { useEthersSigner } from "@/src/lib/deploy-token/ether-adapter"
 interface CreateProjectModalProps {
   isOpen: boolean
   onClose: () => void
@@ -36,6 +39,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [activeTab, setActiveTab] = useState("deploy")
   const { toast } = useToast()
   const [showSocialLinks, setShowSocialLinks] = useState(false)
+  const publicClient = usePublicClient()
+  const { data: walletClient } = useWalletClient()  
+  const chainId = useChainId();
+  const signer = useEthersSigner({ chainId });
+  const [deploymentStatusText, setDeploymentStatusText] = useState<string>("")
+  const [deploymentProgress, setDeploymentProgress] = useState<number>(0)
+  const [isDeploying, setIsDeploying] = useState(false)
+  const [isCreatingProject, setIsCreatingProject] = useState(false)
 
   // State for deploying new token
   const [newTokenName, setNewTokenName] = useState("")
@@ -45,6 +56,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [newTokenSellTax, setNewTokenSellTax] = useState("")
   const [newTokenMaxHoldingRate, setNewTokenMaxHoldingRate] = useState("")
   const [newTokenMaxBuySellRate, setNewTokenMaxBuySellRate] = useState("")
+  const [tokenTemplate, setTokenTemplate] = useState("0")
+  const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null)
+
   // Add social links state
   const [website, setWebsite] = useState("")
   const [telegram, setTelegram] = useState("")
@@ -53,7 +67,6 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
   // State for deploying new token
   const [deploymentStatus, setDeploymentStatus] = useState<TokenDeploymentStatus>("idle")
-  const [deployedTokenAddress, setDeployedTokenAddress] = useState("")
   const [deploymentError, setDeploymentError] = useState("")
 
   // State for importing existing token
@@ -63,47 +76,187 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [analyzedToken, setAnalyzedToken] = useState<any>(null)
   const [importError, setImportError] = useState("")
 
-  // State for project creation
-  const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const validateTokenInputs = () => {
+    const errors: string[] = [];
+
+    // Validate name
+    if (!newTokenName || newTokenName.length < 3 || newTokenName.length > 50) {
+      errors.push("Token name must be between 3 and 50 characters");
+    }
+
+    // Validate symbol
+    if (!newTokenSymbol || newTokenSymbol.length < 2 || newTokenSymbol.length > 10) {
+      errors.push("Token symbol must be between 2 and 10 characters");
+    }
+
+    // Validate total supply
+    const totalSupply = parseFloat(newTokenTotalSupply);
+    if (isNaN(totalSupply) || totalSupply <= 0 || totalSupply > 1e18) {
+      errors.push("Total supply must be between 0 and 1e18");
+    }
+
+    // Validate fees
+    const buyTax = parseFloat(newTokenBuyTax);
+    const sellTax = parseFloat(newTokenSellTax);
+    if (isNaN(buyTax) || buyTax < 0 || buyTax > 25) {
+      errors.push("Buy tax must be between 0 and 25");
+    }
+    if (isNaN(sellTax) || sellTax < 0 || sellTax > 25) {
+      errors.push("Sell tax must be between 0 and 25");
+    }
+
+    // Validate limits
+    const maxHolding = parseFloat(newTokenMaxHoldingRate);
+    const maxBuySell = parseFloat(newTokenMaxBuySellRate);
+    if (isNaN(maxHolding) || maxHolding <= 0 || maxHolding > 100) {
+      errors.push("Max holding rate must be between 0 and 100");
+    }
+    if (isNaN(maxBuySell) || maxBuySell <= 0 || maxBuySell > 100) {
+      errors.push("Max buy/sell rate must be between 0 and 100");
+    }
+
+    // Validate social links
+    if (website && !isValidUrl(website)) {
+      errors.push("Invalid website URL");
+    }
+    if (telegram && !isValidUrl(telegram)) {
+      errors.push("Invalid Telegram URL");
+    }
+    if (discord && !isValidUrl(discord)) {
+      errors.push("Invalid Discord URL");
+    }
+    if (twitter && !isValidUrl(twitter)) {
+      errors.push("Invalid Twitter URL");
+    }
+
+    return errors;
+  };
+
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const handleDeployNewToken = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    // Validate percentage values
-    const percentageFields = [
-      { value: newTokenBuyTax, name: "Buy Tax" },
-      { value: newTokenSellTax, name: "Sell Tax" },
-      { value: newTokenMaxHoldingRate, name: "Max Holding Rate" },
-      { value: newTokenMaxBuySellRate, name: "Max Buy/Sell Rate" }
-    ]
-
-    for (const field of percentageFields) {
-      const value = parseFloat(field.value)
-      if (value > 10) {
-        toast({
-          title: "Invalid Percentage",
-          description: `${field.name} must be less than or equal to 10%`,
-          variant: "destructive",
-        })
-        return
-      }
+    if (!publicClient || !walletClient) {
+      toast({
+        title: "Error",
+        description: "Please connect your wallet first",
+        variant: "destructive",
+      });
+      return;
     }
 
-    setDeploymentStatus("deploying")
-    setDeploymentError("")
+    // Validate inputs
+    const errors = validateTokenInputs();
+    if (errors.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: errors.join("\n"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the connected wallet address
+    if (!walletClient) {
+      toast({
+        title: "Error",
+        description: "Failed to get wallet address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeploying(true);
+    setDeploymentStatusText("Initializing deployment...");
+    setDeploymentProgress(0);
 
     try {
-      // Simulate token deployment
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const deploymentService = TokenDeploymentService.getInstance(publicClient, walletClient, signer);
+      
+      const { contractAddress, jobId } = await deploymentService.deployToken({
+        tokenName: newTokenName,
+        tokenSymbol: newTokenSymbol,
+        tokenTotalSupply: newTokenTotalSupply,
+        buyFee: parseFloat(newTokenBuyTax) || 0,
+        sellFee: parseFloat(newTokenSellTax) || 0,
+        maxHoldingLimit_: parseFloat(newTokenMaxHoldingRate) || 0,
+        maxBuyLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
+        maxSellLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
+        socialLinks: {
+          website: website || "",
+          telegram: telegram || "",
+          discord: discord || "",
+          twitter: twitter || ""
+        },
+        templateNumber: parseInt(tokenTemplate)
+      });
 
-      // Simulate successful deployment
-      setDeploymentStatus("success")
-      setDeployedTokenAddress("0x" + Math.random().toString(16).substring(2, 42))
+      setDeployedTokenAddress(contractAddress);
+      setDeploymentStatusText("Token deployed, waiting for verification...");
+      setDeploymentProgress(50);
+
+      // Poll for deployment status with timeout
+      let attempts = 0;
+      const maxAttempts = 60; // 5 minutes with 5-second intervals
+      const pollStatus = async () => {
+        if (attempts >= maxAttempts) {
+          setDeploymentStatusText("Deployment timed out");
+          setIsDeploying(false);
+          toast({
+            title: "Deployment Failed",
+            description: "Deployment timed out. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        try {
+          const status = await deploymentService.getDeploymentStatus(jobId);
+          setDeploymentProgress(status.progress);
+
+          if (status.state === "completed") {
+            setDeploymentStatusText("Deployment completed!");
+            setDeploymentProgress(100);
+            setIsDeploying(false);
+          } else if (status.state === "failed") {
+            setDeploymentStatusText("Deployment failed");
+            setIsDeploying(false);
+            toast({
+              title: "Deployment Failed",
+              description: status.error || "Failed to deploy token. Please try again.",
+              variant: "destructive",
+            });
+          } else {
+            attempts++;
+            setTimeout(pollStatus, 5000);
+          }
+        } catch (error) {
+          console.error("Error polling deployment status:", error);
+          attempts++;
+          setTimeout(pollStatus, 5000);
+        }
+      };
+
+      pollStatus();
     } catch (error) {
-      setDeploymentStatus("error")
-      setDeploymentError("Failed to deploy token. Please try again.")
+      console.error("Deployment error:", error);
+      setDeploymentStatusText("Deployment failed");
+      setIsDeploying(false);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to deploy token. Please try again.",
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   const handleImportToken = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -144,21 +297,68 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   }
 
   const handleCreateProject = async () => {
+    if (!deployedTokenAddress) {
+      toast({
+        title: "Error",
+        description: "Please deploy a token first",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsCreatingProject(true)
 
-    try {
-      // Simulate project creation
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
+    if (!walletClient) {
       toast({
-        title: "Project Created",
-        description: "Your new project has been successfully created.",
-      })
+        title: "Error",
+        description: "Failed to get wallet address",
+        variant: "destructive",
+      });
+      return;
+    }
 
-      // Reset form and close modal
-      resetForm()
-      onClose()
+    const [address] = await walletClient.getAddresses();
+
+    try {
+      const projectData = {
+        name: newTokenName,
+        tokenAddress: deployedTokenAddress,
+        chainId: chainId,
+        tokenData: {
+          name: newTokenName,
+          symbol: newTokenSymbol,
+          decimals: 18,
+          totalSupply: newTokenTotalSupply,
+          websiteLink: website,
+          telegramLink: telegram,
+          twitterLink: twitter,
+          discordLink: discord,
+          buyFee: parseFloat(newTokenBuyTax),
+          sellFee: parseFloat(newTokenSellTax),
+          maxHoldingLimit_: parseFloat(newTokenMaxHoldingRate),
+          maxBuyLimit_: parseFloat(newTokenMaxBuySellRate),
+          maxSellLimit_: parseFloat(newTokenMaxBuySellRate),
+          templateNumber: parseInt(tokenTemplate),
+          owner: address
+        }
+      }
+
+      const response = await createProject(projectData)
+
+      if (response.success && response.project) {
+        toast({
+          title: "Success",
+          description: "Project created successfully",
+        })
+
+        // Reset form and close modal
+        resetForm()
+        onClose()
+      } else {
+        throw new Error(response.message || "Failed to create project")
+      }
     } catch (error) {
+      console.error("Project creation error:", error)
       toast({
         title: "Error",
         description: "Failed to create project. Please try again.",
@@ -178,8 +378,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     setNewTokenSellTax("")
     setNewTokenMaxHoldingRate("")
     setNewTokenMaxBuySellRate("")
-    setDeploymentStatus("idle")
-    setDeployedTokenAddress("")
+    setDeploymentStatusText("idle")
+    setDeployedTokenAddress(null)
     setDeploymentError("")
 
     // Reset import token form
@@ -203,7 +403,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   return (
     <Dialog
       open={isOpen}
-      onOpenChange={(open) => {
+      onOpenChange={(open: boolean) => {
         if (!open) {
           resetForm()
           onClose()
@@ -230,9 +430,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       <Input
                         id="newTokenName"
                         value={newTokenName}
-                        onChange={(e) => setNewTokenName(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenName(e.target.value)}
                         required
-                        disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                     </div>
                     <div className="space-y-2">
@@ -240,9 +440,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       <Input
                         id="newTokenSymbol"
                         value={newTokenSymbol}
-                        onChange={(e) => setNewTokenSymbol(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenSymbol(e.target.value)}
                         required
-                        disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                     </div>
                     <div className="space-y-2">
@@ -251,9 +451,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         id="newTokenTotalSupply"
                         type="number"
                         value={newTokenTotalSupply}
-                        onChange={(e) => setNewTokenTotalSupply(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenTotalSupply(e.target.value)}
                         required
-                        disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                     </div>
                     <div className="space-y-2">
@@ -262,12 +462,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         id="newTokenBuyTax"
                         type="number"
                         value={newTokenBuyTax}
-                        onChange={(e) => setNewTokenBuyTax(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenBuyTax(e.target.value)}
                         required
                         min="0"
                         max="10"
                         step="0.1"
-                        disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                       <p className="text-xs text-muted-foreground">Must be less than or equal to 10%</p>
                     </div>
@@ -279,12 +479,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         id="newTokenSellTax"
                         type="number"
                         value={newTokenSellTax}
-                        onChange={(e) => setNewTokenSellTax(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenSellTax(e.target.value)}
                         required
                         min="0"
                         max="10"
                         step="0.1"
-                        disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                       <p className="text-xs text-muted-foreground">Must be less than or equal to 10%</p>
                     </div>
@@ -294,12 +494,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         id="newTokenMaxHoldingRate"
                         type="number"
                         value={newTokenMaxHoldingRate}
-                        onChange={(e) => setNewTokenMaxHoldingRate(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenMaxHoldingRate(e.target.value)}
                         required
                         min="0"
                         max="5"
                         step="0.1"
-                        disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                       <p className="text-xs text-muted-foreground">Maximum amount a wallet can hold (must be ≤ 5% of total supply)</p>
                     </div>
@@ -309,12 +509,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         id="newTokenMaxBuySellRate"
                         type="number"
                         value={newTokenMaxBuySellRate}
-                        onChange={(e) => setNewTokenMaxBuySellRate(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenMaxBuySellRate(e.target.value)}
                         required
                         min="0"
                         max="5"
                         step="0.1"
-                        disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                       <p className="text-xs text-muted-foreground">Maximum amount per transaction (must be ≤ 5% of total supply)</p>
                     </div>
@@ -327,7 +527,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       type="button"
                       variant="outline"
                       className="flex w-full justify-between"
-                      disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                      disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                     >
                       <span>Social Links</span>
                       <ChevronDown className={cn("h-4 w-4 transition-transform", showSocialLinks && "rotate-180")} />
@@ -344,8 +544,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                           type="url"
                           placeholder="https://"
                           value={website}
-                          onChange={(e) => setWebsite(e.target.value)}
-                          disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
+                          disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                         />
                       </div>
                       <div className="space-y-2">
@@ -357,8 +557,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                           type="url"
                           placeholder="https://t.me/"
                           value={telegram}
-                          onChange={(e) => setTelegram(e.target.value)}
-                          disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTelegram(e.target.value)}
+                          disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                         />
                       </div>
                       <div className="space-y-2">
@@ -373,8 +573,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                           type="url"
                           placeholder="https://discord.gg/"
                           value={discord}
-                          onChange={(e) => setDiscord(e.target.value)}
-                          disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDiscord(e.target.value)}
+                          disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                         />
                       </div>
                       <div className="space-y-2">
@@ -386,8 +586,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                           type="url"
                           placeholder="https://twitter.com/"
                           value={twitter}
-                          onChange={(e) => setTwitter(e.target.value)}
-                          disabled={deploymentStatus === "deploying" || deploymentStatus === "success"}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTwitter(e.target.value)}
+                          disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                         />
                       </div>
                     </div>
@@ -402,35 +602,74 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 </Alert>
               )}
 
-              {deploymentStatus === "success" && (
-                <div className="mb-4 p-4 border rounded-md bg-muted">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <h4 className="font-semibold mb-2">Token Deployed Successfully</h4>
-                      <AddressDisplay 
-                        address={deployedTokenAddress} 
-                        label="Contract Address" 
-                      />
-                      <p className="mb-2">
-                        <strong>Name:</strong> {newTokenName}
-                      </p>
+              {isDeploying && (
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Deployment Status</span>
+                    <span className="text-sm text-muted-foreground">{deploymentStatusText}</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-secondary">
+                    <div
+                      className="h-2 rounded-full bg-primary transition-all"
+                      style={{ width: `${deploymentProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {deployedTokenAddress && (
+                <div className="mt-4 space-y-4 rounded-lg border p-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold">Token Deployed Successfully</h4>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          navigator.clipboard.writeText(deployedTokenAddress)
+                          toast({
+                            title: "Copied",
+                            description: "Contract address copied to clipboard",
+                          })
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          window.open(
+                            `${process.env.NEXT_PUBLIC_BSCSCAN_URL}/address/${deployedTokenAddress}`,
+                            "_blank"
+                          )
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <p>
-                        <strong>Symbol:</strong> {newTokenSymbol}
-                      </p>
-                      <p>
-                        <strong>Total Supply:</strong> {newTokenTotalSupply}
-                      </p>
+                  </div>
+                  <AddressDisplay
+                    address={deployedTokenAddress}
+                    label="Contract Address"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium">Name</p>
+                      <p className="text-sm text-muted-foreground">{newTokenName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Symbol</p>
+                      <p className="text-sm text-muted-foreground">{newTokenSymbol}</p>
                     </div>
                   </div>
                 </div>
               )}
 
-              <DialogFooter>
-                {deploymentStatus !== "success" ? (
-                  <Button type="submit" disabled={deploymentStatus === "deploying"}>
-                    {deploymentStatus === "deploying" ? (
+              <DialogFooter className="mt-4">
+                {!deployedTokenAddress ? (
+                  <Button type="submit" disabled={isDeploying}>
+                    {isDeploying ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Deploying
@@ -463,7 +702,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     <Input
                       id="existingContractAddress"
                       value={existingContractAddress}
-                      onChange={(e) => setExistingContractAddress(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExistingContractAddress(e.target.value)}
                       required
                       disabled={importStatus === "validating" || importStatus === "valid"}
                     />

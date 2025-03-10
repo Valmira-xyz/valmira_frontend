@@ -18,6 +18,16 @@ interface ApiResponse<T> {
   data: T;
 }
 
+interface NonceResponse {
+  nonce: string;
+  message?: string;
+}
+
+interface VerifyResponse {
+  user: User;
+  token: string;
+}
+
 class AuthService {
   private token: string | null = null;
 
@@ -46,18 +56,18 @@ class AuthService {
     return this.token ? { Authorization: `Bearer ${this.token}` } : {};
   }
 
-  async getNonce(walletAddress: string): Promise<string> {
+  async getNonce(walletAddress: string): Promise<NonceResponse> {
     try {
       const response = await axios.get<ApiResponse<{ nonce: string }>>(`${API_URL}/users/nonce/${walletAddress}`);
-      return response.data.data.nonce;
+      return response.data.data;
     } catch (error) {
       throw new Error('Failed to get nonce');
     }
   }
 
-  async verifySignature(walletAddress: string, signature: string, nonce: string): Promise<AuthResponse> {
+  async verifySignature(walletAddress: string, signature: string, nonce: string): Promise<VerifyResponse> {
     try {
-      const response = await axios.post<ApiResponse<AuthResponse>>(`${API_URL}/users/verify-signature`, {
+      const response = await axios.post<ApiResponse<VerifyResponse>>(`${API_URL}/users/verify-signature`, {
         walletAddress,
         signature,
         nonce,
@@ -66,7 +76,20 @@ class AuthService {
       const { user, token } = response.data.data;
       this.setToken(token);
 
-      return { user, token };
+      // Ensure the user object has all required fields
+      if (!user._id) {
+        throw new Error('Invalid user data received from server');
+      }
+
+      return {
+        user: {
+          _id: user._id,
+          walletAddress: user.walletAddress,
+          role: user.role as 'user' | 'admin',
+          name: user.name
+        },
+        token
+      };
     } catch (error) {
       throw new Error('Failed to verify signature');
     }
