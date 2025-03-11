@@ -161,7 +161,7 @@ export function DashboardSidebar() {
 
         {/* Profile section at the bottom */}
         <div className="mt-auto border-t border-border p-4 space-y-4">
-          {isAuthenticated && user ? (
+          {isAuthenticated && isConnected && user ? (
             <>
               <div className="flex items-center space-x-3">
                 <Avatar className="h-10 w-10">

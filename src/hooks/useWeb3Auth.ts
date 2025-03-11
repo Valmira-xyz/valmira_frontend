@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setUser, setLoading, setError, logout } from '../store/authSlice';
 import { authService } from '../services/authService';
 import type { RootState } from '../store/store';
+import { web3modal } from '@/components/providers';
 
 export const useWeb3Auth = () => {
   const dispatch = useDispatch();
@@ -28,9 +29,8 @@ export const useWeb3Auth = () => {
   const handleLogout = useCallback(() => {
     isAuthenticatingRef.current = false;
     dispatch(logout());
-    authService.logout();
-    disconnect();
-  }, [dispatch, disconnect]);
+    authService.logout();   
+  }, [dispatch]);
 
   const handleAuthentication = useCallback(async () => {
     if (isAuthenticatingRef.current) {
@@ -130,6 +130,7 @@ export const useWeb3Auth = () => {
   useEffect(() => {
     if (isDisconnected && !isAuthenticatingRef.current) {
       console.log('Wallet disconnected, logging out');
+      web3modal.disconnect();
       handleLogout();
     }
   }, [isDisconnected, handleLogout]);

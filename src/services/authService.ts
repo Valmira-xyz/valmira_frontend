@@ -58,7 +58,11 @@ class AuthService {
 
   async getNonce(walletAddress: string): Promise<NonceResponse> {
     try {
-      const response = await axios.get<ApiResponse<{ nonce: string }>>(`${API_URL}/users/nonce/${walletAddress}`);
+      const response = await axios.get<ApiResponse<{ nonce: string }>>(`${API_URL}/users/nonce/${walletAddress}`, 
+       {
+        withCredentials: true,
+       }  
+      );
       return response.data.data;
     } catch (error) {
       throw new Error('Failed to get nonce');
@@ -67,11 +71,16 @@ class AuthService {
 
   async verifySignature(walletAddress: string, signature: string, nonce: string): Promise<VerifyResponse> {
     try {
-      const response = await axios.post<ApiResponse<VerifyResponse>>(`${API_URL}/users/verify-signature`, {
+      const response = await axios.post<ApiResponse<VerifyResponse>>(`${API_URL}/users/verify-signature`, 
+        {
         walletAddress,
         signature,
         nonce,
-      });
+      },
+      {
+        withCredentials: true,
+      }
+    );
 
       const { user, token } = response.data.data;
       this.setToken(token);
@@ -100,7 +109,11 @@ class AuthService {
       const response = await axios.post<ApiResponse<{ user: User }>>(`${API_URL}/users/register`, {
         walletAddress,
         name,
-      });
+      },
+      {
+        withCredentials: true,
+      }
+    );
       return response.data.data.user;
     } catch (error) {
       throw new Error('Registration failed');
@@ -111,6 +124,7 @@ class AuthService {
     try {
       const response = await axios.get<ApiResponse<{ user: User }>>(`${API_URL}/users/profile`, {
         headers: this.getAuthHeader(),
+        withCredentials: true,
       });
       return response.data.data.user;
     } catch (error) {
@@ -122,6 +136,7 @@ class AuthService {
     try {
       const response = await axios.put<ApiResponse<{ user: User }>>(`${API_URL}/users/profile`, data, {
         headers: this.getAuthHeader(),
+        withCredentials: true,
       });
       return response.data.data.user;
     } catch (error) {
@@ -130,7 +145,6 @@ class AuthService {
   }
 
   logout() {
-    this.clearToken();
   }
 
   isAuthenticated(): boolean {

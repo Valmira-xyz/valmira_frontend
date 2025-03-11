@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { contractDeployByCustomByteCode } from "./deploy-token";
 import { getContractWithSocialLinks, verifyContract, getJobStatus } from "./api";
-import type { DeploymentParams, DeploymentStatus, VerifyContractParams } from "./types";
+import type { DeploymentParams, DeploymentStatus, VerificationParams } from "./types";
 import type { PublicClient, WalletClient } from "viem";
 
 type TemplateNumber = 0 | 1 | 2;
@@ -58,7 +58,9 @@ export class TokenDeploymentService {
     ];
   }
 
-  public async deployToken(params: DeploymentParams): Promise<{ contractAddress: string; jobId: string }> {
+  public async deployToken(params: DeploymentParams): Promise<{ contractAddress: string; 
+    success: boolean,
+    message: string }> {
     try {
       // Check wallet connection
       if (!this.walletClient.account) {
@@ -79,6 +81,8 @@ export class TokenDeploymentService {
         throw new Error(contractResponse.message || "Failed to get contract");
       }
 
+      console.log("contractResponse : ", contractResponse);
+      
       // Get deployment arguments
       const deployArgs = await this.getDeployArgs(params);
       
@@ -101,18 +105,22 @@ export class TokenDeploymentService {
       }
 
       // Notify backend for verification
-      const verifyParams: VerifyContractParams = {
-        ...params,
-        contractAddress: contractAddress as string,
-        deployArgs,
-        contractPath: contractResponse.filePath
+      const verifyParams: VerificationParams = {
+        deployedAddress: contractAddress as string,
+        constructorArguments: deployArgs,
+        customContractPath: contractResponse.path || "",
+        templateNumber: params?.templateNumber || 0,
+        tokenName: params.tokenName
+        
       };
-
+      console.log("auth token: ", localStorage.getItem("token"));
+      console.log("verifyParams : ", verifyParams);
       const response = await verifyContract(verifyParams);
 
       return {
         contractAddress: contractAddress as string,
-        jobId: response.jobId
+        success: response.success || false,
+        message: response.message || "Failed to verify contract"
       };
     } catch (error) {
       console.error("Error deploying token:", error);

@@ -18,6 +18,14 @@ export interface DeploymentParams {
   templateNumber: number;
 }
 
+export interface VerificationParams {
+  deployedAddress: string, 
+  constructorArguments: any[], 
+  templateNumber: number, 
+  customContractPath: string, 
+  tokenName: string
+}
+
 export interface DeploymentStatus {
   state: "pending" | "processing" | "completed" | "failed";
   progress: number;
@@ -28,7 +36,8 @@ export interface ContractResponse {
   success: boolean;
   message?: string;
   byteCode?: string;
-  filePath?: string;
+  path?: string;
+  abi: any[];
 }
 
 export interface DeploymentJobResponse {
@@ -66,7 +75,6 @@ export interface ProjectData {
     maxBuyLimit_: number;
     maxSellLimit_: number;
     templateNumber: number;
-    owner: string;
   };
 }
 
@@ -83,9 +91,3 @@ export interface ProjectResponse {
     updatedAt: string;
   };
 }
-
-export interface VerifyContractParams extends DeploymentParams {
-  contractAddress: string;
-  deployArgs: any[];
-  contractPath?: string;
-} 

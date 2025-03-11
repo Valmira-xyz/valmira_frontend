@@ -40,11 +40,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const { toast } = useToast()
   const [showSocialLinks, setShowSocialLinks] = useState(false)
   const publicClient = usePublicClient()
-  const { data: walletClient } = useWalletClient()  
+  const { data: walletClient } = useWalletClient()
   const chainId = useChainId();
   const signer = useEthersSigner({ chainId });
   const [deploymentStatusText, setDeploymentStatusText] = useState<string>("")
-  const [deploymentProgress, setDeploymentProgress] = useState<number>(0)
   const [isDeploying, setIsDeploying] = useState(false)
   const [isCreatingProject, setIsCreatingProject] = useState(false)
 
@@ -176,12 +175,11 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
     setIsDeploying(true);
     setDeploymentStatusText("Initializing deployment...");
-    setDeploymentProgress(0);
 
     try {
       const deploymentService = TokenDeploymentService.getInstance(publicClient, walletClient, signer);
-      
-      const { contractAddress, jobId } = await deploymentService.deployToken({
+
+      const { contractAddress, success, message } = await deploymentService.deployToken({
         tokenName: newTokenName,
         tokenSymbol: newTokenSymbol,
         tokenTotalSupply: newTokenTotalSupply,
@@ -200,52 +198,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       });
 
       setDeployedTokenAddress(contractAddress);
-      setDeploymentStatusText("Token deployed, waiting for verification...");
-      setDeploymentProgress(50);
+      setDeploymentStatusText("Token is deployed and verified successfully.");
 
-      // Poll for deployment status with timeout
-      let attempts = 0;
-      const maxAttempts = 60; // 5 minutes with 5-second intervals
-      const pollStatus = async () => {
-        if (attempts >= maxAttempts) {
-          setDeploymentStatusText("Deployment timed out");
-          setIsDeploying(false);
-          toast({
-            title: "Deployment Failed",
-            description: "Deployment timed out. Please try again.",
-            variant: "destructive",
-          });
-          return;
-        }
+      setIsDeploying(false);
 
-        try {
-          const status = await deploymentService.getDeploymentStatus(jobId);
-          setDeploymentProgress(status.progress);
-
-          if (status.state === "completed") {
-            setDeploymentStatusText("Deployment completed!");
-            setDeploymentProgress(100);
-            setIsDeploying(false);
-          } else if (status.state === "failed") {
-            setDeploymentStatusText("Deployment failed");
-            setIsDeploying(false);
-            toast({
-              title: "Deployment Failed",
-              description: status.error || "Failed to deploy token. Please try again.",
-              variant: "destructive",
-            });
-          } else {
-            attempts++;
-            setTimeout(pollStatus, 5000);
-          }
-        } catch (error) {
-          console.error("Error polling deployment status:", error);
-          attempts++;
-          setTimeout(pollStatus, 5000);
-        }
-      };
-
-      pollStatus();
     } catch (error) {
       console.error("Deployment error:", error);
       setDeploymentStatusText("Deployment failed");
@@ -317,8 +273,6 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       return;
     }
 
-    const [address] = await walletClient.getAddresses();
-
     try {
       const projectData = {
         name: newTokenName,
@@ -338,23 +292,24 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
           maxHoldingLimit_: parseFloat(newTokenMaxHoldingRate),
           maxBuyLimit_: parseFloat(newTokenMaxBuySellRate),
           maxSellLimit_: parseFloat(newTokenMaxBuySellRate),
-          templateNumber: parseInt(tokenTemplate),
-          owner: address
+          templateNumber: parseInt(tokenTemplate)
         }
       }
 
       const response = await createProject(projectData)
 
-      if (response.success && response.project) {
+      if (response.success) {
         toast({
           title: "Success",
           description: "Project created successfully",
         })
 
+        setIsCreatingProject(false)
         // Reset form and close modal
         resetForm()
         onClose()
       } else {
+        setIsCreatingProject(false)
         throw new Error(response.message || "Failed to create project")
       }
     } catch (error) {
@@ -422,9 +377,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
           </TabsList>
           <TabsContent value="deploy">
             <form onSubmit={handleDeployNewToken}>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-x-8">
-                  <div className="space-y-4">
+              <div className={`grid grid-cols-4 gap-4 py-4`}>
+                <div className="col-span-2 flex flex-col gap-x-8 gap-4">
+                  <div className="flex gap-2 justify-between">
                     <div className="space-y-2">
                       <Label htmlFor="newTokenName">Token Name</Label>
                       <Input
@@ -445,22 +400,25 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="newTokenTotalSupply">Total Supply</Label>
-                      <Input
-                        id="newTokenTotalSupply"
-                        type="number"
-                        value={newTokenTotalSupply}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenTotalSupply(e.target.value)}
-                        required
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                      />
-                    </div>
-                    <div className="space-y-2">
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="newTokenTotalSupply">Total Supply</Label>
+                    <Input
+                      id="newTokenTotalSupply"
+                      type="number"
+                      value={newTokenTotalSupply}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenTotalSupply(e.target.value)}
+                      required
+                      disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-between w-full">
+                    <div className="space-y-2 w-1/2">
                       <Label htmlFor="newTokenBuyTax">Buy Tax (%)</Label>
                       <Input
                         id="newTokenBuyTax"
                         type="number"
+                        className="w-full"
                         value={newTokenBuyTax}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenBuyTax(e.target.value)}
                         required
@@ -469,15 +427,13 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         step="0.1"
                         disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
-                      <p className="text-xs text-muted-foreground">Must be less than or equal to 10%</p>
                     </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-1/2">
                       <Label htmlFor="newTokenSellTax">Sell Tax (%)</Label>
                       <Input
                         id="newTokenSellTax"
                         type="number"
+                        className="w-full"
                         value={newTokenSellTax}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenSellTax(e.target.value)}
                         required
@@ -486,9 +442,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         step="0.1"
                         disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
-                      <p className="text-xs text-muted-foreground">Must be less than or equal to 10%</p>
                     </div>
-                    <div className="space-y-2">
+                  </div>
+                  <div className=" flex gap-2 justify-between">
+                    <div className="space-y-2 flex flex-col justify-start">
                       <Label htmlFor="newTokenMaxHoldingRate">Max Holding (% of Total Supply)</Label>
                       <Input
                         id="newTokenMaxHoldingRate"
@@ -501,9 +458,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         step="0.1"
                         disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
-                      <p className="text-xs text-muted-foreground">Maximum amount a wallet can hold (must be ≤ 5% of total supply)</p>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 flex flex-col justify-start">
                       <Label htmlFor="newTokenMaxBuySellRate">Max Buy/Sell (% of Total Supply)</Label>
                       <Input
                         id="newTokenMaxBuySellRate"
@@ -516,83 +472,121 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         step="0.1"
                         disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
-                      <p className="text-xs text-muted-foreground">Maximum amount per transaction (must be ≤ 5% of total supply)</p>
                     </div>
                   </div>
                 </div>
-
-                <Collapsible open={showSocialLinks} onOpenChange={setShowSocialLinks}>
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex w-full justify-between"
-                      disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                    >
-                      <span>Social Links</span>
-                      <ChevronDown className={cn("h-4 w-4 transition-transform", showSocialLinks && "rotate-180")} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="website" className="flex items-center gap-2">
-                          <Globe className="h-4 w-4" /> Website
-                        </Label>
-                        <Input
-                          id="website"
-                          type="url"
-                          placeholder="https://"
-                          value={website}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
-                          disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                        />
+                <div className="col-span-2">
+                  <Collapsible open={showSocialLinks} onOpenChange={setShowSocialLinks}>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex w-full justify-between"
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                      >
+                        <span>Social Links</span>
+                        <ChevronDown className={cn("h-4 w-4 transition-transform", showSocialLinks && "rotate-180")} />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="website" className="flex items-center gap-2">
+                            <Globe className="h-4 w-4" /> Website
+                          </Label>
+                          <Input
+                            id="website"
+                            type="url"
+                            placeholder="https://"
+                            value={website}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
+                            disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="telegram" className="flex items-center gap-2">
+                            <Send className="h-4 w-4" /> Telegram
+                          </Label>
+                          <Input
+                            id="telegram"
+                            type="url"
+                            placeholder="https://t.me/"
+                            value={telegram}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTelegram(e.target.value)}
+                            disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="discord" className="flex items-center gap-2">
+                            <div className="w-4 h-4 flex items-center justify-center">
+                              <FaDiscord size={16} />
+                            </div>
+                            Discord
+                          </Label>
+                          <Input
+                            id="discord"
+                            type="url"
+                            placeholder="https://discord.gg/"
+                            value={discord}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDiscord(e.target.value)}
+                            disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="twitter" className="flex items-center gap-2">
+                            <Twitter className="h-4 w-4" /> Twitter
+                          </Label>
+                          <Input
+                            id="twitter"
+                            type="url"
+                            placeholder="https://twitter.com/"
+                            value={twitter}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTwitter(e.target.value)}
+                            disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="telegram" className="flex items-center gap-2">
-                          <Send className="h-4 w-4" /> Telegram
-                        </Label>
-                        <Input
-                          id="telegram"
-                          type="url"
-                          placeholder="https://t.me/"
-                          value={telegram}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTelegram(e.target.value)}
-                          disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                        />
+                    </CollapsibleContent>
+                  </Collapsible>
+                  {deployedTokenAddress && (
+                    <div className="mt-4 space-y-4 rounded-lg border p-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">Token Deployed Successfully</h4>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              navigator.clipboard.writeText(deployedTokenAddress)
+                              toast({
+                                title: "Copied",
+                                description: "Contract address copied to clipboard",
+                              })
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="discord" className="flex items-center gap-2">
-                          <div className="w-4 h-4 flex items-center justify-center">
-                            <FaDiscord size={16} />
-                          </div>
-                          Discord
-                        </Label>
-                        <Input
-                          id="discord"
-                          type="url"
-                          placeholder="https://discord.gg/"
-                          value={discord}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDiscord(e.target.value)}
-                          disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="twitter" className="flex items-center gap-2">
-                          <Twitter className="h-4 w-4" /> Twitter
-                        </Label>
-                        <Input
-                          id="twitter"
-                          type="url"
-                          placeholder="https://twitter.com/"
-                          value={twitter}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTwitter(e.target.value)}
-                          disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                        />
+                      <AddressDisplay
+                        address={deployedTokenAddress}
+                        label="Contract Address"
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm font-medium">Name</p>
+                          <p className="text-sm text-muted-foreground">{newTokenName}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Symbol</p>
+                          <p className="text-sm text-muted-foreground">{newTokenSymbol}</p>
+                        </div>
                       </div>
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                  )}
+                </div>
+
+
               </div>
 
               {deploymentError && (
@@ -608,63 +602,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     <span className="text-sm font-medium">Deployment Status</span>
                     <span className="text-sm text-muted-foreground">{deploymentStatusText}</span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-secondary">
-                    <div
-                      className="h-2 rounded-full bg-primary transition-all"
-                      style={{ width: `${deploymentProgress}%` }}
-                    />
-                  </div>
                 </div>
               )}
 
-              {deployedTokenAddress && (
-                <div className="mt-4 space-y-4 rounded-lg border p-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">Token Deployed Successfully</h4>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          navigator.clipboard.writeText(deployedTokenAddress)
-                          toast({
-                            title: "Copied",
-                            description: "Contract address copied to clipboard",
-                          })
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          window.open(
-                            `${process.env.NEXT_PUBLIC_BSCSCAN_URL}/address/${deployedTokenAddress}`,
-                            "_blank"
-                          )
-                        }}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <AddressDisplay
-                    address={deployedTokenAddress}
-                    label="Contract Address"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium">Name</p>
-                      <p className="text-sm text-muted-foreground">{newTokenName}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Symbol</p>
-                      <p className="text-sm text-muted-foreground">{newTokenSymbol}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <DialogFooter className="mt-4">
                 {!deployedTokenAddress ? (
@@ -779,9 +719,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     <p>
                       <strong>Max Buy/Sell Rate:</strong> {analyzedToken.maxBuySellRate}%
                     </p>
-                    <AddressDisplay 
-                      address={analyzedToken.pairAddress} 
-                      label="Pair Address" 
+                    <AddressDisplay
+                      address={analyzedToken.pairAddress}
+                      label="Pair Address"
                     />
                   </div>
                 </div>
