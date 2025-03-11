@@ -130,7 +130,7 @@ export class TokenDeploymentService {
         message: response.message || "Failed to verify contract"
       };
     } catch (error) {
-      console.error("Error deploying token:", error);
+      console.error("Error verifying token:", error);
       throw error;
     }
   }

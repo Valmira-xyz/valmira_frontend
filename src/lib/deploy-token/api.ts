@@ -95,9 +95,6 @@ export async function verifyContract(params: VerificationParams): Promise<Deploy
     const data = await response.json();
     console.log("Verification response received:", data);
 
-    if (data.status !== "success") {
-      throw new Error(data.message || "Failed to verify contract");
-    }
 
     return data;
   } catch (error) {
@@ -120,10 +117,6 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
 
       const data = await response.json();
       console.log("Job status received:", data);
-
-      if (data.status !== "success") {
-        throw new Error(data.message || "Failed to get job status");
-      }
 
       return data;
     } catch (error) {
@@ -154,9 +147,6 @@ export async function createProject(projectData: ProjectData): Promise<ProjectRe
       console.log("data.status : ", data.status)
       console.log("data.status !== \"success\" : ", data.status !== "success")
 
-      if (data.status !== "success") {
-        throw new Error(data?.message || "Failed to create project");
-      }
       return data;
     } catch (error) {
       console.error("Error creating project:", error);
