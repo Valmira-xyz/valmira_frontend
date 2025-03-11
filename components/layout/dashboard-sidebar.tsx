@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation"
 import { useSelector } from "react-redux"
 import { WalletConnectionButton } from "@/components/wallet/wallet-connection-button"
 import { RootState } from "@/store/store"
-import { generateAvatarColor } from '@/lib/utils/wallet'
+import { generateAvatarColor } from '@/lib/utils'
 
 import {
   Sidebar,

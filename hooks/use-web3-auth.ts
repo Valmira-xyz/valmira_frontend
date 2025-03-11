@@ -1,9 +1,9 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
 import { useDispatch, useSelector } from 'react-redux';
-import { setUser, setLoading, setError, logout } from '../store/authSlice';
-import { authService } from '../services/authService';
-import type { RootState } from '../store/store';
+import { setUser, setLoading, setError, logout } from '@/store/slices/authSlice';
+import { authService } from '@/services/authService';
+import type { RootState } from '@/store/store';
 import { web3modal } from '@/components/providers';
 
 export const useWeb3Auth = () => {

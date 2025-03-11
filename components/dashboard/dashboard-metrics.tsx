@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Briefcase, DollarSign, BarChart2, Bot, TrendingUp } from "lucide-react"
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { formatNumber } from "@/lib/utils"
+import { cn, formatNumber } from "@/lib/utils"
 
 const metrics = [
   {
@@ -88,7 +88,7 @@ export function DashboardMetrics() {
                                   {payload[0].payload.name}
                                 </span>
                                 <span className="font-bold text-muted-foreground">
-                                  {formatNumber(payload[0].value)}
+                                  {typeof payload[0].value === 'number' ? formatNumber(payload[0].value) : '0'}
                                 </span>
                               </div>
                             </div>

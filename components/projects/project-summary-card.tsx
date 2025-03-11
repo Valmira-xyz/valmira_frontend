@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, ExternalLink, Sparkles } from "lucide-react"
 import { SparklineChart } from "@/components/ui/sparkline-chart"
-import { formatNumber } from "@/lib/utils"
+import { cn, formatNumber } from "@/lib/utils"
 import type { MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 

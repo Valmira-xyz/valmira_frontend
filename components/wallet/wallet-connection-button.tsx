@@ -4,7 +4,7 @@ import { Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { web3modal } from "../providers"
 import { useDispatch } from "react-redux"
-import { setUser } from "@/store/authSlice"
+import { setUser } from "@/store/slices/authSlice"
 import { authService } from "@/services/authService"
 import { useEffect } from "react"
 import { useAccount } from "wagmi"
@@ -25,7 +25,7 @@ export function WalletConnectionButton() {
           const mockSignature = "0x" + "1".repeat(130)
           
           // Verify signature and get user data
-          const authResponse = await authService.verifySignature(address, mockSignature, nonce)
+          const authResponse = await authService.verifySignature(address, mockSignature, nonce.nonce)
           
           // Update Redux store with user data
           dispatch(setUser(authResponse.user))

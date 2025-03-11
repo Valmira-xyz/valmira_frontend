@@ -1,7 +1,7 @@
 "use client"
 
 import { Provider } from "react-redux"
-import { store } from "@/lib/redux/store"
+import { store } from "@/store/store"
 import { SessionProvider } from "@/components/session-provider"
 import { QueryProvider } from "@/components/query-provider"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -14,7 +14,7 @@ import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
 import { bsc, bscTestnet } from "viem/chains"
 import { ReactNode } from "react"
 import { WalletProvider } from "@/components/wallet/wallet-provider"
-import { AuthProvider } from "../src/components/AuthProvider"
+import { AuthProvider } from "@/components/AuthProvider"
 
 if (!projectId) {
   throw new Error('Project ID is not defined')

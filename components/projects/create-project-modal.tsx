@@ -23,10 +23,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AddressDisplay } from "@/components/ui/address-display"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { TokenDeploymentService } from "@/src/lib/deploy-token/service"
-import { createProject } from "@/src/lib/deploy-token/api"
+import { TokenDeploymentService } from "@/lib/deploy-token/service"
+import { createProject } from "@/lib/deploy-token/api"
 import { useWalletClient, usePublicClient, useChainId } from "wagmi"
-import { useEthersSigner } from "@/src/lib/deploy-token/ether-adapter"
+import { useEthersSigner } from "@/lib/deploy-token/ether-adapter"
+
 interface CreateProjectModalProps {
   isOpen: boolean
   onClose: () => void
@@ -486,7 +487,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     <CollapsibleTrigger asChild>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         className="flex w-full justify-between"
                         disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       >

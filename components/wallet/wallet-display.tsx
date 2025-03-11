@@ -13,8 +13,8 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAccount, useDisconnect } from 'wagmi'
 import { useDispatch } from 'react-redux'
-import { setUser, clearUser } from '@/store/authSlice'
-import { generateAvatarColor } from '@/lib/utils/wallet'
+import { setUser, logout } from '@/store/slices/authSlice'
+import { generateAvatarColor } from '@/lib/utils'
 
 interface WalletDisplayProps {
   variant: "header" | "sidebar"
@@ -42,7 +42,7 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
 
   const handleDisconnect = async () => {
     try {
-      dispatch(clearUser())
+      dispatch(logout())
       disconnect()
     } catch (error) {
       console.error('Error during disconnect:', error)
@@ -61,7 +61,7 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
           <span className="text-xs font-medium">{formatAddress(address || "")}</span>
           <span className="text-xs text-muted-foreground">Connected</span>
         </div>
-        <Button variant="ghost" size="icon" className="ml-auto h-6 w-6" onClick={handleDisconnect}>
+        <Button variant="secondary" className="ml-auto h-6 w-6" onClick={handleDisconnect}>
           <LogOut className="h-3 w-3" />
           <span className="sr-only">Disconnect</span>
         </Button>
@@ -72,7 +72,7 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="rounded-full h-8 gap-2 pl-2 pr-3">
+        <Button variant="secondary" className="rounded-full h-8 gap-2 pl-2 pr-3">
           <Avatar className="h-6 w-6 border-2 border-primary/20">
             <AvatarFallback style={{ backgroundColor: avatarColor }}>
               {address?.substring(2, 4).toUpperCase()}
