@@ -151,6 +151,8 @@ export async function createProject(projectData: ProjectData): Promise<ProjectRe
 
       const data = await response.json();
       console.log("Project creation response:", data);
+      console.log("data.status : ", data.status)
+      console.log("data.status !== \"success\" : ", data.status !== "success")
 
       if (data.status !== "success") {
         throw new Error(data?.message || "Failed to create project");
