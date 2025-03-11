@@ -301,13 +301,15 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         }
       }
 
-      const response = await createProject(projectData)
+      const {status, message, project} = await createProject(projectData)
 
-      if (response.success) {
+      if (status === "success") {
         toast({
           title: "Success",
           description: "Project created successfully",
         })
+
+        console.log("project : ", project)
 
         setIsCreatingProject(false)
         // Reset form and close modal
@@ -315,7 +317,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         onClose()
       } else {
         setIsCreatingProject(false)
-        throw new Error(response.message || "Failed to create project")
+        throw new Error(message || "Failed to create project")
       }
     } catch (error) {
       setIsCreatingProject(false)

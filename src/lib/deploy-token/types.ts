@@ -80,7 +80,7 @@ export interface ProjectData {
 }
 
 export interface ProjectResponse {
-  success: boolean;
+  status: string;
   message?: string;
   project?: {
     id: string;
