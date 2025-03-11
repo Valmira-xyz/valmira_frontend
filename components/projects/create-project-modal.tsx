@@ -57,6 +57,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [newTokenMaxBuySellRate, setNewTokenMaxBuySellRate] = useState("")
   const [tokenTemplate, setTokenTemplate] = useState("0")
   const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null)
+  const [pairAddress, setPairAddress] = useState<string | null>(null)
 
   // Add social links state
   const [website, setWebsite] = useState("")
@@ -179,7 +180,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     try {
       const deploymentService = TokenDeploymentService.getInstance(publicClient, walletClient, signer);
 
-      const { contractAddress, success, message } = await deploymentService.deployToken({
+      setDeploymentStatusText("Processing token deployment and waiting for 5 block confimration and verification on chain explorer...");
+      const { contractAddress, pairAddress: newPairAddress } = await deploymentService.deployToken({
         tokenName: newTokenName,
         tokenSymbol: newTokenSymbol,
         tokenTotalSupply: newTokenTotalSupply,
@@ -198,6 +200,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       });
 
       setDeployedTokenAddress(contractAddress);
+      setPairAddress(newPairAddress);
       setDeploymentStatusText("Token is deployed and verified successfully.");
 
       setIsDeploying(false);
@@ -262,7 +265,6 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       return
     }
 
-    setIsCreatingProject(true)
 
     if (!walletClient) {
       toast({
@@ -273,11 +275,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       return;
     }
 
+    setIsCreatingProject(true)
+    
     try {
       const projectData = {
         name: newTokenName,
         tokenAddress: deployedTokenAddress,
         chainId: chainId,
+        pairAddress: pairAddress || "",
         tokenData: {
           name: newTokenName,
           symbol: newTokenSymbol,
@@ -313,15 +318,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         throw new Error(response.message || "Failed to create project")
       }
     } catch (error) {
+      setIsCreatingProject(false)
       console.error("Project creation error:", error)
       toast({
         title: "Error",
         description: "Failed to create project. Please try again.",
         variant: "destructive",
       })
-    } finally {
-      setIsCreatingProject(false)
-    }
+    } 
   }
 
   const resetForm = () => {
@@ -552,21 +556,6 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     <div className="mt-4 space-y-4 rounded-lg border p-4">
                       <div className="flex items-center justify-between">
                         <h4 className="font-semibold">Token Deployed Successfully</h4>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => {
-                              navigator.clipboard.writeText(deployedTokenAddress)
-                              toast({
-                                title: "Copied",
-                                description: "Contract address copied to clipboard",
-                              })
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
                       </div>
                       <AddressDisplay
                         address={deployedTokenAddress}
@@ -612,7 +601,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     {isDeploying ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deploying
+                        Doing deploy and verify
                       </>
                     ) : (
                       "Deploy Token"

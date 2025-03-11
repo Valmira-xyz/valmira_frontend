@@ -139,7 +139,7 @@ export async function createProject(projectData: ProjectData): Promise<ProjectRe
   
   return retryWithBackoff(async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/project`, {
+      const response = await fetch(`${BACKEND_URL}/projects`, {
         method: "POST",
         credentials: 'include',
         headers: {

@@ -60,6 +60,7 @@ export interface ProjectData {
   tokenAddress: string;
   chainId: number;
   chainName?: string;
+  pairAddress?: string;
   tokenData: {
     name: string;
     symbol: string;

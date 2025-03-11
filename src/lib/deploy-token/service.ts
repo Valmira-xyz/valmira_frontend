@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { contractDeployByCustomByteCode } from "./deploy-token";
+import { contractDeployByCustomByteCode, getPairAddress } from "./deploy-token";
 import { getContractWithSocialLinks, verifyContract, getJobStatus } from "./api";
 import type { DeploymentParams, DeploymentStatus, VerificationParams } from "./types";
 import type { PublicClient, WalletClient } from "viem";
@@ -58,7 +58,9 @@ export class TokenDeploymentService {
     ];
   }
 
-  public async deployToken(params: DeploymentParams): Promise<{ contractAddress: string; 
+  public async deployToken(params: DeploymentParams): Promise<{ 
+    contractAddress: string; 
+    pairAddress: string,
     success: boolean,
     message: string }> {
     try {
@@ -104,6 +106,10 @@ export class TokenDeploymentService {
         throw new Error("Failed to deploy contract");
       }
 
+      // Fetch pair address with native currency at here
+      const pairAddress = await getPairAddress(contractAddress as string, this.signer);
+      console.log("pairAddress : ", pairAddress);
+
       // Notify backend for verification
       const verifyParams: VerificationParams = {
         deployedAddress: contractAddress as string,
@@ -119,6 +125,7 @@ export class TokenDeploymentService {
 
       return {
         contractAddress: contractAddress as string,
+        pairAddress: pairAddress as string,
         success: response.success || false,
         message: response.message || "Failed to verify contract"
       };
@@ -128,17 +135,5 @@ export class TokenDeploymentService {
     }
   }
 
-  public async getDeploymentStatus(jobId: string): Promise<DeploymentStatus> {
-    try {
-      const response = await getJobStatus(jobId);
-      return {
-        state: response.state,
-        progress: response.progress,
-        error: response.error
-      };
-    } catch (error) {
-      console.error("Error getting deployment status:", error);
-      throw error;
-    }
-  }
 } 
+
