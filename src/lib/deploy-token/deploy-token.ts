@@ -14,7 +14,7 @@ export const contractDeployByCustomByteCode = async (byteCode: string, args: any
 
   const contract = await factory.deploy(...args);
 
-  await new Promise((resolve) => setTimeout(resolve, 150000)); // Poll every 10 seconds
+  await new Promise((resolve) => setTimeout(resolve, 15000)); // Poll every 15 seconds
 
   return contract?.target;
 };
