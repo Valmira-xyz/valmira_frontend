@@ -199,8 +199,6 @@ export const getPairAddress = async (tokenAddress: string, signer: any) => {
   }
 };
 
-
-
 export class TokenDeploymentService {
   private static instance: TokenDeploymentService;
   private provider: PublicClient;

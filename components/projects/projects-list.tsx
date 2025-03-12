@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MoreHorizontal, Trash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,63 +13,105 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ProjectDialog } from "@/components/projects/project-dialog"
-
-// Mock project data
-const initialProjects = [
-  {
-    id: "1",
-    name: "TokenX",
-    contractAddress: "0x1234...5678",
-    network: "Ethereum",
-    launchDate: "2023-05-15",
-    status: "Active",
-  },
-  {
-    id: "2",
-    name: "CryptoY",
-    contractAddress: "0x9876...5432",
-    network: "BSC",
-    launchDate: "2023-06-01",
-    status: "Pending",
-  },
-]
+import { useToast } from "@/components/ui/use-toast"
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchProjects, updateProjectStatus, deleteProject } from '@/store/slices/projectSlice'
+import type { RootState } from '@/store/store'
 
 interface ProjectsListProps {
   limit?: number
 }
 
 export function ProjectsList({ limit }: ProjectsListProps) {
-  const [projects, setProjects] = useState(initialProjects)
-  const [selectedProject, setSelectedProject] = useState<(typeof initialProjects)[0] | null>(null)
+  const [selectedProject, setSelectedProject] = useState<string | null>(null)
+  const dispatch = useDispatch()
+  const { projects, loading, error } = useSelector((state: RootState) => state.projects)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    console.log('Fetching projects...')
+    dispatch(fetchProjects() as any)
+  }, [dispatch])
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive"
+      })
+    }
+  }, [error, toast])
+
+  const handleStatusChange = async (projectId: string, currentStatus: 'active' | 'inactive') => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
+      console.log(`Updating project ${projectId} status from ${currentStatus} to ${newStatus}`)
+      await dispatch(updateProjectStatus({ projectId, status: newStatus }) as any)
+      console.log('Project status updated in Redux store')
+      toast({
+        title: "Status Updated",
+        description: "Project status has been updated successfully."
+      })
+    } catch (error) {
+      console.error('Error updating project status:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update project status.",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleDelete = async (projectId: string) => {
+    try {
+      await dispatch(deleteProject(projectId) as any)
+      toast({
+        title: "Project Deleted",
+        description: "Project has been deleted successfully."
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete project.",
+        variant: "destructive"
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-4">
+        <div className="h-10 bg-gray-200 rounded"></div>
+        <div className="h-40 bg-gray-200 rounded"></div>
+      </div>
+    )
+  }
 
   const displayedProjects = limit ? projects.slice(0, limit) : projects
 
-  const handleDeleteProject = (id: string) => {
-    setProjects(projects.filter((project) => project.id !== id))
-  }
-
   return (
-    <>
+    <div>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Contract Address</TableHead>
-            <TableHead>Network</TableHead>
-            <TableHead>Launch Date</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
+            <TableHead>Chain</TableHead>
+            <TableHead>Contract</TableHead>
+            <TableHead>Last Updated</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {displayedProjects.map((project) => (
-            <TableRow key={project.id}>
+            <TableRow key={project._id}>
               <TableCell className="font-medium">{project.name}</TableCell>
-              <TableCell>{project.contractAddress}</TableCell>
-              <TableCell>{project.network}</TableCell>
-              <TableCell>{project.launchDate}</TableCell>
               <TableCell>{project.status}</TableCell>
-              <TableCell>
+              <TableCell>{project.chainName}</TableCell>
+              <TableCell className="font-mono">{project.tokenAddress}</TableCell>
+              <TableCell>{new Date(project.updatedAt).toLocaleString()}</TableCell>
+              <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -79,11 +121,19 @@ export function ProjectsList({ limit }: ProjectsListProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => setSelectedProject(project)}>View details</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedProject(project._id)}>
+                      View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleStatusChange(project._id, project.status)}>
+                      Toggle Status
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleDeleteProject(project.id)}>
-                      <Trash className="mr-2 h-4 w-4" />
-                      <span>Delete</span>
+                    <DropdownMenuItem
+                      className="text-red-600"
+                      onClick={() => handleDelete(project._id)}
+                    >
+                      <Trash className="h-4 w-4 mr-2" />
+                      Delete Project
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -95,12 +145,12 @@ export function ProjectsList({ limit }: ProjectsListProps) {
 
       {selectedProject && (
         <ProjectDialog
-          project={selectedProject}
+          project={projects.find(p => p._id === selectedProject)!}
           open={!!selectedProject}
-          onOpenChange={() => setSelectedProject(null)}
+          onOpenChange={(open) => !open && setSelectedProject(null)}
         />
       )}
-    </>
+    </div>
   )
 }
 

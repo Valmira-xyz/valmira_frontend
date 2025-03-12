@@ -1,19 +1,20 @@
 export type Project = {
-  id: string
+  _id: string
   name: string
-  logo?: string
-  blockchain: string
-  contractAddress: string
-  status: "Active" | "Pending" | "Paused"
-  cumulativeProfit: number
-  tradingVolume24h: number
-  activeBots: number
-  profitTrend?: number[]
-  volumeTrend?: number[]
-  liquidity?: number
-  lastUpdated?: string
-  apy?: number
-  tvl?: number
-  walletAddress?: string
+  tokenAddress: string
+  pairAddress: string
+  chainId: number
+  chainName: string
+  status: 'active' | 'inactive'
+  metrics: {
+    cumulativeProfit: number
+    volume24h: number
+    activeBots: number
+    lastUpdate: string
+  }
+  isImported?: boolean
+  owner: string
+  createdAt: string
+  updatedAt: string
 }
 

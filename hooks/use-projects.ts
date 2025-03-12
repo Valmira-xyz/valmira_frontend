@@ -1,59 +1,133 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import axios from 'axios'
 import type { Project } from "@/types"
 
-const fetchProjects = async (): Promise<Project[]> => {
-  // Simulate fetching projects from an API or database
-  await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate network delay
-  return [
-    {
-      id: "1",
-      name: "TokenX",
-      logo: "/placeholder.svg?height=32&width=32",
-      blockchain: "Ethereum",
-      contractAddress: "0x1234567890abcdef1234567890abcdef12345678",
-      status: "Active",
-      cumulativeProfit: 12345,
-      tradingVolume24h: 1200000,
-      activeBots: 3,
-      profitTrend: [100, 110, 120, 115, 125, 130, 135],
-      volumeTrend: [1000000, 1100000, 1050000, 1200000, 1150000, 1250000, 1200000],
-      lastUpdated: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      name: "CryptoY",
-      logo: "/placeholder.svg?height=32&width=32",
-      blockchain: "BSC",
-      contractAddress: "0x9876543210fedcba9876543210fedcba98765432",
-      status: "Active",
-      cumulativeProfit: 8765,
-      tradingVolume24h: 987000,
-      activeBots: 2,
-      profitTrend: [80, 85, 90, 88, 92, 95, 98],
-      volumeTrend: [900000, 950000, 980000, 970000, 990000, 1000000, 987000],
-      lastUpdated: new Date(Date.now() - 1800000).toISOString(), // 30 minutes ago
-    },
-    {
-      id: "3",
-      name: "DeFiZ",
-      logo: "/placeholder.svg?height=32&width=32",
-      blockchain: "Polygon",
-      contractAddress: "0xabcdef1234567890abcdef1234567890abcdef12",
-      status: "Paused",
-      cumulativeProfit: 5432,
-      tradingVolume24h: 543000,
-      activeBots: 1,
-      profitTrend: [50, 55, 60, 58, 56, 54, 55],
-      volumeTrend: [500000, 520000, 550000, 540000, 530000, 545000, 543000],
-      lastUpdated: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-    },
-  ]
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+interface ApiResponse<T> {
+  status: string;
+  data: T;
 }
 
+// Helper function to get auth headers
+const getAuthHeaders = () => ({
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+  },
+  withCredentials: true,
+})
+
+// API functions
+const projectApi = {
+  getProjects: async (): Promise<Project[]> => {
+    const response = await axios.get<ApiResponse<{ projects: Project[] }>>(
+      `${BACKEND_URL}/projects`,
+      getAuthHeaders()
+    )
+    return response.data.data.projects
+  },
+
+  getProject: async (projectId: string): Promise<Project> => {
+    const response = await axios.get<ApiResponse<{ project: Project }>>(
+      `${BACKEND_URL}/projects/${projectId}`,
+      getAuthHeaders()
+    )
+    return response.data.data.project
+  },
+
+  createProject: async (projectData: Partial<Project>) => {
+    const response = await axios.post<ApiResponse<{ project: Project }>>(
+      `${BACKEND_URL}/projects`,
+      projectData,
+      getAuthHeaders()
+    )
+    return response.data.data.project
+  },
+
+  updateProjectStatus: async (projectId: string, status: 'active' | 'inactive') => {
+    const response = await axios.patch<ApiResponse<{ project: Project }>>(
+      `${BACKEND_URL}/projects/${projectId}/status`,
+      { status },
+      getAuthHeaders()
+    )
+    return response.data.data.project
+  },
+
+  deleteProject: async (projectId: string) => {
+    await axios.delete(
+      `${BACKEND_URL}/projects/${projectId}`,
+      getAuthHeaders()
+    )
+  },
+
+  getVolumeData: async (projectId: string) => {
+    const response = await axios.get<ApiResponse<{ volumeData: any }>>(
+      `${BACKEND_URL}/projects/${projectId}/volume`,
+      getAuthHeaders()
+    )
+    return response.data.data.volumeData
+  }
+}
+
+// React Query hooks
 export const useProjects = () => {
   return useQuery({
     queryKey: ["projects"],
-    queryFn: fetchProjects,
+    queryFn: projectApi.getProjects,
+    retry: false, // Don't retry on failure (e.g., 401 errors)
+  })
+}
+
+export const useProject = (projectId: string) => {
+  return useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => projectApi.getProject(projectId),
+    enabled: !!projectId,
+    retry: false,
+  })
+}
+
+export const useCreateProject = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: projectApi.createProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+    }
+  })
+}
+
+export const useUpdateProjectStatus = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: ({ projectId, status }: { projectId: string; status: 'active' | 'inactive' }) =>
+      projectApi.updateProjectStatus(projectId, status),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+      queryClient.invalidateQueries({ queryKey: ["project", variables.projectId] })
+    }
+  })
+}
+
+export const useDeleteProject = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: projectApi.deleteProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] })
+    }
+  })
+}
+
+export const useProjectVolumeData = (projectId: string) => {
+  return useQuery({
+    queryKey: ["project", projectId, "volume"],
+    queryFn: () => projectApi.getVolumeData(projectId),
+    enabled: !!projectId,
+    retry: false,
   })
 }
 

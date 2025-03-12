@@ -2,7 +2,8 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
-import { headers } from "next/headers"; // added
+import { headers } from "next/headers"
+import { ClientLayout } from "@/components/providers/client-layout"
 
 export const metadata: Metadata = {
   title: "Valmira.xyz Dashboard",
@@ -22,7 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers cookies={cookies}>{children}</Providers>
+        <Providers cookies={cookies}>
+          <ClientLayout>
+            {children}
+          </ClientLayout>
+        </Providers>
       </body>
     </html>
   )
