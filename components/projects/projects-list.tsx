@@ -12,17 +12,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ProjectDialog } from "@/components/projects/project-dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchProjects, updateProjectStatus, deleteProject } from '@/store/slices/projectSlice'
 import type { RootState } from '@/store/store'
+import { useRouter } from "next/navigation"
 
 interface ProjectsListProps {
   limit?: number
 }
 
 export function ProjectsList({ limit }: ProjectsListProps) {
+  const router = useRouter()
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const dispatch = useDispatch()
   const { projects, loading, error } = useSelector((state: RootState) => state.projects)
@@ -121,7 +122,7 @@ export function ProjectsList({ limit }: ProjectsListProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => setSelectedProject(project._id)}>
+                    <DropdownMenuItem onClick={() => router.push(`/projects/${project._id}`)}>
                       View Details
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleStatusChange(project._id, project.status)}>
@@ -142,14 +143,6 @@ export function ProjectsList({ limit }: ProjectsListProps) {
           ))}
         </TableBody>
       </Table>
-
-      {selectedProject && (
-        <ProjectDialog
-          project={projects.find(p => p._id === selectedProject)!}
-          open={!!selectedProject}
-          onOpenChange={(open) => !open && setSelectedProject(null)}
-        />
-      )}
     </div>
   )
 }
