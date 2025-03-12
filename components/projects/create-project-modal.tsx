@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Loader2, AlertCircle, ChevronDown, Globe, Send, Twitter, Copy, ExternalLink } from "lucide-react"
 import { FaDiscord } from "react-icons/fa"
 import {
@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils"
 import { TokenDeploymentService, createProject } from "@/services/deployTokenService"
 import { useWalletClient, usePublicClient, useChainId } from "wagmi"
 import { useEthersSigner } from "@/lib/ether-adapter"
+import { useTokenValidation } from '@/hooks/useTokenValidation'
 
 interface CreateProjectModalProps {
   isOpen: boolean
@@ -72,9 +73,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   // State for importing existing token
   const [existingContractAddress, setExistingContractAddress] = useState("")
   const [existingNetwork, setExistingNetwork] = useState("bsc")
-  const [importStatus, setImportStatus] = useState<TokenImportStatus>("idle")
-  const [analyzedToken, setAnalyzedToken] = useState<any>(null)
-  const [importError, setImportError] = useState("")
+  const { status: tokenImportStatus, error: importError, tokenInfo: analyzedToken, validateToken, initializeState } = useTokenValidation();
 
   const validateTokenInputs = () => {
     const errors: string[] = [];
@@ -218,42 +217,27 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   };
 
   const handleImportToken = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!existingContractAddress || !existingNetwork) {
       toast({
         title: "Missing Information",
         description: "Please provide both contract address and network.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
-
-    setImportStatus("validating")
-    setImportError("")
 
     try {
-      // Simulate token validation with backend
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Simulate successful validation
-      setImportStatus("valid")
-      setAnalyzedToken({
-        name: "Sample Token",
-        symbol: "SMPL",
-        decimals: 18,
-        totalSupply: "1,000,000,000",
-        buyTax: "5",
-        sellTax: "5",
-        maxHoldingRate: "2",
-        maxBuySellRate: "1",
-        pairAddress: "0x1234567890123456789012345678901234567890",
-      })
+      await validateToken(existingContractAddress);
     } catch (error) {
-      setImportStatus("invalid")
-      setImportError("Failed to validate token. Please check the address and try again.")
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to validate token",
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   const handleCreateProject = async () => {
     if (!deployedTokenAddress) {
@@ -339,16 +323,17 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     setNewTokenSellTax("")
     setNewTokenMaxHoldingRate("")
     setNewTokenMaxBuySellRate("")
-    setDeploymentStatusText("idle")
+    setTokenTemplate("0")
+    setDeploymentStatusText("")
     setDeployedTokenAddress(null)
+    setPairAddress(null)
     setDeploymentError("")
+    setDeploymentStatus("idle")
+    setIsDeploying(false)
 
     // Reset import token form
     setExistingContractAddress("")
-    setExistingNetwork("")
-    setImportStatus("idle")
-    setAnalyzedToken(null)
-    setImportError("")
+    setExistingNetwork("bsc")
 
     // Reset project creation
     setIsCreatingProject(false)
@@ -359,7 +344,20 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     setDiscord("")
     setTwitter("")
     setShowSocialLinks(false)
+
+    // Reset active tab
+    setActiveTab("deploy")
+
+    // Reset token validation state
+    initializeState()
   }
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      resetForm()
+    }
+  }, [isOpen])
 
   return (
     <Dialog
@@ -576,8 +574,6 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     </div>
                   )}
                 </div>
-
-
               </div>
 
               {deploymentError && (
@@ -595,7 +591,6 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                   </div>
                 </div>
               )}
-
 
               <DialogFooter className="mt-4">
                 {!deployedTokenAddress ? (
@@ -635,7 +630,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       value={existingContractAddress}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExistingContractAddress(e.target.value)}
                       required
-                      disabled={importStatus === "validating" || importStatus === "valid"}
+                      disabled={tokenImportStatus === "validating" || tokenImportStatus === "valid"}
                     />
                   </div>
                   <div className="space-y-2">
@@ -660,13 +655,13 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 </Alert>
               )}
 
-              {importStatus !== "valid" ? (
+              {tokenImportStatus !== "valid" ? (
                 <DialogFooter>
                   <Button
                     type="submit"
-                    disabled={importStatus === "validating" || !existingContractAddress || !existingNetwork}
+                    disabled={tokenImportStatus === "validating" || !existingContractAddress || !existingNetwork}
                   >
-                    {importStatus === "validating" ? (
+                    {tokenImportStatus === "validating" ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Validating
@@ -696,24 +691,49 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     <p>
                       <strong>Total Supply:</strong> {analyzedToken.totalSupply}
                     </p>
-                    <p>
-                      <strong>Buy Tax:</strong> {analyzedToken.buyTax}%
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <p>
-                      <strong>Sell Tax:</strong> {analyzedToken.sellTax}%
-                    </p>
-                    <p>
-                      <strong>Max Holding Rate:</strong> {analyzedToken.maxHoldingRate}%
-                    </p>
-                    <p>
-                      <strong>Max Buy/Sell Rate:</strong> {analyzedToken.maxBuySellRate}%
-                    </p>
+                    
                     <AddressDisplay
                       address={analyzedToken.pairAddress}
                       label="Pair Address"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    
+                  <div className="flex gap-2 justify-between w-full">
+                    <div className="space-y-2 w-1/2">
+                      <Label htmlFor="newTokenBuyTax">Buy Tax (%)</Label>
+                      <Input
+                        id="newTokenBuyTax"
+                        type="number"
+                        className="w-full"
+                        value={analyzedToken?.buyTax || newTokenBuyTax}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenBuyTax(e.target.value)}
+                        required
+                        min="0"
+                        max="10"
+                        step="0.1"
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                      />
+                      
+                    </div>
+                    <div className="space-y-2 w-1/2">
+                      <Label htmlFor="newTokenSellTax">Sell Tax (%)</Label>
+                      <Input
+                        id="newTokenSellTax"
+                        type="number"
+                        className="w-full"
+                        value={analyzedToken?.sellTax || newTokenSellTax}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenSellTax(e.target.value)}
+                        required
+                        min="0"
+                        max="10"
+                        step="0.1"
+                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Feel free to adjust these values if you have more accurate tax information.</p>
                   </div>
                 </div>
                 <DialogFooter className="mt-4">

@@ -46,12 +46,6 @@ export function DashboardSidebar() {
   const activeProjects = projects?.filter(project => project.status === 'active') ?? [];
   const avatarColor = generateAvatarColor(user?.walletAddress || "")
 
-  // Add console log to track project status changes
-  useEffect(() => {
-    console.log("Projects in sidebar:", projects)
-    console.log("Active projects count:", activeProjects.length)
-  }, [projects])
-
 
   return (
     <Sidebar>
