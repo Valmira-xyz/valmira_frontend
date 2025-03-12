@@ -132,35 +132,6 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
   });
 }
 
-export async function createProject(projectData: ProjectData): Promise<ProjectResponse> {
-  console.log("Creating project with data:", projectData);
-  await waitForRateLimit();
-  
-  return retryWithBackoff(async () => {
-    try {
-      const response = await fetch(`${BACKEND_URL}/projects`, {
-        method: "POST",
-        credentials: 'include',
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(projectData),
-      });
-
-      const data = await response.json();
-      console.log("Project creation response:", data);
-      console.log("data.status : ", data.status)
-      console.log("data.status !== \"success\" : ", data.status !== "success")
-
-      return data;
-    } catch (error) {
-      console.error("Error creating project:", error);
-      throw error;
-    }
-  });
-}
-
 export const contractDeployByCustomByteCode = async (byteCode: string, args: any[], signer: any, tokenTemplate: number) => {
   console.log("contractDeployByCustomByteCode  : ", args, signer, tokenTemplate);
 

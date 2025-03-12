@@ -23,10 +23,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AddressDisplay } from "@/components/ui/address-display"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { TokenDeploymentService, createProject } from "@/services/deployTokenService"
+import { TokenDeploymentService } from "@/services/deployTokenService"
 import { useWalletClient, usePublicClient, useChainId } from "wagmi"
 import { useEthersSigner } from "@/lib/ether-adapter"
 import { useTokenValidation } from '@/hooks/useTokenValidation'
+import { useDispatch } from "react-redux"
+import { createProject } from "@/store/slices/projectSlice"
 
 interface CreateProjectModalProps {
   isOpen: boolean
@@ -74,6 +76,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [existingContractAddress, setExistingContractAddress] = useState("")
   const [existingNetwork, setExistingNetwork] = useState("bsc")
   const { status: tokenImportStatus, error: importError, tokenInfo: analyzedToken, validateToken, initializeState } = useTokenValidation();
+
+  const dispatch = useDispatch()
 
   const validateTokenInputs = () => {
     const errors: string[] = [];
@@ -240,7 +244,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   };
 
   const handleCreateProject = async () => {
-    if (!deployedTokenAddress) {
+    if (activeTab === "deploy" && !deployedTokenAddress) {
       toast({
         title: "Error",
         description: "Please deploy a token first",
@@ -249,6 +253,24 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       return
     }
 
+    if (activeTab === "import" && tokenImportStatus !== "valid") {
+      toast({
+        title: "Error",
+        description: "Please validate an existing token first",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const tokenAddress = activeTab === "deploy" ? deployedTokenAddress : existingContractAddress
+    if (!tokenAddress) {
+      toast({
+        title: "Error",
+        description: "Invalid token address",
+        variant: "destructive",
+      })
+      return
+    }
 
     if (!walletClient) {
       toast({
@@ -263,52 +285,49 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     
     try {
       const projectData = {
-        name: newTokenName,
-        tokenAddress: deployedTokenAddress,
+        name: activeTab === "deploy" ? newTokenName : analyzedToken?.name || "",
+        tokenAddress: tokenAddress,
         chainId: chainId,
-        pairAddress: pairAddress || "",
+        imImported: activeTab === "import" ? true : false,
+        pairAddress: activeTab === "deploy" ? (pairAddress || "") : (analyzedToken?.pairAddress || ""),
         tokenData: {
-          name: newTokenName,
-          symbol: newTokenSymbol,
-          decimals: 18,
-          totalSupply: newTokenTotalSupply,
+          name: activeTab === "deploy" ? newTokenName : analyzedToken?.name || "",
+          symbol: activeTab === "deploy" ? newTokenSymbol : analyzedToken?.symbol || "",
+          decimals: activeTab === "deploy" ? 18 : (analyzedToken?.decimals || 18),
+          totalSupply: activeTab === "deploy" ? newTokenTotalSupply : (analyzedToken?.totalSupply || ""),
           websiteLink: website,
           telegramLink: telegram,
           twitterLink: twitter,
           discordLink: discord,
-          buyFee: parseFloat(newTokenBuyTax),
-          sellFee: parseFloat(newTokenSellTax),
-          maxHoldingLimit_: parseFloat(newTokenMaxHoldingRate),
-          maxBuyLimit_: parseFloat(newTokenMaxBuySellRate),
-          maxSellLimit_: parseFloat(newTokenMaxBuySellRate),
-          templateNumber: parseInt(tokenTemplate)
+          buyFee: activeTab === "deploy" ? parseFloat(newTokenBuyTax) : (analyzedToken?.buyTax || 0),
+          sellFee: activeTab === "deploy" ? parseFloat(newTokenSellTax) : (analyzedToken?.sellTax || 0),
+          maxHoldingLimit_: activeTab === "deploy" ? parseFloat(newTokenMaxHoldingRate) : 0,
+          maxBuyLimit_: activeTab === "deploy" ? parseFloat(newTokenMaxBuySellRate) : 0,
+          maxSellLimit_: activeTab === "deploy" ? parseFloat(newTokenMaxBuySellRate) : 0,
+          templateNumber: activeTab === "deploy" ? parseInt(tokenTemplate) : 0
         }
       }
 
-      const {status, message, project} = await createProject(projectData)
-
-      if (status === "success") {
+      const resultAction = await dispatch(createProject(projectData) as any)
+      
+      if (createProject.fulfilled.match(resultAction)) {
         toast({
           title: "Success",
           description: "Project created successfully",
         })
-
-        console.log("project : ", project)
 
         setIsCreatingProject(false)
         // Reset form and close modal
         resetForm()
         onClose()
       } else {
-        setIsCreatingProject(false)
-        throw new Error(message || "Failed to create project")
+        throw new Error(resultAction.error?.message || "Failed to create project")
       }
     } catch (error) {
       setIsCreatingProject(false)
-      console.error("Project creation error:", error)
       toast({
         title: "Error",
-        description: "Failed to create project. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create project",
         variant: "destructive",
       })
     } 
@@ -707,7 +726,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         id="newTokenBuyTax"
                         type="number"
                         className="w-full"
-                        value={analyzedToken?.buyTax || newTokenBuyTax}
+                        value={analyzedToken?.buyTax>=0 ? analyzedToken?.buyTax : newTokenBuyTax}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenBuyTax(e.target.value)}
                         required
                         min="0"
@@ -723,7 +742,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         id="newTokenSellTax"
                         type="number"
                         className="w-full"
-                        value={analyzedToken?.sellTax || newTokenSellTax}
+                        value={analyzedToken?.sellTax>=0 ? analyzedToken?.sellTax : newTokenSellTax}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenSellTax(e.target.value)}
                         required
                         min="0"
