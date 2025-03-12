@@ -1,16 +1,11 @@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getBadgeVariant } from "@/lib/utils"
+import { Project } from "@/types"
 
 interface ProjectHeaderProps {
-  project?: {
-    name?: string
-    logo?: string
-    blockchain?: number
-    contractAddress?: string
-    status?: "Active" | "Pending" | "Paused"
-    lastUpdated?: string
-  }
+  project?: Project,
   walletAddress?: string
 }
 
@@ -51,26 +46,24 @@ export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
             <div>
               <h1 className="text-2xl font-bold">{project.name || "Untitled Project"}</h1>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                {project.blockchain && (
+                {project?.chainId && (
                   <img
-                    src={`/blockchain-icons/${project.blockchain}.svg`}
-                    alt={project.blockchain.toString()}
+                    src={`/blockchain-icons/${project.chainId}.svg`}
+                    alt={project.chainId.toString()}
                     className="h-4 w-4"
                   />
                 )}
-                <span>{project.contractAddress || "No contract address"}</span>
+                <span>{project.tokenAddress || "No token address"}</span>
               </div>
             </div>
           </div>
-          <Badge
-            variant={project.status === "Active" ? "default" : project.status === "Pending" ? "secondary" : "outline"}
-          >
-            {project.status || "Unknown"}
+          <Badge variant={getBadgeVariant(project.status)} className="font-medium text-sm px-3 py-1 rounded-full">
+            {project.status}
           </Badge>
         </div>
         <div className="mt-4 flex justify-between text-sm text-muted-foreground">
           {/* <span>Connected Wallet: {walletAddress || "Not connected"}</span> */}
-          <span>Last Updated: {project.lastUpdated ? new Date(project.lastUpdated).toLocaleString() : "Never"}</span>
+          <span>Last Updated: {project.updatedAt ? new Date(project.updatedAt).toLocaleString() : "Never"}</span>
         </div>
       </CardContent>
     </Card>

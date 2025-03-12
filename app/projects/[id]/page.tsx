@@ -113,13 +113,7 @@ export default function ProjectDetailPage() {
   }
 
   // Transform project data to match component prop types
-  const headerProject = {
-    name: project.name,
-    blockchain: project.chainId,
-    contractAddress: project.tokenAddress,
-    status: project.status === 'active' ? 'Active' as const : 'Paused' as const,
-    lastUpdated: project.updatedAt
-  }
+
 
   const metricsProject = {
     cumulativeProfit: project.metrics.cumulativeProfit,
@@ -129,9 +123,7 @@ export default function ProjectDetailPage() {
   }
 
   console.log('Rendering project view with data:', {
-    headerProject,
-    metricsProject,
-    owner: project.owner
+    project
   })
 
   return (
@@ -145,7 +137,7 @@ export default function ProjectDetailPage() {
           }} 
         />
       </PageHeader>
-      <ProjectHeader project={headerProject} walletAddress={project.owner} />
+      <ProjectHeader project={project} walletAddress={project.tokenAddress} />
       <ProjectMetrics project={metricsProject} />
       <ProjectAnalytics project={project} />
       <ProjectAddOns project={project} />
