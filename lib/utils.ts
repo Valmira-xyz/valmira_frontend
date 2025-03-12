@@ -36,3 +36,8 @@ export const getBadgeVariant = (status: string) => {
         return "outline"
     }
   }
+
+  export const genRandomSparklineData = (length: number) => {
+    return Array.from({ length }, () => Math.floor(Math.random() * 100))
+  }
+

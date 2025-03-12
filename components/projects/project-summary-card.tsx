@@ -4,12 +4,13 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, ExternalLink, Sparkles } from "lucide-react"
-import { cn, formatNumber, getBadgeVariant } from "@/lib/utils"
+import { cn, formatNumber, genRandomSparklineData, getBadgeVariant } from "@/lib/utils"
 import type { MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useSelector } from 'react-redux'
 import type { RootState } from '@/store/store'
 import type { Project } from '@/types'
+import { SparklineChart } from "../ui/sparkline-chart"
 
 interface ProjectSummaryCardProps {
   project: Project
@@ -98,16 +99,16 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
           <div>
             <p className="text-xs font-medium text-muted-foreground">Cumulative Profit</p>
             <p className="text-2xl font-bold text-primary">${formatNumber(project.metrics.cumulativeProfit)}</p>
-            {/* <div className="h-10">
-              <SparklineChart data={project.metrics.profitTrend} color="hsl(var(--chart-1))" />
-            </div> */}
+            <div className="h-10">
+              <SparklineChart data={(project.profitTrend && project.profitTrend?.length > 0) ? project.profitTrend : genRandomSparklineData(4)} color="hsl(var(--chart-1))" />
+            </div>
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground">24h Volume</p>
             <p className="text-xl font-bold">${formatNumber(project.metrics.volume24h)}</p>
-            {/* <div className="h-10">
-              <SparklineChart data={project.volumeTrend} color="hsl(var(--chart-2))" />
-            </div> */}
+            <div className="h-10">
+              <SparklineChart data={(project.volumeTrend && project.volumeTrend?.length >0)? project.volumeTrend: genRandomSparklineData(4) } color="hsl(var(--chart-3))" />
+            </div>
           </div>
         </div>
         <div className="mt-3 flex justify-between items-center">
