@@ -391,7 +391,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
-          <DialogDescription>Deploy a new token or import an existing one to create a project.</DialogDescription>
+          <DialogDescription>Deploy a new token or import an existing one(<span className="font-semibold text-primary">Pancakeswap V2 token</span>) to create a project.</DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
