@@ -67,16 +67,14 @@ export function DashboardSidebar() {
           )}
         </div>
         
-        <SidebarMenuItem>
           <SidebarMenuButton onClick={() => router.push("/")} className="flex items-center pl-5">
             <LayoutDashboard className="mr-2 h-4 w-4" />
             <span>Dashboard</span>
           </SidebarMenuButton>
-        </SidebarMenuItem>
 
         {/* Projects with submenu */}
         <Collapsible open={openProjects} onOpenChange={setOpenProjects}>
-          <SidebarMenuItem>
+      
             <CollapsibleTrigger className="flex items-center justify-between w-full pl-5 py-2 hover:bg-accent hover:text-accent-foreground rounded-md">
               <div className="flex items-center">
                 <FolderKanban className="mr-2 h-4 w-4" />
@@ -86,7 +84,7 @@ export function DashboardSidebar() {
                 className={cn("h-4 w-4 transition-transform mr-2", openProjects && "transform rotate-180")}
               />
             </CollapsibleTrigger>
-          </SidebarMenuItem>
+
           <CollapsibleContent>
             <div className="ml-7 space-y-1">
               {projectsLoading ? (
@@ -124,7 +122,7 @@ export function DashboardSidebar() {
 
         {/* Knowledge Base with submenu */}
         <Collapsible open={openKnowledge} onOpenChange={setOpenKnowledge}>
-          <SidebarMenuItem>
+
             <CollapsibleTrigger className="flex items-center justify-between w-full pl-5 py-2 hover:bg-accent hover:text-accent-foreground rounded-md">
               <div className="flex items-center">
                 <BookOpen className="mr-2 h-4 w-4" />
@@ -134,7 +132,7 @@ export function DashboardSidebar() {
                 className={cn("h-4 w-4 transition-transform mr-2", openKnowledge && "transform rotate-180")}
               />
             </CollapsibleTrigger>
-          </SidebarMenuItem>
+
           <CollapsibleContent>
             <div className="ml-7 space-y-1">
               <button
@@ -160,20 +158,20 @@ export function DashboardSidebar() {
         </Collapsible>
 
         {/* Help & Support */}
-        <SidebarMenuItem>
+
           <SidebarMenuButton onClick={() => router.push("/support")} className="flex items-center pl-5">
             <HelpCircle className="mr-2 h-4 w-4" />
             <span>Help & Support</span>
           </SidebarMenuButton>
-        </SidebarMenuItem>
+
 
         {/* Settings */}
-        <SidebarMenuItem>
+
           <SidebarMenuButton onClick={() => router.push("/settings")} className="flex items-center pl-5">
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </SidebarMenuButton>
-        </SidebarMenuItem>
+
 
         {/* Profile section at the bottom */}
         <div className="mt-auto border-t border-border p-4 space-y-4">

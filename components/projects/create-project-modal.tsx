@@ -180,7 +180,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     try {
       const deploymentService = TokenDeploymentService.getInstance(publicClient, walletClient, signer);
 
-      setDeploymentStatusText("Processing token deployment and waiting for 5 block confimration and verification on chain explorer...");
+      setDeploymentStatusText("Processing token deployment and waiting for confirmation of 5 blocks and verification on the blockchain explorer...");
       const { contractAddress, pairAddress: newPairAddress } = await deploymentService.deployToken({
         tokenName: newTokenName,
         tokenSymbol: newTokenSymbol,
@@ -603,10 +603,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     {isDeploying ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Doing deploy and verify
+                        Deploying and verifying
                       </>
                     ) : (
-                      "Deploy Token"
+                      "Deploy & verify Token"
                     )}
                   </Button>
                 ) : (

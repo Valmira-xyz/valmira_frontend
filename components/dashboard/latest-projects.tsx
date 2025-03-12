@@ -30,7 +30,7 @@ export function LatestProjects() {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold">Your Latest Active Projects</h2>
-        <div className="text-red-500">Error loading projects</div>
+        <div className="text-red-500">Please check connect your wallet.</div>
       </div>
     )
   }

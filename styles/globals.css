@@ -92,3 +92,13 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+[data-sidebar="menu-item"] {
+  list-style: none;
+  display: none;
+}
+
+[data-sidebar="menu-item"]::marker {
+  content: none;
+  display: none;
+}
