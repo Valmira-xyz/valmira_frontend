@@ -23,10 +23,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AddressDisplay } from "@/components/ui/address-display"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { TokenDeploymentService } from "@/lib/deploy-token/service"
-import { createProject } from "@/lib/deploy-token/api"
+import { TokenDeploymentService, createProject } from "@/services/deployTokenService"
 import { useWalletClient, usePublicClient, useChainId } from "wagmi"
-import { useEthersSigner } from "@/lib/deploy-token/ether-adapter"
+import { useEthersSigner } from "@/lib/ether-adapter"
 
 interface CreateProjectModalProps {
   isOpen: boolean

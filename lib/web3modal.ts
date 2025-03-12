@@ -1,5 +1,4 @@
 import {  bsc, bscTestnet } from '@reown/appkit/networks'
-import { createWeb3Modal } from '@web3modal/wagmi/react'
 
 // config/index.tsx
 
