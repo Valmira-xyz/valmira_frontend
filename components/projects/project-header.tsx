@@ -69,7 +69,7 @@ export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
           </Badge>
         </div>
         <div className="mt-4 flex justify-between text-sm text-muted-foreground">
-          <span>Connected Wallet: {walletAddress || "Not connected"}</span>
+          {/* <span>Connected Wallet: {walletAddress || "Not connected"}</span> */}
           <span>Last Updated: {project.lastUpdated ? new Date(project.lastUpdated).toLocaleString() : "Never"}</span>
         </div>
       </CardContent>
