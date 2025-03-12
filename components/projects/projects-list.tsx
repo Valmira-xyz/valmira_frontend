@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { MoreHorizontal, Trash } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchProjects, updateProjectStatus, deleteProject } from '@/store/slices/projectSlice'
 import type { RootState } from '@/store/store'
 import { useRouter } from "next/navigation"
+import { getBadgeVariant } from "@/lib/utils"
 
 interface ProjectsListProps {
   limit?: number
@@ -90,7 +92,7 @@ export function ProjectsList({ limit }: ProjectsListProps) {
   }
 
   const displayedProjects = limit ? projects.slice(0, limit) : projects
-
+  
   return (
     <div>
       <Table>
@@ -108,7 +110,12 @@ export function ProjectsList({ limit }: ProjectsListProps) {
           {displayedProjects.map((project) => (
             <TableRow key={project._id}>
               <TableCell className="font-medium">{project.name}</TableCell>
-              <TableCell>{project.status}</TableCell>
+              <TableCell>
+                
+              <Badge variant={getBadgeVariant(project.status)} className="font-medium text-sm px-3 py-1 rounded-full">
+                        {project.status}
+                      </Badge>
+              </TableCell>
               <TableCell>{project.chainName}</TableCell>
               <TableCell className="font-mono">{project.tokenAddress}</TableCell>
               <TableCell>{new Date(project.updatedAt).toLocaleString()}</TableCell>

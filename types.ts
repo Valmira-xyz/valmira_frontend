@@ -1,6 +1,6 @@
 export type Project = {
   _id: string
-  name: string
+  name?: string
   tokenAddress: string
   pairAddress: string
   chainId: number
@@ -15,6 +15,9 @@ export type Project = {
   isImported?: boolean
   owner: string
   createdAt: string
-  updatedAt: string
+  updatedAt: string,
+  profitTrend?: [],
+  volumeTrend?: [],
+  logo?: string
 }
 

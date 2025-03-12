@@ -21,3 +21,18 @@ export const generateAvatarColor = (address: string): string => {
   
   return `hsl(${Math.abs(hash) % 360}, 70%, 60%)`
 } 
+
+
+  // Determine badge color based on status
+export const getBadgeVariant = (status: string) => {
+    switch (status) {
+      case "active":
+        return "success"
+      case "inactive":
+        return "warning"
+      case "Paused":
+        return "secondary"
+      default:
+        return "outline"
+    }
+  }

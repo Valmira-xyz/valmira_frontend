@@ -4,8 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, ExternalLink, Sparkles } from "lucide-react"
-import { SparklineChart } from "@/components/ui/sparkline-chart"
-import { cn, formatNumber } from "@/lib/utils"
+import { cn, formatNumber, getBadgeVariant } from "@/lib/utils"
 import type { MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useSelector } from 'react-redux'
@@ -18,7 +17,7 @@ interface ProjectSummaryCardProps {
 
 export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
   const router = useRouter()
-  const { projects } = useSelector((state: RootState) => state.projects)
+  const { projects } = useSelector((state: RootState) => state.projects || [])
 
   const totalProfit = projects.reduce((sum: number, project: Project) => 
     sum + (project.metrics?.cumulativeProfit || 0), 0
@@ -46,19 +45,6 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
       })
     : null
 
-  // Determine badge color based on status
-  const getBadgeVariant = (status: string) => {
-    switch (status) {
-      case "Active":
-        return "success"
-      case "Pending":
-        return "warning"
-      case "Paused":
-        return "secondary"
-      default:
-        return "outline"
-    }
-  }
 
   const handleCardClick = () => {
     router.push(`/projects/${project._id}`)

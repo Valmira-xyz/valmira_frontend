@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation"
 import { useSelector } from "react-redux"
 import { WalletConnectionButton } from "@/components/wallet/wallet-connection-button"
 import { RootState } from "@/store/store"
-import { generateAvatarColor } from '@/lib/utils'
+import { generateAvatarColor, getBadgeVariant } from '@/lib/utils'
 import { useProjects } from "@/hooks/use-projects"
 
 import {
@@ -40,7 +40,7 @@ export function DashboardSidebar() {
 
   // Get auth state from Redux store
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth)
-  const { projects } = useSelector((state: RootState) => state.projects)
+  const { projects } = useSelector((state: RootState) => state.projects || [])
   const { isLoading: projectsLoading } = useProjects()
 
   const activeProjects = projects?.filter(project => project.status === 'active') ?? [];
@@ -51,6 +51,7 @@ export function DashboardSidebar() {
     console.log("Projects in sidebar:", projects)
     console.log("Active projects count:", activeProjects.length)
   }, [projects])
+
 
   return (
     <Sidebar>
@@ -102,7 +103,9 @@ export function DashboardSidebar() {
                         <Circle className="h-2 w-2 mr-2 text-green-500 animate-pulse" />
                         <span>{project.name}</span>
                       </div>
-                      <Badge variant="default">{project.status}</Badge>
+                      <Badge variant={getBadgeVariant(project.status)} className="font-medium text-sm px-3 py-1 rounded-full">
+                        {project.status}
+                      </Badge>
                     </button>
                   ))}
                   <button

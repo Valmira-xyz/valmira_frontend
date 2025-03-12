@@ -6,7 +6,7 @@ interface ProjectHeaderProps {
   project?: {
     name?: string
     logo?: string
-    blockchain?: string
+    blockchain?: number
     contractAddress?: string
     status?: "Active" | "Pending" | "Paused"
     lastUpdated?: string
@@ -43,18 +43,18 @@ export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <img
+            {/* <img
               src={project.logo || "/placeholder.svg?height=48&width=48"}
               alt={project.name || "Project"}
               className="h-12 w-12 rounded-full"
-            />
+            /> */}
             <div>
               <h1 className="text-2xl font-bold">{project.name || "Untitled Project"}</h1>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 {project.blockchain && (
                   <img
-                    src={`/blockchain-icons/${project.blockchain.toLowerCase()}.svg`}
-                    alt={project.blockchain}
+                    src={`/blockchain-icons/${project.blockchain}.svg`}
+                    alt={project.blockchain.toString()}
                     className="h-4 w-4"
                   />
                 )}

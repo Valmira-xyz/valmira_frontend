@@ -14,7 +14,7 @@ export function LatestProjects() {
   // Show only active projects, sorted by last updated
   const activeProjects = projects
     ?.filter(project => project.status === 'active')
-    .sort((a, b) => new Date(b.metrics.lastUpdate).getTime() - new Date(a.metrics.lastUpdate).getTime())
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3) // Show only the 3 most recent projects
 
   if (isLoading) {
@@ -41,11 +41,21 @@ export function LatestProjects() {
         <h2 className="text-2xl font-bold">Your Latest Active Projects</h2>
         <Card>
           <CardHeader>
-            <CardTitle>Get Started with Your First Project</CardTitle>
+            <CardTitle>
+              {!projects?.length
+                ? "Get Started with Your First Project"
+                : projects.every(project => project.status !== 'active')
+                  ? "All Projects Completed or Inactive"
+                  : "No Active Projects Found"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center text-center">
             <p className="mb-4 text-muted-foreground">
-              Create your first project to start managing your crypto assets and trading bots.
+              {!projects?.length
+                ? "Create your first project to start managing your crypto assets and trading bots."
+                : projects.every(project => project.status !== 'active')
+                  ? "All your projects are either completed or inactive. Create a new project or reactivate an existing one."
+                  : "You have projects, but none are currently active. Activate an existing project or create a new one."}
             </p>
             <CreateProjectButton />
           </CardContent>
@@ -65,18 +75,20 @@ export function LatestProjects() {
       <div className="overflow-x-auto pb-4 -mx-6 px-6">
         <div className="flex gap-6 min-w-max">
           {activeProjects.map((project) => (
-            <div key={project.id} className="w-[320px] flex-shrink-0">
+            <div key={project._id} className="w-[320px] flex-shrink-0">
               <ProjectSummaryCard 
                 project={{
-                  id: project.id,
+                  _id: project._id,
                   name: project.name,
-                  blockchain: project.chainName,
-                  contractAddress: project.tokenAddress,
+                  chainName: project.chainName,
+                  tokenAddress: project.tokenAddress,
                   status: project.status,
-                  cumulativeProfit: project.metrics.cumulativeProfit,
-                  tradingVolume24h: project.metrics.volume24h,
-                  activeBots: project.metrics.activeBots,
-                  lastUpdated: project.metrics.lastUpdate,
+                  metrics: project.metrics,
+                  pairAddress: project.pairAddress,
+                  chainId: project.chainId,
+                  owner: project.owner,
+                  createdAt: project.createdAt,
+                  updatedAt: project.updatedAt,
                   profitTrend: [], // We'll need to implement this later
                   volumeTrend: [], // We'll need to implement this later
                   logo: `/chain-logos/${project.chainId}.png` // Assuming we have chain logos

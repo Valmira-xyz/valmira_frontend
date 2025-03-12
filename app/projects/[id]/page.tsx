@@ -115,7 +115,7 @@ export default function ProjectDetailPage() {
   // Transform project data to match component prop types
   const headerProject = {
     name: project.name,
-    blockchain: project.chainName,
+    blockchain: project.chainId,
     contractAddress: project.tokenAddress,
     status: project.status === 'active' ? 'Active' as const : 'Paused' as const,
     lastUpdated: project.updatedAt
@@ -149,7 +149,7 @@ export default function ProjectDetailPage() {
       <ProjectMetrics project={metricsProject} />
       <ProjectAnalytics project={project} />
       <ProjectAddOns project={project} />
-      <ProjectDangerZone projectName={project.name} projectId={projectId} />
+      <ProjectDangerZone projectName={project.name || ''} projectId={projectId} />
     </div>
   )
 }
