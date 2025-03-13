@@ -2,17 +2,14 @@ import { ethers } from "ethers";
 import axios from 'axios';
 import type { PublicClient, WalletClient } from "viem";
 
-type TemplateNumber = 0 | 1 | 2;
 import { 
   SocialLinks, 
   ContractResponse, 
   DeploymentJobResponse, 
   JobStatusResponse,
-  ProjectData,
-  ProjectResponse,
   VerificationParams,
   DeploymentParams
-} from '@/lib/types';
+} from '@/types';
 import { Config } from "@/lib/deploy-token/config";
 
 const CONTRACT_SERVER_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts`;

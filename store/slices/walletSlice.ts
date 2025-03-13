@@ -1,47 +1,19 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import type { 
+  Wallet, 
+  WalletState, 
+  WalletBalance, 
+  ApiResponse,
+  WalletsResponse,
+  BalancesResponse 
+} from '@/types';
 import { walletApi } from '@/services/api';
-
-export type Wallet = {
-  _id: string;
-  publicKey: string;
-  userId: string;
-  projectId: string;
-  createdAt: string;
-  updatedAt: string;
-  bnbBalance?: number;
-  tokenAmount?: number;
-  bnbToSpend?: number;
-};
-
-interface WalletState {
-  wallets: Wallet[];
-  loading: boolean;
-  error: string | null;
-}
-
-interface WalletBalance {
-  address: string;
-  bnbBalance: number;
-  tokenAmount: number;
-}
-
-interface ApiResponse<T> {
-  status: string;
-  data: T;
-}
-
-interface WalletsResponse {
-  wallets: Wallet[];
-}
-
-interface BalancesResponse {
-  balances: WalletBalance[];
-}
 
 const initialState: WalletState = {
   wallets: [],
   loading: false,
   error: null,
+  selectedWallet: null
 };
 
 // Async thunks

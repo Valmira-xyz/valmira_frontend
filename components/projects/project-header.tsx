@@ -2,13 +2,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { generateAvatarColor, getBadgeVariant } from "@/lib/utils"
-import { Project } from "@/types"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-
-interface ProjectHeaderProps {
-  project?: Project,
-  walletAddress?: string
-}
+import { ProjectWithAddons, ProjectHeaderProps } from "@/types"
 
 export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
   if (!project) {
@@ -40,8 +35,10 @@ export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
                 <Avatar className="h-12 w-12">
-                  <AvatarFallback style={{ backgroundColor: generateAvatarColor(typeof project.owner === 'string' ? project.owner : project.owner?.walletAddress || "") }}>
-                    {typeof project.owner === 'string' ? project.owner.substring(2, 4).toUpperCase() : project.owner?.walletAddress?.substring(2, 4).toUpperCase()}
+                  <AvatarFallback style={{ backgroundColor: generateAvatarColor(typeof project.owner === 'string' ? project.owner : project.owner.walletAddress) }}>
+                    {typeof project.owner === 'string' 
+                      ? project.owner.slice(2, 4).toUpperCase() 
+                      : project.owner.walletAddress.slice(2, 4).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
             <div>

@@ -1,14 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import type { Project } from '@/types'
+import type { Project, ProjectState } from '@/types'
 import { projectService } from '@/services/projectService'
-
-interface ProjectState {
-  projects: Project[]
-  currentProject: Project | null
-  loading: boolean
-  error: string | null
-  volumeData: any
-}
 
 const initialState: ProjectState = {
   projects: [],

@@ -1,14 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import { User } from '@/services/authService'
-
-interface AuthState {
-  user: User | null
-  walletAddress: string | null
-  isLoading: boolean
-  error: string | null
-  isAuthenticated: boolean
-  projects: any[] // Replace with proper type when available
-}
+import type { User, AuthState } from '@/types'
 
 const initialState: AuthState = {
   user: null,

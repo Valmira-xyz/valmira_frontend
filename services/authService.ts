@@ -1,32 +1,7 @@
 import axios from 'axios';
+import type { User, ApiResponse, AuthResponse, NonceResponse, VerifyResponse } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-
-export interface User {
-  _id: string;
-  walletAddress: string;
-  name?: string;
-  role: 'user' | 'admin';
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
-}
-
-interface ApiResponse<T> {
-  data: T;
-}
-
-interface NonceResponse {
-  nonce: string;
-  message?: string;
-}
-
-interface VerifyResponse {
-  user: User;
-  token: string;
-}
 
 class AuthService {
   private token: string | null = null;
