@@ -61,6 +61,7 @@ export const toggleBot = createAsyncThunk(
       
       // Dispatch fetchProject action to update project data immediately after successful toggle
       setTimeout(() => {
+        dispatch(fetchProject(projectId));
         dispatch(fetchProjects());
       }, 500);
       
