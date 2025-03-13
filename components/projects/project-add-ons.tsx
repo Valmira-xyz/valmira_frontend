@@ -14,7 +14,6 @@ import { useToast } from "@/components/ui/use-toast"
 import Link from "next/link"
 import { SimulateAndExecuteDialog } from "@/components/projects/simulate-and-execute-dialog"
 import { AutoSellBotDialog } from "@/components/projects/auto-sell-bot-dialog"
-import { VolumeBotDialog } from "@/components/projects/volume-bot-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 
 // Define the Speed type here to avoid conflicts
@@ -54,7 +53,6 @@ type ConfigsType = {
 type DepositWallet = {
   _id: string
   publicKey: string
-  privateKey: string
   botType: string
   role: string
   userId: string
@@ -130,7 +128,6 @@ type AddonType = {
   botType: string
   name: string
   description: string
-  fee: number
   depositWallet: string
   balances: {
     native: number
@@ -151,7 +148,6 @@ const initialAddOns: AddonType[] = [
     name: "Liquidation & Snipe Bot",
     description:
       "Automatically add liquidity for your project token and perform first sniping with multiple user wallets in the same bundle transaction.",
-    fee: 0.1,
     depositWallet: "",
     balances: {
       native: 0,
@@ -166,7 +162,6 @@ const initialAddOns: AddonType[] = [
     botType: "VolumeBot",
     name: "Volume Bot",
     description: "Boost your token's trading volume with automated buy and sell transactions.",
-    fee: 0.05,
     depositWallet: "",
     balances: {
       native: 0,
@@ -178,7 +173,6 @@ const initialAddOns: AddonType[] = [
     botType: "HolderBot",
     name: "Holder Bot",
     description: "Simulate a diverse holder base by distributing tokens across multiple wallets.",
-    fee: 0.08,
     depositWallet: "",
     balances: {
       native: 0,
@@ -348,13 +342,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       description: "Deposit wallet address has been copied to clipboard",
     })
   }
-
-  const calculateFee = (addon: AddonType, config: BotConfig) => {
-    const feeInUSD = addon.fee * config.amount
-    const conversionRate = 0.003 // 1 USD = 0.003 BNB
-    return (feeInUSD * conversionRate).toFixed(6)
-  }
-
   const handleSimulateAndExecute = () => {
     setIsSimulateDialogOpen(true)
   }
@@ -437,6 +424,13 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       title: "Bot Reset",
       description: "The Liquidation & Snipe Bot has been reset and is ready for a new operation.",
     })
+  }
+
+  const handleSaveAutoSell = (newConfig: { wallets: any[] }) => {
+    setConfigs((prev) => ({
+      ...prev,
+      "LiquidationSnipeBot": { ...prev["LiquidationSnipeBot"], wallets: newConfig.wallets },
+    }))
   }
 
   const handleSaveVolumeBotConfig = (newConfig: { speed: Speed; maxBundleSize: number }) => {
@@ -695,7 +689,15 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
             onOpenChange={setIsSimulateDialogOpen}
             onSimulationResult={handleSimulationResult}
           />
-        
+
+          {isAutoSellDialogOpen && (
+            <AutoSellBotDialog
+              open={isAutoSellDialogOpen}
+              onOpenChange={setIsAutoSellDialogOpen}
+              config={configs["LiquidationSnipeBot"]}
+              onSave={(newConfig) => handleSaveAutoSell(newConfig)}
+            />
+          )}
         </>
       )}
     </div>

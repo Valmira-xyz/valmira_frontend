@@ -11,11 +11,11 @@ import {
   Circle,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useSelector } from "react-redux"
+import { useSelector, useDispatch } from "react-redux"
 import { WalletConnectionButton } from "@/components/wallet/wallet-connection-button"
 import { RootState } from "@/store/store"
 import { generateAvatarColor, getBadgeVariant } from '@/lib/utils'
-import { useProjects } from "@/hooks/use-projects"
+import { fetchProjects } from "@/store/slices/projectSlice"
 
 import {
   Sidebar,
@@ -34,14 +34,21 @@ import { WalletDisplay } from "../wallet/wallet-display"
 
 export function DashboardSidebar() {
   const router = useRouter()
+  const dispatch = useDispatch()
   const { isConnected } = useAccount()
   const [openProjects, setOpenProjects] = useState(false)
   const [openKnowledge, setOpenKnowledge] = useState(false)
 
   // Get auth state from Redux store
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth)
-  const { projects } = useSelector((state: RootState) => state.projects || [])
-  const { isLoading: projectsLoading } = useProjects()
+  const { projects, loading: projectsLoading } = useSelector((state: RootState) => state.projects)
+
+  // Fetch projects when component mounts
+  useEffect(() => {
+    if (isAuthenticated && isConnected) {
+      dispatch(fetchProjects() as any)
+    }
+  }, [dispatch, isAuthenticated, isConnected])
 
   const activeProjects = projects?.filter(project => project.status === 'active') ?? [];
   const avatarColor = generateAvatarColor(user?.walletAddress || "")
