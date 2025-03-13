@@ -288,6 +288,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         name: activeTab === "deploy" ? newTokenName : analyzedToken?.name || "",
         tokenAddress: tokenAddress,
         chainId: chainId,
+        symbol: activeTab === "deploy" ? newTokenSymbol : analyzedToken?.symbol || "",
+        totalSupply: activeTab === "deploy" ? newTokenTotalSupply : (analyzedToken?.totalSupply || ""),
         imImported: activeTab === "import" ? true : false,
         pairAddress: activeTab === "deploy" ? (pairAddress || "") : (analyzedToken?.pairAddress || ""),
         tokenData: {

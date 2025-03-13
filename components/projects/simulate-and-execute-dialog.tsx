@@ -151,8 +151,9 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="snipePercentage" className="text-right">
-                Snipe Percentage
+                Token Amount(%)
               </Label>
+              <div className="col-span-3 space-y-1">
               <Input
                 id="snipePercentage"
                 type="number"
@@ -160,6 +161,8 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                 onChange={(e) => setSnipePercentage(Number(e.target.value))}
                 className="col-span-3"
               />
+              <p className="text-xs text-muted-foreground">Percentage of total supply to snipe</p>
+              </div>
             </div>
           </div>
           <Button onClick={handleGenerateWallets} disabled={isGenerating}>
@@ -169,7 +172,7 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                 Generating Wallets...
               </>
             ) : (
-              "Generate Wallets"
+              "Generate Wallets & assign token amounts"
             )}
           </Button>
           <div className="flex justify-between items-start">

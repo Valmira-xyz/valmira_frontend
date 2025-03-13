@@ -7,7 +7,6 @@ import {
   Settings,
   ChevronDown,
   BookOpen,
-  HelpCircleIcon,
   Circle,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -88,9 +87,7 @@ export function DashboardSidebar() {
 
           <CollapsibleContent>
             <div className="ml-7 space-y-1">
-              {projectsLoading ? (
-                <div className="px-4 py-2 text-sm text-muted-foreground">Loading projects...</div>
-              ) : projects && projects.length > 0 ? (
+              { projects && projects.length > 0 ? (
                 <>
                   {projects.map((project) => (
                     <button

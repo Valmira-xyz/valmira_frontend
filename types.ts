@@ -5,6 +5,8 @@ export type Project = {
   pairAddress: string
   chainId: number
   chainName: string
+  symbol?: string
+  totalSupply?: number
   status: 'active' | 'inactive'
   metrics: {
     cumulativeProfit: number
