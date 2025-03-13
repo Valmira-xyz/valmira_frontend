@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Edit, Save, Copy, ExternalLink, HelpCircle } from "lucide-react"
-import { formatNumber } from "@/lib/utils"
+import { formatNumber, getBadgeVariant } from "@/lib/utils"
 import { EditBotDialog } from "@/components/projects/edit-bot-dialog"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/components/ui/use-toast"
@@ -476,13 +476,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     <CardTitle>{addon.name}</CardTitle>
                     {addon.botType === "LiquidationSnipeBot" && (
                       <Badge
-                        variant={
-                          configs[addon.botType].status === "ready_to_snipe"
-                            ? "secondary"
-                            : configs[addon.botType].status === "snipe_failed"
-                              ? "destructive"
-                              : "default"
-                        }
+                        variant={getBadgeVariant(configs[addon.botType].enabled ? "active" : "inactive")} className="font-medium text-sm px-3 py-1 rounded-full"
                       >
                         {configs[addon.botType].status === "ready_to_snipe" && "Ready to Snipe"}
                         {configs[addon.botType].status === "snipe_succeeded" && "Snipe Succeeded"}
@@ -493,9 +487,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       </Badge>
                     )}
                     {addon.botType !== "LiquidationSnipeBot" && (
-                      <Badge variant={configs[addon.botType].enabled ? "default" : "secondary"}>
+                      <Badge variant={getBadgeVariant(configs[addon.botType].enabled ? "active" : "inactive")} className="font-medium text-sm px-3 py-1 rounded-full" >
                         {configs[addon.botType].enabled ? "Active" : "Inactive"}
-                      </Badge>
+                      </Badge>                      
                     )}
                   </div>
                   <CardDescription>{addon.description}</CardDescription>
