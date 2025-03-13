@@ -582,7 +582,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                   {addon.botType === "HolderBot" ? (
                     <>
                       <p className="text-sm text-muted-foreground mb-2">
-                        Simply deposit BNB to the wallet address above and click Execute to start generating holders.
+                        Please deposit BNB to the wallet address above and click Execute to start generating holders.
                       </p>
                       <Button
                         className="w-full mt-2 hover:bg-primary/90 transition-colors"
@@ -645,24 +645,24 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                         </Button>
                       )}
                       {configs[addon.botType].status === "Inactive" && (
+                        <>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Please deposit enough BNN and tokens to the wallet address above in order to use this bot.
+                        </p>
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
                           onClick={() => setIsSimulateDialogOpen(true)}
                         >
                           Configure & Execute
                         </Button>
+                        </>
                       )}
                     </>
                   ) : (
                     <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(addon.botType)}
-                        className="hover:bg-primary/10 transition-colors"
-                      >
-                        <Edit className="h-4 w-4 mr-1" /> Edit
-                      </Button>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Please deposit BNB to the wallet address above and click Execute to start generating volume.
+                    </p>
                       <Button
                         className="w-full mt-2 hover:bg-primary/90 transition-colors"
                         onClick={() => handleSave(addon.botType)}
