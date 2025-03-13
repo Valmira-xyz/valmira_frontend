@@ -95,6 +95,8 @@ interface ProjectWithAddons {
   pairAddress: string
   chainId: number
   chainName: string
+  symbol?: string
+  totalSupply?: number
   status: string
   isImported: boolean
   owner: {
@@ -558,7 +560,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       {addon.botType === "LiquidationSnipeBot" && addon.balances.token !== undefined && (
                         <div>
                           <Label>Token Balance</Label>
-                          <p className="text-xl font-bold">{formatNumber(addon.balances.token)} {project?.name}</p>
+                          <p className="text-xl font-bold">{formatNumber(addon.balances.token)} {project?.symbol || project.name}</p>
                         </div>
                       )}
                       {addon.botType === "VolumeBot" && addon.generatedVolume !== undefined && (
