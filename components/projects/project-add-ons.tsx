@@ -15,6 +15,9 @@ import Link from "next/link"
 import { SimulateAndExecuteDialog } from "@/components/projects/simulate-and-execute-dialog"
 import { AutoSellBotDialog } from "@/components/projects/auto-sell-bot-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useDispatch, useSelector } from "react-redux"
+import { AppDispatch, RootState } from "@/store/store"
+import { toggleBot, updateBotConfig, BotType } from "@/store/slices/botSlice"
 
 // Define the Speed type here to avoid conflicts
 type Speed = "slow" | "medium" | "fast"
@@ -233,6 +236,8 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const [isAutoSellDialogOpen, setIsAutoSellDialogOpen] = useState(false)
   const [isVolumeBotDialogOpen, setIsVolumeBotDialogOpen] = useState(false)
   const { toast } = useToast()
+  const dispatch = useDispatch<AppDispatch>()
+  const botState = useSelector((state: RootState) => state.bots)
 
   // Update addOns and configs with project data if available
   useEffect(() => {
@@ -302,10 +307,50 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   }, [project]);
 
   const handleToggle = (id: string) => {
+    if (!project?._id) {
+      toast({
+        title: "Error",
+        description: "Project ID is missing. Cannot toggle bot.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the current enabled state
+    const currentEnabled = configs[id].enabled;
+    
+    // Update local state optimistically
     setConfigs((prev) => ({
       ...prev,
-      [id]: { ...prev[id], enabled: !prev[id].enabled },
+      [id]: { ...prev[id], enabled: !currentEnabled },
+    }));
+
+    // Dispatch the toggle action to the Redux store
+    dispatch(toggleBot({
+      projectId: project._id,
+      botType: id as BotType,
+      enabled: !currentEnabled
     }))
+    .unwrap()
+    .then(() => {
+      toast({
+        title: `Bot ${!currentEnabled ? 'Enabled' : 'Disabled'}`,
+        description: `${addOns.find((addon) => addon.botType === id)?.name} has been ${!currentEnabled ? 'enabled' : 'disabled'}.`,
+      });
+    })
+    .catch((error) => {
+      // Revert the optimistic update on error
+      setConfigs((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], enabled: currentEnabled },
+      }));
+      
+      toast({
+        title: "Error",
+        description: error || "Failed to toggle bot. Please try again.",
+        variant: "destructive",
+      });
+    });
   }
 
   const handleEdit = (id: string) => {
@@ -323,6 +368,15 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       ...prev,
       [id]: { ...prev[id], ...newConfig },
     }))
+    
+    if (project?._id) {
+      dispatch(updateBotConfig({
+        projectId: project._id,
+        botType: id as BotType,
+        config: newConfig
+      }));
+    }
+    
     setEditingBot(null)
   }
 

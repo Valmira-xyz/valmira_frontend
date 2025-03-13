@@ -95,6 +95,12 @@ const projectSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null
+    },
+    updateProjects: (state, action) => {
+      state.projects = action.payload
+    },
+    updateCurrentProject: (state, action) => {
+      state.currentProject = action.payload
     }
   },
   extraReducers: (builder) => {
@@ -162,19 +168,37 @@ const projectSlice = createSlice({
       })
 
       // Delete project
+      .addCase(deleteProject.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
       .addCase(deleteProject.fulfilled, (state, action) => {
+        state.loading = false
         state.projects = state.projects.filter(p => p._id !== action.payload)
         if (state.currentProject?._id === action.payload) {
           state.currentProject = null
         }
       })
+      .addCase(deleteProject.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
+      })
 
       // Fetch volume data
+      .addCase(fetchVolumeData.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
       .addCase(fetchVolumeData.fulfilled, (state, action) => {
         state.volumeData = action.payload
+        state.loading = false
+      })
+      .addCase(fetchVolumeData.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
       })
   }
 })
 
-export const { clearCurrentProject, clearError } = projectSlice.actions
+export const { clearCurrentProject, clearError, updateProjects, updateCurrentProject } = projectSlice.actions
 export default projectSlice.reducer 
