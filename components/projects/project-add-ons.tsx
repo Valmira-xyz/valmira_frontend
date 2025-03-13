@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -16,8 +16,8 @@ import { SimulateAndExecuteDialog } from "@/components/projects/simulate-and-exe
 import { AutoSellBotDialog } from "@/components/projects/auto-sell-bot-dialog"
 import { VolumeBotDialog } from "@/components/projects/volume-bot-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { Project } from "@/types"
 
+// Define the Speed type here to avoid conflicts
 type Speed = "slow" | "medium" | "fast"
 
 type AutoSellConfig = {
@@ -26,60 +26,195 @@ type AutoSellConfig = {
   stopLoss: number
 }
 
-type LiquidationSnipeBotStatus = "ready_to_snipe" | "snipe_succeeded" | "snipe_failed" | "auto_sell" | "sold_all"
+type LiquidationSnipeBotStatus = "ready_to_snipe" | "snipe_succeeded" | "snipe_failed" | "auto_sell" | "sold_all" | "Inactive"
 
-const addOns = [
+type BotConfig = {
+  status?: LiquidationSnipeBotStatus
+  enabled: boolean
+  amount: number
+  nativeCurrency: number
+  tokenAmount: number
+  autoSell: AutoSellConfig
+  speed: Speed
+  maxBundleSize: number
+  wallets?: Array<{
+    address: string
+    bnbBalance: number
+    tokenBalance: number
+    sellPrice: number
+    enabled: boolean
+  }>
+}
+
+type ConfigsType = {
+  [key: string]: BotConfig
+}
+
+// Define types for the project data
+type DepositWallet = {
+  _id: string
+  publicKey: string
+  privateKey: string
+  botType: string
+  role: string
+  userId: string
+  projectId: string
+  createdAt: string
+  updatedAt: string
+  __v: number
+}
+
+type BotData = {
+  _id: string
+  isEnabled: boolean
+  projectId: string
+  userId: string
+  bnbBalance: number
+  estimatedFee: number
+  subWalletIds: any[]
+  botType: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  depositWalletId: DepositWallet
+  __v: number
+  tokenBalance?: number
+  generatedVolume?: number
+  generatedHolders?: number
+}
+
+type ProjectAddons = {
+  LiquidationSnipeBot?: BotData
+  VolumeBot?: BotData
+  HolderBot?: BotData
+}
+
+// Define a custom project type for our component
+interface ProjectWithAddons {
+  _id: string
+  name: string
+  tokenAddress: string
+  pairAddress: string
+  chainId: number
+  chainName: string
+  status: string
+  isImported: boolean
+  owner: {
+    _id: string
+    walletAddress: string
+    nonce: string
+    role: string
+    createdAt: string
+    updatedAt: string
+    __v: number
+    nonceCounter: number
+  }
+  createdAt: string
+  updatedAt: string
+  __v: number
+  metrics: {
+    cumulativeProfit: number
+    volume24h: number
+    activeBots: number
+    lastUpdate: string
+  }
+  addons: ProjectAddons
+}
+
+interface ProjectAddOnsProps {
+  project?: ProjectWithAddons
+}
+
+// Define the addon structure
+type AddonType = {
+  botType: string
+  name: string
+  description: string
+  fee: number
+  depositWallet: string
+  balances: {
+    native: number
+    token?: number
+  }
+  tutorialLink: string
+  walletCount?: number
+  totalBnbBalance?: number
+  totalTokenBalance?: number
+  generatedVolume?: number
+  generatedHolders?: number
+}
+
+// Initialize addOns with empty values
+const initialAddOns: AddonType[] = [
   {
-    id: "liquidation-snipe-bot",
+    botType: "LiquidationSnipeBot",
     name: "Liquidation & Snipe Bot",
     description:
       "Automatically add liquidity for your project token and perform first sniping with multiple user wallets in the same bundle transaction.",
     fee: 0.1,
-    depositWallet: "0x9876543210fedcba9876543210fedcba98765432",
+    depositWallet: "",
     balances: {
-      native: 1.5,
-      token: 1000000,
+      native: 0,
+      token: 0,
     },
-    tutorialLink: "/tutorials/add-ons/liquidation-snipe-bot",
+    tutorialLink: "/tutorials/add-ons/LiquidationSnipeBot",
     walletCount: 10,
-    totalBnbBalance: 2.5,
-    totalTokenBalance: 1500000,
+    totalBnbBalance: 0,
+    totalTokenBalance: 0,
   },
   {
-    id: "volume-bot",
+    botType: "VolumeBot",
     name: "Volume Bot",
     description: "Boost your token's trading volume with automated buy and sell transactions.",
     fee: 0.05,
-    depositWallet: "0xabcdef1234567890abcdef1234567890abcdef12",
+    depositWallet: "",
     balances: {
-      native: 0.5,
+      native: 0,
     },
-    tutorialLink: "/tutorials/add-ons/volume-bot",
+    generatedVolume: 0,
+    tutorialLink: "/tutorials/add-ons/VolumeBot",
   },
   {
-    id: "holder-bot",
+    botType: "HolderBot",
     name: "Holder Bot",
     description: "Simulate a diverse holder base by distributing tokens across multiple wallets.",
     fee: 0.08,
-    depositWallet: "0x1234567890abcdef1234567890abcdef12345678",
+    depositWallet: "",
     balances: {
-      native: 0.3,
+      native: 0,
     },
-    tutorialLink: "/tutorials/add-ons/holder-bot",
+    generatedHolders: 0,
+    tutorialLink: "/tutorials/add-ons/HolderBot",
   },
 ]
 
-interface ProjectAddOnsProps {
-  project?: Project
+// Update the SimulateAndExecuteDialog component props
+interface SimulateAndExecuteDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSimulationResult: (success: boolean) => void
+  projectId: string
+}
+
+// Update the VolumeBotDialog component props
+interface VolumeBotDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  config: {
+    speed: Speed
+    maxBundleSize: number
+  }
+  onSave: (config: { speed: Speed; maxBundleSize: number }) => void
 }
 
 export function ProjectAddOns({ project }: ProjectAddOnsProps) {
-  const [configs, setConfigs] = useState(
-    addOns.reduce(
+  const [addOns, setAddOns] = useState<AddonType[]>(initialAddOns)
+  const [configs, setConfigs] = useState<ConfigsType>(
+    initialAddOns.reduce(
       (acc, addon) => ({
         ...acc,
-        [addon.id]: {
-          status: addon.id === "liquidation-snipe-bot" ? ("ready_to_snipe" as LiquidationSnipeBotStatus) : undefined,
+        [addon.botType]: {
+          status: addon.botType === "LiquidationSnipeBot" ? ("ready_to_snipe" as LiquidationSnipeBotStatus) : undefined,
           enabled: false,
           amount: 1000,
           nativeCurrency: 0,
@@ -89,11 +224,11 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
             targetPrice: 0,
             stopLoss: 0,
           },
-          speed: "medium",
+          speed: "medium" as Speed,
           maxBundleSize: 0.25,
         },
       }),
-      {},
+      {} as ConfigsType,
     ),
   )
 
@@ -103,6 +238,73 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const [isVolumeBotDialogOpen, setIsVolumeBotDialogOpen] = useState(false)
   const { toast } = useToast()
 
+  // Update addOns and configs with project data if available
+  useEffect(() => {
+    if (project?.addons) {
+      // Create a copy of addOns to modify
+      const updatedAddOns = [...addOns];
+      const updatedConfigs = {...configs};
+      
+      // Update LiquidationSnipeBot
+      if (project.addons.LiquidationSnipeBot) {
+        const bot = project.addons.LiquidationSnipeBot;
+        const index = updatedAddOns.findIndex(addon => addon.botType === "LiquidationSnipeBot");
+        if (index !== -1) {
+          updatedAddOns[index].depositWallet = bot.depositWalletId?.publicKey || "";
+          updatedAddOns[index].balances.native = bot.bnbBalance || 0;
+          updatedAddOns[index].balances.token = bot.tokenBalance || 0;
+          
+          // Update config
+          updatedConfigs["LiquidationSnipeBot"] = {
+            ...updatedConfigs["LiquidationSnipeBot"],
+            enabled: bot.isEnabled || false,
+            status: (bot.status as LiquidationSnipeBotStatus) || "Inactive"
+          };
+        }
+      }
+      
+      // Update VolumeBot
+      if (project.addons.VolumeBot) {
+        const bot = project.addons.VolumeBot;
+        const index = updatedAddOns.findIndex(addon => addon.botType === "VolumeBot");
+        if (index !== -1) {
+          updatedAddOns[index].depositWallet = bot.depositWalletId?.publicKey || "";
+          updatedAddOns[index].balances.native = bot.bnbBalance || 0;
+          updatedAddOns[index].generatedVolume = bot.generatedVolume || 0;
+          
+          // Update config
+          updatedConfigs["VolumeBot"] = {
+            ...updatedConfigs["VolumeBot"],
+            enabled: bot.isEnabled || false
+          };
+        }
+      }
+      
+      // Update HolderBot
+      if (project.addons.HolderBot) {
+        const bot = project.addons.HolderBot;
+        const index = updatedAddOns.findIndex(addon => addon.botType === "HolderBot");
+        if (index !== -1) {
+          updatedAddOns[index].depositWallet = bot.depositWalletId?.publicKey || "";
+          updatedAddOns[index].balances.native = bot.bnbBalance || 0;
+          updatedAddOns[index].generatedHolders = bot.generatedHolders || 0;
+          
+          // Update config
+          updatedConfigs["HolderBot"] = {
+            ...updatedConfigs["HolderBot"],
+            enabled: bot.isEnabled || false
+          };
+        }
+      }
+      
+      console.log("updatedAddOns : ", updatedAddOns)
+      console.log("updatedConfigs : ", updatedConfigs)
+      // Update the state
+      setAddOns(updatedAddOns);
+      setConfigs(updatedConfigs);
+    }
+  }, [project]);
+
   const handleToggle = (id: string) => {
     setConfigs((prev) => ({
       ...prev,
@@ -111,16 +313,16 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   }
 
   const handleEdit = (id: string) => {
-    if (id === "liquidation-snipe-bot" && configs[id].status === "auto_sell") {
+    if (id === "LiquidationSnipeBot" && configs[id].status === "auto_sell") {
       setIsAutoSellDialogOpen(true)
-    } else if (id === "volume-bot") {
+    } else if (id === "VolumeBot") {
       setIsVolumeBotDialogOpen(true)
     } else {
       setEditingBot(id)
     }
   }
 
-  const handleSaveEdit = (id: string, newConfig: any) => {
+  const handleSaveEdit = (id: string, newConfig: Partial<BotConfig>) => {
     setConfigs((prev) => ({
       ...prev,
       [id]: { ...prev[id], ...newConfig },
@@ -135,7 +337,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
     }))
     toast({
       title: "Changes Saved",
-      description: `${addOns.find((addon) => addon.id === id)?.name} configuration has been updated.`,
+      description: `${addOns.find((addon) => addon.botType === id)?.name} configuration has been updated.`,
     })
   }
 
@@ -147,7 +349,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
     })
   }
 
-  const calculateFee = (addon: (typeof addOns)[0], config: (typeof configs)[string]) => {
+  const calculateFee = (addon: AddonType, config: BotConfig) => {
     const feeInUSD = addon.fee * config.amount
     const conversionRate = 0.003 // 1 USD = 0.003 BNB
     return (feeInUSD * conversionRate).toFixed(6)
@@ -160,8 +362,8 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const handleSimulationResult = (success: boolean) => {
     setConfigs((prev) => ({
       ...prev,
-      "liquidation-snipe-bot": {
-        ...prev["liquidation-snipe-bot"],
+      "LiquidationSnipeBot": {
+        ...prev["LiquidationSnipeBot"],
         status: success ? "snipe_succeeded" : ("snipe_failed" as LiquidationSnipeBotStatus),
       },
     }))
@@ -176,34 +378,31 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   }
 
   const handleMigrateToAutoSell = () => {
-    const snipedWallets = [
-      {
-        address: "0x1234567890abcdef1234567890abcdef12345678",
-        bnbBalance: 0.15,
-        tokenBalance: 50000,
-        sellPrice: 0,
-        enabled: true,
-      },
-      {
-        address: "0x2345678901abcdef2345678901abcdef23456789",
-        bnbBalance: 0.18,
-        tokenBalance: 75000,
-        sellPrice: 0,
-        enabled: true,
-      },
-      {
-        address: "0x3456789012abcdef3456789012abcdef34567890",
-        bnbBalance: 0.12,
-        tokenBalance: 45000,
-        sellPrice: 0,
-        enabled: true,
-      },
-    ]
+    // Use real wallet data if available, otherwise use placeholder data
+    const wallets = project?.addons?.LiquidationSnipeBot?.subWalletIds || [];
+    
+    const snipedWallets = wallets.length > 0 
+      ? wallets.map((wallet: any) => ({
+          address: wallet.publicKey || "",
+          bnbBalance: wallet.bnbBalance || 0,
+          tokenBalance: wallet.tokenBalance || 0,
+          sellPrice: 0,
+          enabled: true,
+        }))
+      : [
+          {
+            address: "0x1234567890abcdef1234567890abcdef12345678",
+            bnbBalance: 0.15,
+            tokenBalance: 50000,
+            sellPrice: 0,
+            enabled: true,
+          },
+        ];
 
     setConfigs((prev) => ({
       ...prev,
-      "liquidation-snipe-bot": {
-        ...prev["liquidation-snipe-bot"],
+      "LiquidationSnipeBot": {
+        ...prev["LiquidationSnipeBot"],
         status: "auto_sell",
         wallets: snipedWallets,
       },
@@ -230,7 +429,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
           targetPrice: 0,
           stopLoss: 0,
         },
-        speed: "medium",
+        speed: "medium" as Speed,
         maxBundleSize: 0.25,
       },
     }))
@@ -243,7 +442,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const handleSaveVolumeBotConfig = (newConfig: { speed: Speed; maxBundleSize: number }) => {
     setConfigs((prev) => ({
       ...prev,
-      "volume-bot": { ...prev["volume-bot"], ...newConfig },
+      "VolumeBot": { ...prev["VolumeBot"], ...newConfig },
     }))
     setIsVolumeBotDialogOpen(false)
     toast({
@@ -275,30 +474,31 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
           <h2 className="text-2xl font-bold">Add-Ons & Configuration</h2>
           <div className="flex flex-row gap-6 overflow-x-auto pb-4">
             {addOns.map((addon) => (
-              <Card key={addon.id} className="w-full">
+              <Card key={addon.botType} className="w-full">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>{addon.name}</CardTitle>
-                    {addon.id === "liquidation-snipe-bot" && (
+                    {addon.botType === "LiquidationSnipeBot" && (
                       <Badge
                         variant={
-                          configs[addon.id].status === "ready_to_snipe"
+                          configs[addon.botType].status === "ready_to_snipe"
                             ? "secondary"
-                            : configs[addon.id].status === "snipe_failed"
+                            : configs[addon.botType].status === "snipe_failed"
                               ? "destructive"
                               : "default"
                         }
                       >
-                        {configs[addon.id].status === "ready_to_snipe" && "Ready to Snipe"}
-                        {configs[addon.id].status === "snipe_succeeded" && "Snipe Succeeded"}
-                        {configs[addon.id].status === "snipe_failed" && "Snipe Failed"}
-                        {configs[addon.id].status === "auto_sell" && "Auto Sell Active"}
-                        {configs[addon.id].status === "sold_all" && "All Tokens Sold"}
+                        {configs[addon.botType].status === "ready_to_snipe" && "Ready to Snipe"}
+                        {configs[addon.botType].status === "snipe_succeeded" && "Snipe Succeeded"}
+                        {configs[addon.botType].status === "snipe_failed" && "Snipe Failed"}
+                        {configs[addon.botType].status === "auto_sell" && "Auto Sell Active"}
+                        {configs[addon.botType].status === "sold_all" && "All Tokens Sold"}
+                        {configs[addon.botType].status === "Inactive" && "Inactive"}
                       </Badge>
                     )}
-                    {addon.id !== "liquidation-snipe-bot" && (
-                      <Badge variant={configs[addon.id].enabled ? "default" : "secondary"}>
-                        {configs[addon.id].enabled ? "Active" : "Inactive"}
+                    {addon.botType !== "LiquidationSnipeBot" && (
+                      <Badge variant={configs[addon.botType].enabled ? "default" : "secondary"}>
+                        {configs[addon.botType].enabled ? "Active" : "Inactive"}
                       </Badge>
                     )}
                   </div>
@@ -314,11 +514,11 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor={`${addon.id}-toggle`}>Enable</Label>
+                    <Label htmlFor={`${addon.botType}-toggle`}>Enable</Label>
                     <Switch
-                      id={`${addon.id}-toggle`}
-                      checked={configs[addon.id].enabled}
-                      onCheckedChange={() => handleToggle(addon.id)}
+                      id={`${addon.botType}-toggle`}
+                      checked={configs[addon.botType].enabled}
+                      onCheckedChange={() => handleToggle(addon.botType)}
                     />
                   </div>
                   {addon.depositWallet && (
@@ -361,54 +561,54 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                         <Label>BNB Balance</Label>
                         <p className="text-xl font-bold">{addon.balances.native} BNB</p>
                       </div>
-                      {addon.id === "liquidation-snipe-bot" && (
+                      {addon.botType === "LiquidationSnipeBot" && addon.balances.token !== undefined && (
                         <div>
                           <Label>Token Balance</Label>
-                          <p className="text-xl font-bold">{formatNumber(addon.balances.token)}</p>
+                          <p className="text-xl font-bold">{formatNumber(addon.balances.token)} {project?.name}</p>
                         </div>
                       )}
-                      {addon.id === "volume-bot" && (
+                      {addon.botType === "VolumeBot" && addon.generatedVolume !== undefined && (
                         <div>
                           <Label>Generated Volume</Label>
-                          <p className="text-xl font-bold">$125,000</p>
+                          <p className="text-xl font-bold">${formatNumber(addon.generatedVolume)}</p>
                         </div>
                       )}
-                      {addon.id === "holder-bot" && (
+                      {addon.botType === "HolderBot" && addon.generatedHolders !== undefined && (
                         <div>
                           <Label>Generated Holders</Label>
-                          <p className="text-xl font-bold">247</p>
+                          <p className="text-xl font-bold">{addon.generatedHolders}</p>
                         </div>
                       )}
                     </div>
                   )}
                 </CardContent>
                 <CardFooter className="flex flex-wrap gap-2">
-                  {addon.id === "holder-bot" ? (
+                  {addon.botType === "HolderBot" ? (
                     <>
                       <p className="text-sm text-muted-foreground mb-2">
-                        Simply deposit SOL to the wallet address above and click Execute to start generating holders.
+                        Simply deposit BNB to the wallet address above and click Execute to start generating holders.
                       </p>
                       <Button
                         className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                        onClick={() => handleSave(addon.id)}
+                        onClick={() => handleSave(addon.botType)}
                       >
                         <Save className="h-4 w-4 mr-1" />
                         Execute
                       </Button>
                     </>
-                  ) : addon.id === "liquidation-snipe-bot" ? (
+                  ) : addon.botType === "LiquidationSnipeBot" ? (
                     <>
-                      {(configs[addon.id].status === "snipe_succeeded" || configs[addon.id].status === "auto_sell") && (
+                      {(configs[addon.botType].status === "snipe_succeeded" || configs[addon.botType].status === "auto_sell") && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEdit(addon.id)}
+                          onClick={() => handleEdit(addon.botType)}
                           className="hover:bg-primary/10 transition-colors"
                         >
                           <Edit className="h-4 w-4 mr-1" /> Edit
                         </Button>
                       )}
-                      {configs[addon.id].status === "ready_to_snipe" && (
+                      {configs[addon.botType].status === "ready_to_snipe" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
                           onClick={() => setIsSimulateDialogOpen(true)}
@@ -416,7 +616,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                           Simulate & Execute
                         </Button>
                       )}
-                      {configs[addon.id].status === "snipe_succeeded" && (
+                      {configs[addon.botType].status === "snipe_succeeded" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
                           onClick={handleMigrateToAutoSell}
@@ -424,7 +624,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                           Migrate to Auto Sell Bot
                         </Button>
                       )}
-                      {configs[addon.id].status === "snipe_failed" && (
+                      {configs[addon.botType].status === "snipe_failed" && (
                         <Button
                           className="w-full mt-2 hover:bg-destructive/90 transition-colors"
                           onClick={() => setIsSimulateDialogOpen(true)}
@@ -432,20 +632,28 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                           Retry Sniping
                         </Button>
                       )}
-                      {configs[addon.id].status === "auto_sell" && (
+                      {configs[addon.botType].status === "auto_sell" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => handleEdit(addon.id)}
+                          onClick={() => handleEdit(addon.botType)}
                         >
                           Manage Auto Sell
                         </Button>
                       )}
-                      {configs[addon.id].status === "sold_all" && (
+                      {configs[addon.botType].status === "sold_all" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => handleReset(addon.id)}
+                          onClick={() => handleReset(addon.botType)}
                         >
                           Reset Bot
+                        </Button>
+                      )}
+                      {configs[addon.botType].status === "Inactive" && (
+                        <Button
+                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
+                          onClick={() => setIsSimulateDialogOpen(true)}
+                        >
+                          Configure & Execute
                         </Button>
                       )}
                     </>
@@ -454,14 +662,14 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleEdit(addon.id)}
+                        onClick={() => handleEdit(addon.botType)}
                         className="hover:bg-primary/10 transition-colors"
                       >
                         <Edit className="h-4 w-4 mr-1" /> Edit
                       </Button>
                       <Button
                         className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                        onClick={() => handleSave(addon.id)}
+                        onClick={() => handleSave(addon.botType)}
                       >
                         <Save className="h-4 w-4 mr-1" />
                         Save & Execute
@@ -476,31 +684,18 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
             <EditBotDialog
               open={!!editingBot}
               onOpenChange={(open) => !open && setEditingBot(null)}
-              botName={addOns.find((a) => a.id === editingBot)?.name || ""}
+              botName={addOns.find((a) => a.botType === editingBot)?.name || ""}
               config={configs[editingBot]}
               onSave={(newConfig) => handleSaveEdit(editingBot, newConfig)}
             />
           )}
+    
           <SimulateAndExecuteDialog
             open={isSimulateDialogOpen}
             onOpenChange={setIsSimulateDialogOpen}
             onSimulationResult={handleSimulationResult}
           />
-          <AutoSellBotDialog
-            open={isAutoSellDialogOpen}
-            onOpenChange={setIsAutoSellDialogOpen}
-            config={configs["liquidation-snipe-bot"]}
-            onSave={(newConfig) => handleSaveEdit("liquidation-snipe-bot", newConfig)}
-          />
-          <VolumeBotDialog
-            open={isVolumeBotDialogOpen}
-            onOpenChange={setIsVolumeBotDialogOpen}
-            config={{
-              speed: configs["volume-bot"].speed,
-              maxBundleSize: configs["volume-bot"].maxBundleSize,
-            }}
-            onSave={handleSaveVolumeBotConfig}
-          />
+        
         </>
       )}
     </div>

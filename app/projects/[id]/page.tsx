@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchProject, clearCurrentProject } from '@/store/slices/projectSlice'
 import type { RootState } from '@/store/store'
+import { Project } from "@/types"
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -98,27 +99,27 @@ export default function ProjectDetailPage() {
     )
   }
 
-  if (isLoading || !project) {
-    console.log('Loading project data...')
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-          <div className="h-48 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    )
-  }
+  // if (isLoading || !project) {
+  //   console.log('Loading project data...')
+  //   return (
+  //     <div className="p-6">
+  //       <div className="animate-pulse space-y-6">
+  //         <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+  //         <div className="h-32 bg-gray-200 rounded"></div>
+  //         <div className="h-64 bg-gray-200 rounded"></div>
+  //         <div className="h-48 bg-gray-200 rounded"></div>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   // Transform project data to match component prop types
 
 
   const metricsProject = {
-    cumulativeProfit: project.metrics.cumulativeProfit,
-    tradingVolume24h: project.metrics.volume24h,
-    activeBots: project.metrics.activeBots,
+    cumulativeProfit: project?.metrics.cumulativeProfit,
+    tradingVolume24h: project?.metrics.volume24h,
+    activeBots: project?.metrics.activeBots,
     liquidity: 0 // This field doesn't exist in our Project type, defaulting to 0
   }
 
@@ -128,7 +129,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <PageHeader title={`Project ${project.name}`}>
+      <PageHeader title={`Project ${project?.name}`}>
         <ProjectRefreshButton 
           projectId={projectId} 
           onRefresh={() => {
@@ -137,11 +138,11 @@ export default function ProjectDetailPage() {
           }} 
         />
       </PageHeader>
-      <ProjectHeader project={project} walletAddress={project.tokenAddress} />
+      <ProjectHeader project={project as Project} walletAddress={project?.tokenAddress} />
       <ProjectMetrics project={metricsProject} />
       <ProjectAnalytics project={project} />
-      <ProjectAddOns project={project} />
-      <ProjectDangerZone projectName={project.name || ''} projectId={projectId} />
+      <ProjectAddOns project={project as any} />
+      <ProjectDangerZone projectName={project?.name || ''} projectId={projectId} />
     </div>
   )
 }

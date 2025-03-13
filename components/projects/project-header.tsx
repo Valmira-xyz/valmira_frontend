@@ -1,8 +1,9 @@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getBadgeVariant } from "@/lib/utils"
+import { generateAvatarColor, getBadgeVariant } from "@/lib/utils"
 import { Project } from "@/types"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 interface ProjectHeaderProps {
   project?: Project,
@@ -32,17 +33,17 @@ export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
       </Card>
     )
   }
-
+  
   return (
     <Card>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            {/* <img
-              src={project.logo || "/placeholder.svg?height=48&width=48"}
-              alt={project.name || "Project"}
-              className="h-12 w-12 rounded-full"
-            /> */}
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback style={{ backgroundColor: generateAvatarColor(typeof project.owner === 'string' ? project.owner : project.owner?.walletAddress || "") }}>
+                    {typeof project.owner === 'string' ? project.owner.substring(2, 4).toUpperCase() : project.owner?.walletAddress?.substring(2, 4).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
             <div>
               <h1 className="text-2xl font-bold">{project.name || "Untitled Project"}</h1>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">

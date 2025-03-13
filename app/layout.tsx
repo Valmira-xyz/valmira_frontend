@@ -23,11 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers cookies={cookies}>
-          <ClientLayout>
-            {children}
-          </ClientLayout>
-        </Providers>
+          <Providers cookies={cookies}>
+            <ClientLayout>
+              {children}
+            </ClientLayout>
+          </Providers>
       </body>
     </html>
   )

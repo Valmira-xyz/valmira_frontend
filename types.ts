@@ -10,14 +10,36 @@ export type Project = {
     cumulativeProfit: number
     volume24h: number
     activeBots: number
-    lastUpdate: string
+    lastUpdate: Date | string
+  }
+  addons: {
+    LiquidationSnipeBot: string | {
+      depositWalletId: string | {
+        publicKey: string
+      },
+      subWalletIds: string[] | {
+        publicKey: string
+      }[]
+    }
+    VolumeBot: string | {
+      depositWalletId: string | {
+        publicKey: string
+      }
+    }
+    HolderBot: string | {
+      depositWalletId: string | {
+        publicKey: string
+      }
+    }
   }
   isImported?: boolean
-  owner: string
-  createdAt: string
-  updatedAt: string,
-  profitTrend?: [],
-  volumeTrend?: [],
+  owner: string | {
+    walletAddress: string
+  }
+  createdAt: Date | string
+  updatedAt: Date | string
+  profitTrend?: []
+  volumeTrend?: []
   logo?: string
 }
 

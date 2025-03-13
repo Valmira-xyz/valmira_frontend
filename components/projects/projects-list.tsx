@@ -82,14 +82,14 @@ export function ProjectsList({ limit }: ProjectsListProps) {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-10 bg-gray-200 rounded"></div>
-        <div className="h-40 bg-gray-200 rounded"></div>
-      </div>
-    )
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="animate-pulse space-y-4">
+  //       <div className="h-10 bg-gray-200 rounded"></div>
+  //       <div className="h-40 bg-gray-200 rounded"></div>
+  //     </div>
+  //   )
+  // }
 
   const displayedProjects = limit ? projects.slice(0, limit) : projects
   
@@ -116,7 +116,7 @@ export function ProjectsList({ limit }: ProjectsListProps) {
                         {project.status}
                       </Badge>
               </TableCell>
-              <TableCell>{project.chainName}</TableCell>
+              <TableCell>{project.chainName || "BSC"}</TableCell>
               <TableCell className="font-mono">{project.tokenAddress}</TableCell>
               <TableCell>{new Date(project.updatedAt).toLocaleString()}</TableCell>
               <TableCell className="text-right">
@@ -132,9 +132,9 @@ export function ProjectsList({ limit }: ProjectsListProps) {
                     <DropdownMenuItem onClick={() => router.push(`/projects/${project._id}`)}>
                       View Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(project._id, project.status)}>
+                    {/* <DropdownMenuItem onClick={() => handleStatusChange(project._id, project.status)}>
                       Toggle Status
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-red-600"
