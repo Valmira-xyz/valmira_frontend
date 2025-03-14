@@ -738,6 +738,8 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
             open={isSimulateDialogOpen}
             onOpenChange={setIsSimulateDialogOpen}
             onSimulationResult={handleSimulationResult}
+            projectId={project._id}
+            botId={project.addons?.LiquidationSnipeBot?._id || ""}
           />
 
           {isAutoSellDialogOpen && (

@@ -13,7 +13,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchProject, clearCurrentProject } from '@/store/slices/projectSlice'
 import type { RootState } from '@/store/store'
-import { Project } from "@/types"
+import { Project, ProjectWithAddons } from "@/types"
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -66,17 +66,17 @@ export default function ProjectDetailPage() {
     }
   }, [projectId, isAuthenticated, dispatch])
 
-  if (!isAuthenticated) {
-    console.log('Not authenticated, showing loading state')
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    )
-  }
+  // if (!isAuthenticated) {
+  //   console.log('Not authenticated, showing loading state')
+  //   return (
+  //     <div className="p-6">
+  //       <div className="animate-pulse space-y-6">
+  //         <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+  //         <div className="h-32 bg-gray-200 rounded"></div>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   if (error) {
     console.error('Error loading project:', error)
@@ -117,10 +117,10 @@ export default function ProjectDetailPage() {
 
 
   const metricsProject = {
-    cumulativeProfit: project?.metrics.cumulativeProfit,
-    tradingVolume24h: project?.metrics.volume24h,
-    activeBots: project?.metrics.activeBots,
-    liquidity: 0 // This field doesn't exist in our Project type, defaulting to 0
+    cumulativeProfit: (project as ProjectWithAddons)?.metrics?.cumulativeProfit || 0,
+    tradingVolume24h: (project as ProjectWithAddons)?.metrics?.volume24h || 0,
+    activeBots: (project as ProjectWithAddons)?.metrics?.activeBots || 0,
+    liquidity: 0
   }
 
   console.log('Rendering project view with data:', {
@@ -138,7 +138,10 @@ export default function ProjectDetailPage() {
           }} 
         />
       </PageHeader>
-      <ProjectHeader project={project as Project} walletAddress={project?.tokenAddress} />
+      <ProjectHeader 
+        project={project as ProjectWithAddons} 
+        walletAddress={(project as ProjectWithAddons)?.tokenAddress} 
+      />
       <ProjectMetrics project={metricsProject} />
       <ProjectAnalytics project={project} />
       <ProjectAddOns project={project as any} />

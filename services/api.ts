@@ -1,10 +1,11 @@
 import axios from 'axios';
+import { getAuthHeaders } from './projectService';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // Configure axios instance
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,18 +14,14 @@ const api = axios.create({
 
 // Wallet API endpoints
 export const walletApi = {
-  generateWallets: async (projectId: string, countsOfWallets: number) => {
+  generateWallets: async (projectId: string, countsOfWallets: number, botId: string) => {
     const response = await api.post('/wallets/multiple', {
       projectId,
       countsOfWallets,
-    });
-    return response.data;
-  },
-  
-  getWalletBalances: async (walletAddresses: string[]) => {
-    const response = await api.post('/wallets/balances', {
-      walletAddresses,
-    });
+      botId
+    },
+    getAuthHeaders()
+  );
     return response.data;
   }
 };

@@ -126,7 +126,7 @@ export interface AuthState {
 // Project State type
 export interface ProjectState {
   projects: Project[];
-  currentProject: Project | null;
+  currentProject: Project | ProjectWithAddons | null;
   loading: boolean;
   error: string | null;
   volumeData: any;
@@ -178,7 +178,27 @@ export interface ProjectWithAddons {
     updatedAt: string
     __v: number
     nonceCounter: number
-  } | string
+  } | string,
+  addons: {
+    LiquidationSnipeBot: {
+      despositWalletId: {
+        publicKey: string
+      },
+      subWalletIds: {
+        publicKey: string
+      }[]
+    },
+    VolumeBot: {
+      despositWalletId: {
+        publicKey: string
+      }
+    },
+    HolderBot: {      
+      despositWalletId: {
+        publicKey: string
+      }
+    }
+  },
   createdAt: string
   updatedAt: string
   __v: number

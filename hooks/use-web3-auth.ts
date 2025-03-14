@@ -55,7 +55,7 @@ export const useWeb3Auth = () => {
 
     try {
       isAuthenticatingRef.current = true;
-      dispatch(setLoading(true));
+      // dispatch(setLoading(true));
       console.log('Starting authentication for address:', currentAddress);
       
       // Get nonce from backend
@@ -101,7 +101,7 @@ export const useWeb3Auth = () => {
         handleLogout();
       }
     } finally {
-      dispatch(setLoading(false));
+      // dispatch(setLoading(false));
       isAuthenticatingRef.current = false;
     }
   }, [dispatch, handleLogout, signMessageAsync]);

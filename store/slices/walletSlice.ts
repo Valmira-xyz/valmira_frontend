@@ -8,6 +8,9 @@ import type {
   BalancesResponse 
 } from '@/types';
 import { walletApi } from '@/services/api';
+import { fetchProject } from './projectSlice';
+import { getWalletBalances as getWeb3WalletBalances } from '@/services/web3Utils';
+import { formatBalance } from '@/services/web3Utils';
 
 const initialState: WalletState = {
   wallets: [],
@@ -19,9 +22,12 @@ const initialState: WalletState = {
 // Async thunks
 export const generateWallets = createAsyncThunk(
   'wallets/generate',
-  async ({ projectId, count }: { projectId: string; count: number }, { rejectWithValue }) => {
+  async ({ projectId, count, botId }: { projectId: string; count: number; botId: string }, { rejectWithValue, dispatch }) => {
     try {
-      const response = await walletApi.generateWallets(projectId, count) as ApiResponse<WalletsResponse>;
+      const response = await walletApi.generateWallets(projectId, count, botId) as ApiResponse<WalletsResponse>;
+      setTimeout(() => {
+        dispatch(fetchProject(projectId));
+      }, 500);
       return response.data.wallets;
     } catch (error) {
       if (error instanceof Error) {
@@ -34,10 +40,12 @@ export const generateWallets = createAsyncThunk(
 
 export const getWalletBalances = createAsyncThunk(
   'wallets/getBalances',
-  async (walletAddresses: string[], { rejectWithValue }) => {
+  async ({ tokenAddress, walletAddresses }: { tokenAddress: string; walletAddresses: string[] }, { rejectWithValue }) => {
     try {
-      const response = await walletApi.getWalletBalances(walletAddresses) as ApiResponse<BalancesResponse>;
-      return response.data.balances;
+      const balances = await getWeb3WalletBalances(walletAddresses, tokenAddress);
+      
+      // Convert string balances to numbers and map to expected format
+      return balances;
     } catch (error) {
       if (error instanceof Error) {
         return rejectWithValue(error.message);
