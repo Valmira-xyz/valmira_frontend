@@ -181,7 +181,7 @@ export interface ProjectWithAddons {
   } | string,
   addons: {
     LiquidationSnipeBot: {
-      despositWalletId: {
+      depositWalletId: {
         publicKey: string
       },
       subWalletIds: {
@@ -189,12 +189,12 @@ export interface ProjectWithAddons {
       }[]
     },
     VolumeBot: {
-      despositWalletId: {
+      depositWalletId: {
         publicKey: string
       }
     },
     HolderBot: {      
-      despositWalletId: {
+      depositWalletId: {
         publicKey: string
       }
     }

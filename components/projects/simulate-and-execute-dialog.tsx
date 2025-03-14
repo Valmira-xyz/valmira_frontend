@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Loader2 } from "lucide-react"
+import { Loader2, Copy, ExternalLink } from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
 import { generateWallets, getWalletBalances, setAllWalletsBnbToSpend, clearWallets } from "@/store/slices/walletSlice"
 import { fetchProject } from "@/store/slices/projectSlice"
@@ -32,11 +32,15 @@ interface WalletInfo {
   bnbToSpend?: number
   bnbBalance?: number
   tokenAmount?: number
+  tokenBalance?: number
   role?: string
 }
 
 interface WalletBalances {
-  [key: string]: number
+  [key: string]: {
+    bnb: number;
+    token: number;
+  }
 }
 
 type SimulationResult = {
@@ -44,7 +48,8 @@ type SimulationResult = {
   totalBnbNeeded: number
   addLiquidityBnb: number
   snipingBnb: number
-  currentBalance: number
+  currentBnbBalance: number
+  currentTokenBalance: number
   sufficientBalance: boolean
 }
 
@@ -100,14 +105,26 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
         const walletInfo: WalletInfo[] = liquidationSnipeBot.subWalletIds.map(wallet => ({
           publicKey: wallet.publicKey,
           bnbBalance: 0,
+          tokenBalance: 0,
           bnbToSpend: 0,
-          tokenAmount: 0
+          tokenAmount: 0,
+            role: 'botsub'
         }))
+
+        // Add deposit wallet if it exists
+        if (liquidationSnipeBot.depositWalletId?.publicKey) {
+          walletInfo.push({
+            publicKey: liquidationSnipeBot.depositWalletId.publicKey,
+            bnbBalance: 0,
+            tokenBalance: 0,
+            role: 'botmain'
+          })
+        }
         
         setWallets(walletInfo)
         
         // Extract wallet addresses to fetch balances
-        const walletAddresses = liquidationSnipeBot.subWalletIds.map(wallet => wallet.publicKey)
+        const walletAddresses = walletInfo.map(wallet => wallet.publicKey)
         
         // Fetch balances for the existing wallets
         if (walletAddresses.length > 0) {
@@ -117,7 +134,10 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
             .then((response: any) => {
               // Convert array response to object mapping
               const balances = response.reduce((acc: WalletBalances, item: any) => {
-                acc[item.publicKey] = item.balance
+                acc[item.publicKey] = {
+                  bnb: item.bnbBalance || 0,
+                  token: item.tokenBalance || 0
+                }
                 return acc
               }, {})
               
@@ -125,7 +145,8 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
               setWallets(prevWallets => 
                 prevWallets.map(wallet => ({
                   ...wallet,
-                  bnbBalance: balances[wallet.publicKey] || 0
+                  bnbBalance: balances[wallet.publicKey]?.bnb || 0,
+                  tokenBalance: balances[wallet.publicKey]?.token || 0
                 }))
               )
             })
@@ -175,7 +196,10 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
         
         // Convert array response to object mapping
         const balances = (response as any[]).reduce((acc: WalletBalances, item: any) => {
-          acc[item.publicKey] = item.balance
+          acc[item.publicKey] = {
+            bnb: item.bnbBalance || 0,
+            token: item.tokenBalance || 0
+          }
           return acc
         }, {})
         
@@ -183,7 +207,8 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
         const newWallets: WalletInfo[] = project.addons.LiquidationSnipeBot.subWalletIds.map(
           (wallet: any) => ({
             publicKey: wallet.publicKey,
-            bnbBalance: balances[wallet.publicKey] || 0,
+            bnbBalance: balances[wallet.publicKey]?.bnb || 0,
+            tokenBalance: balances[wallet.publicKey]?.token || 0,
             bnbToSpend: 0,
             tokenAmount: 0
           })
@@ -225,17 +250,20 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
       (sum, wallet) => sum + (wallet.bnbToSpend || 0),
       0
     )
-    const depositWallet = project.addons.LiquidationSnipeBot.despositWalletId?.publicKey;
+    const depositWallet = project.addons.LiquidationSnipeBot.depositWalletId?.publicKey;
+    const depositWalletInfo = wallets.find(wallet => wallet.publicKey === depositWallet)
 
-    const currentBalance = wallets.find(wallet => wallet.publicKey === depositWallet)?.bnbBalance || 0
+    const currentBnbBalance = depositWalletInfo?.bnbBalance || 0
+    const currentTokenBalance = depositWalletInfo?.tokenBalance || 0
 
     const simulationResult: SimulationResult = {
       wallets,
       totalBnbNeeded: addLiquidityBnb + snipingBnb,
       addLiquidityBnb,
       snipingBnb,
-      currentBalance,
-      sufficientBalance: currentBalance >= addLiquidityBnb + snipingBnb,
+      currentBnbBalance,
+      currentTokenBalance,
+      sufficientBalance: currentBnbBalance >= addLiquidityBnb + snipingBnb,
     }
 
     setSimulationResult(simulationResult)
@@ -257,16 +285,76 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
     }
   }
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast({
+        title: "Copied!",
+        description: "Address copied to clipboard",
+      })
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Please try again",
+        variant: "destructive",
+      })
+    }
+  }
+
   // Check if we have existing wallets from the project addons
   const hasExistingWallets = Boolean(project?.addons?.LiquidationSnipeBot?.subWalletIds?.length)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Simulate & Execute Sniping</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col space-y-4">
+          {project?.addons?.LiquidationSnipeBot?.depositWalletId && (
+            <div className="space-y-2 border rounded-lg p-2">
+              <Label className="text-sm font-medium">Deposit Wallet</Label>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                <div className="flex gap-2 items-center">
+                  <code className="text-sm font-mono">
+                    {project.addons.LiquidationSnipeBot.depositWalletId.publicKey.slice(0, 6)}...
+                    {project.addons.LiquidationSnipeBot.depositWalletId.publicKey.slice(-4)}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => copyToClipboard(project.addons.LiquidationSnipeBot.depositWalletId.publicKey)}
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span className="sr-only">Copy address</span>
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                    <a
+                      href={`https://bscscan.com/address/${project.addons.LiquidationSnipeBot.depositWalletId.publicKey}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span className="sr-only">View on Explorer</span>
+                    </a>
+                  </Button>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">BNB: </span>
+                    {wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}
+                    <span className="mx-2 text-muted-foreground">|</span>
+                    <span className="text-muted-foreground">{project?.symbol}: </span>
+                    {wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId.publicKey)?.tokenBalance?.toFixed(0) || '0'}
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                💡 Please ensure your deposit wallet has enough {project?.symbol || "tokens"} for adding initial liquidity and enough BNB to cover: {!project?.isImported ? "(1) adding initial liquidity, (2) opening trading, and (3)" : "(1) adding initial liquidity and (2)"} distributing BNB to sub-wallets for sniping. The exact amount needed will be calculated in the simulation.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="walletCount" className="text-right">
@@ -299,7 +387,7 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="snipePercentage" className="text-right">
-                Token Amount(%)
+                Snipe Amount(% to total supply)
               </Label>
               <div className="col-span-3 space-y-1">
               <Input
@@ -309,7 +397,7 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                 onChange={(e) => setSnipePercentage(Number(e.target.value))}
                 className="col-span-3"
               />
-              <p className="text-xs text-muted-foreground">Percentage of total supply to snipe</p>
+              <p className="text-xs text-muted-foreground">Total supply is {project?.totalSupply}</p>
               </div>
             </div>
           </div>
@@ -327,7 +415,7 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
             )}
           </Button>
           <div className="flex justify-between items-start">
-            <div className="w-1/2 pr-4">
+            <div className="w-2/3 pr-4">
               {(wallets.length > 0 || isProjectLoading) && (
                 <div className="max-h-[300px] overflow-y-auto">
                   <Table>
@@ -347,8 +435,8 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                             <span className="text-sm text-muted-foreground">Loading wallets...</span>
                           </TableCell>
                         </TableRow>
-                      ) : wallets.length > 0 ? (
-                        wallets.map((wallet: WalletInfo) => (
+                      ) : wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length > 0 ? (
+                        wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').map((wallet: WalletInfo) => (
                           <TableRow key={wallet.publicKey}>
                             <TableCell>{`${wallet.publicKey.slice(0, 6)}...${wallet.publicKey.slice(-4)}`}</TableCell>
                             <TableCell>{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
@@ -368,7 +456,7 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                 </div>
               )}
               <div className="flex space-x-2 mt-4">
-                <Button onClick={handleDistributeBnb} disabled={!wallets.length || isBnbDistributed || isProjectLoading}>
+                <Button onClick={handleDistributeBnb} disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isBnbDistributed || isProjectLoading}>
                   Distribute BNB
                 </Button>
                 <Button onClick={handleSimulate} disabled={!isBnbDistributed || isProjectLoading}>
@@ -376,19 +464,20 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                 </Button>
               </div>
             </div>
-            <div className="w-1/2 pl-4">
+            <div className="w-1/3 pl-4">
               <div className="space-y-2 mt-4">
                 <h3 className="font-semibold">Simulation Results</h3>
                 {simulationResult && (
                   <>
-                    <p>Current Deposit Wallet Balance: {simulationResult.currentBalance.toFixed(4)} BNB</p>
+                    <p>Current Deposit Wallet BNB Balance: {simulationResult.currentBnbBalance.toFixed(4)} BNB</p>
+                    <p>Current Deposit Wallet Token Balance: {simulationResult.currentTokenBalance.toFixed(0)} Tokens</p>
                     <p>BNB for Adding Liquidity: {simulationResult.addLiquidityBnb.toFixed(4)} BNB</p>
                     <p>BNB for Sniping: {simulationResult.snipingBnb.toFixed(4)} BNB</p>
                     <p>Total BNB Needed: {simulationResult.totalBnbNeeded.toFixed(4)} BNB</p>
                     <p className="font-bold mt-2">
                       {simulationResult.sufficientBalance
                         ? "Simulation successful. You have sufficient balance to execute the sniping operation."
-                        : `You need to add ${(simulationResult.totalBnbNeeded - simulationResult.currentBalance).toFixed(4)} BNB to your deposit wallet.`}
+                        : `You need to add ${(simulationResult.totalBnbNeeded - simulationResult.currentBnbBalance).toFixed(4)} BNB to your deposit wallet.`}
                     </p>
                   </>
                 )}
