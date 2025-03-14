@@ -26,57 +26,29 @@ export default function ProjectDetailPage() {
   const projectId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : ''
   const { currentProject: project, loading: isLoading, error } = useSelector((state: RootState) => state.projects)
 
-  // Check authentication on mount
+  // Combined authentication check and data fetching
   useEffect(() => {
     const token = localStorage.getItem('token')
-    console.log('Checking authentication token:', token ? 'Present' : 'Missing')
-    setIsAuthenticated(!!token)
-    
     if (!token) {
-      console.log('No authentication token found, redirecting to login')
       toast({
         title: "Authentication Required",
         description: "Please log in to view project details.",
         variant: "destructive"
       })
       router.push('/login')
+      return
     }
-  }, [router, toast])
 
-  // Cleanup on unmount
-  useEffect(() => {
+    setIsAuthenticated(true)
+    if (projectId) {
+      dispatch(fetchProject(projectId) as any)
+    }
+
+    // Cleanup on unmount
     return () => {
       dispatch(clearCurrentProject())
     }
-  }, [dispatch])
-
-  useEffect(() => {
-    console.log('Project ID:', projectId)
-    console.log('Project Data:', project)
-    console.log('Loading State:', isLoading)
-    console.log('Error State:', error)
-    console.log('Authentication State:', isAuthenticated)
-  }, [projectId, project, isLoading, error, isAuthenticated])
-
-  // Fetch project data when component mounts and is authenticated
-  useEffect(() => {
-    if (projectId && isAuthenticated) {
-      console.log('Fetching project data...')
-      dispatch(fetchProject(projectId) as any)
-    }
-  }, [projectId, isAuthenticated, dispatch])
-
-  // if (!isAuthenticated) {
-  //   console.log('Not authenticated, showing loading state')
-  //   return (
-  //     <div className="p-6">
-  //       <div className="animate-pulse space-y-6">
-  //         <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-  //         <div className="h-32 bg-gray-200 rounded"></div>
-  //       </div>
-  //     </div>
-  //   )
-  // }
+  }, [projectId, dispatch, router, toast])
 
   if (error) {
     console.error('Error loading project:', error)
@@ -99,23 +71,6 @@ export default function ProjectDetailPage() {
     )
   }
 
-  // if (isLoading || !project) {
-  //   console.log('Loading project data...')
-  //   return (
-  //     <div className="p-6">
-  //       <div className="animate-pulse space-y-6">
-  //         <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-  //         <div className="h-32 bg-gray-200 rounded"></div>
-  //         <div className="h-64 bg-gray-200 rounded"></div>
-  //         <div className="h-48 bg-gray-200 rounded"></div>
-  //       </div>
-  //     </div>
-  //   )
-  // }
-
-  // Transform project data to match component prop types
-
-
   const metricsProject = {
     cumulativeProfit: (project as ProjectWithAddons)?.metrics?.cumulativeProfit || 0,
     tradingVolume24h: (project as ProjectWithAddons)?.metrics?.volume24h || 0,
@@ -123,19 +78,12 @@ export default function ProjectDetailPage() {
     liquidity: 0
   }
 
-  console.log('Rendering project view with data:', {
-    project
-  })
-
   return (
     <div className="space-y-6 p-6">
       <PageHeader title={`Project ${project?.name}`}>
         <ProjectRefreshButton 
           projectId={projectId} 
-          onRefresh={() => {
-            console.log('Manual refresh triggered')
-            dispatch(fetchProject(projectId) as any)
-          }} 
+          onRefresh={() => dispatch(fetchProject(projectId) as any)} 
         />
       </PageHeader>
       <ProjectHeader 

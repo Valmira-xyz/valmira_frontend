@@ -187,6 +187,9 @@ export interface ProjectWithAddons {
   } | string,
   addons: {
     LiquidationSnipeBot: {
+      _id?: string
+      isEnabled?: boolean
+      status?: string
       depositWalletId: {
         publicKey: string
       },
@@ -195,11 +198,15 @@ export interface ProjectWithAddons {
       }[]
     },
     VolumeBot: {
+      _id?: string
+      isEnabled?: boolean
       depositWalletId: {
         publicKey: string
       }
     },
     HolderBot: {      
+      _id?: string
+      isEnabled?: boolean
       depositWalletId: {
         publicKey: string
       }

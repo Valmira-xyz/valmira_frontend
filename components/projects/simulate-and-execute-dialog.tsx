@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,12 +21,6 @@ interface SubWallet {
   role: string;
 }
 
-// Define the LiquidationSnipeBot addon type
-interface LiquidationSnipeBotAddon {
-  subWalletIds: SubWallet[];
-  // Add other properties if needed
-}
-
 interface WalletInfo {
   publicKey: string
   bnbToSpend?: number
@@ -34,6 +28,18 @@ interface WalletInfo {
   tokenAmount?: number
   tokenBalance?: number
   role?: string
+  _id?: string
+}
+
+// Define the LiquidationSnipeBot addon type
+interface LiquidationSnipeBotAddon {
+  subWalletIds: SubWallet[];
+  depositWalletId?: {
+    publicKey: string;
+    _id: string;
+  };
+  _id: string;
+  // Add other properties if needed
 }
 
 interface WalletBalances {
@@ -55,83 +61,201 @@ type SimulationResult = {
 
 interface ExtendedProject extends Project {
   addons: {
-    LiquidationSnipeBot: {
-      subWalletIds: SubWallet[];
-      bnbBalance: number;
-    };
+    LiquidationSnipeBot: LiquidationSnipeBotAddon;
     [key: string]: any;
   };
+  totalSupply?: string;
+  tokenAddress: string;
+  symbol: string;
+  isImported?: boolean;
 }
 
 type SimulateAndExecuteDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSimulationResult: (success: boolean) => void
-  projectId: string,
-  botId: string
 }
 
-export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResult, projectId, botId }: SimulateAndExecuteDialogProps) {
+export function SimulateAndExecuteDialog({ 
+  open, 
+  onOpenChange, 
+  onSimulationResult
+}: SimulateAndExecuteDialogProps) {
   const dispatch = useDispatch<AppDispatch>()
   const { currentProject, loading: isProjectLoading } = useSelector((state: RootState) => state.projects)
+  const project = currentProject as ExtendedProject;
   const botState = useSelector((state: RootState) => state.bots)
   const [wallets, setWallets] = useState<WalletInfo[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
-  const [walletCount, setWalletCount] = useState(5)
+  const [walletCount, setWalletCount] = useState(project?.addons?.LiquidationSnipeBot?.subWalletIds?.length || 5)
   const [snipePercentage, setSnipePercentage] = useState(50)
   const [isBnbDistributed, setIsBnbDistributed] = useState(false)
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null)
+  const [isLoadingBalances, setIsLoadingBalances] = useState(false)
   const { toast } = useToast()
-  const project = currentProject as ProjectWithAddons | null
+  const balanceUpdateTimeoutRef = useRef<NodeJS.Timeout>()
+  const lastBalanceUpdateRef = useRef<number>(0)
+  const MIN_BALANCE_UPDATE_INTERVAL = 5000 // Minimum 5 seconds between balance updates
 
-  // Fetch project data and balances when dialog opens
-  useEffect(() => {
-    if (open && projectId) {
-      dispatch(fetchProject(projectId))
-        .unwrap()
-        .then(() => {
-          // After project is fetched, get initial balances
-          if (project?.tokenAddress && project.addons.LiquidationSnipeBot?.depositWalletId?.publicKey) {
-            dispatch(getWalletBalances({
-              tokenAddress: project.tokenAddress,
-              walletAddresses: [project.addons.LiquidationSnipeBot.depositWalletId.publicKey]
-            }))
-              .unwrap()
-              .then((response: any) => {
-                if (response && response.length > 0) {
-                  const balance = response[0];
-                  setWallets(prev => {
-                    const depositWallet = {
-                      publicKey: project.addons.LiquidationSnipeBot.depositWalletId.publicKey,
-                      bnbBalance: balance.bnbBalance || 0,
-                      tokenBalance: balance.tokenAmount || 0,
-                      role: 'botmain'
-                    };
-                    return [depositWallet, ...prev.filter(w => w.role !== 'botmain')];
-                  });
-                }
-              })
-              .catch(error => {
-                console.error("Failed to fetch initial deposit wallet balance:", error);
-                toast({
-                  title: "Error Fetching Balance",
-                  description: "Failed to fetch deposit wallet balance",
-                  variant: "destructive",
-                });
-              });
+  // Function to fetch balances with error handling and rate limiting
+  const fetchBalances = async (addresses: string[]) => {
+    if (!project?.tokenAddress || addresses.length === 0) return;
+    
+    // Check if we're already loading balances
+    if (isLoadingBalances) return;
+
+    // Check if enough time has passed since last update
+    const now = Date.now();
+    if (now - lastBalanceUpdateRef.current < MIN_BALANCE_UPDATE_INTERVAL) {
+      // If an update is already scheduled, don't schedule another one
+      if (balanceUpdateTimeoutRef.current) return;
+      
+      // Schedule an update for later with exponential backoff
+      const backoffTime = Math.min(
+        MIN_BALANCE_UPDATE_INTERVAL * 2,
+        Math.max(MIN_BALANCE_UPDATE_INTERVAL, now - lastBalanceUpdateRef.current) * 2
+      );
+      
+      balanceUpdateTimeoutRef.current = setTimeout(() => {
+        fetchBalances(addresses);
+      }, backoffTime);
+      return;
+    }
+    
+    try {
+      setIsLoadingBalances(true);
+      lastBalanceUpdateRef.current = now;
+
+      // Clear any pending updates
+      if (balanceUpdateTimeoutRef.current) {
+        clearTimeout(balanceUpdateTimeoutRef.current);
+        balanceUpdateTimeoutRef.current = undefined;
+      }
+      
+      const response = await dispatch(getWalletBalances({
+        tokenAddress: project.tokenAddress,
+        walletAddresses: addresses
+      })).unwrap();
+
+      if (response && response.length > 0) {
+        setWallets(prev => {
+          const updatedWallets = [...prev];
+          
+          // Add or update deposit wallet if it exists
+          const depositWalletId = project.addons.LiquidationSnipeBot?.depositWalletId;
+          if (depositWalletId?.publicKey) {
+            const depositBalance = response.find(
+              (b: any) => b.address === depositWalletId.publicKey
+            );
+            
+            const depositWallet = {
+              publicKey: depositWalletId.publicKey,
+              bnbBalance: depositBalance?.bnbBalance || 0,
+              tokenBalance: depositBalance?.tokenAmount || 0,
+              role: 'botmain'
+            };
+            
+            const depositIndex = updatedWallets.findIndex(w => w.role === 'botmain');
+            if (depositIndex >= 0) {
+              updatedWallets[depositIndex] = depositWallet;
+            } else {
+              updatedWallets.unshift(depositWallet);
+            }
           }
+
+          // Update sub-wallets with their balances
+          return updatedWallets.map(wallet => {
+            if (wallet.role === 'botmain') return wallet;
+            const balance = response.find((b: any) => b.address === wallet.publicKey);
+            return {
+              ...wallet,
+              bnbBalance: balance?.bnbBalance || 0,
+              tokenBalance: balance?.tokenAmount || 0
+            };
+          });
         });
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch wallet balances:", error);
+      const isRateLimit = 
+        error?.response?.status === 429 || 
+        error?.status === 429 || 
+        error?.message?.includes('429') ||
+        error?.message?.toLowerCase().includes('rate limit');
+        
+      if (isRateLimit) {
+        // On rate limit, schedule retry with exponential backoff
+        const backoffTime = Math.min(
+          30000, // Max 30 seconds
+          Math.max(MIN_BALANCE_UPDATE_INTERVAL, now - lastBalanceUpdateRef.current) * 2
+        );
+        
+        if (balanceUpdateTimeoutRef.current) {
+          clearTimeout(balanceUpdateTimeoutRef.current);
+        }
+        
+        balanceUpdateTimeoutRef.current = setTimeout(() => {
+          fetchBalances(addresses);
+        }, backoffTime);
+      } else {
+        toast({
+          title: "Error Fetching Balances",
+          description: "Failed to fetch wallet balances",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoadingBalances(false);
+    }
+  };
+
+  // Initialize wallets when dialog opens
+  useEffect(() => {
+    if (open && project?.addons?.LiquidationSnipeBot) {
+      // Initialize wallets from currentProject
+      const subWallets = project.addons.LiquidationSnipeBot.subWalletIds?.map((wallet: SubWallet) => ({
+        publicKey: wallet.publicKey,
+        bnbBalance: 0,
+        tokenBalance: 0,
+        bnbToSpend: 0,
+        tokenAmount: 0,
+        role: 'botsub',
+        _id: wallet._id
+      })) || [];
+
+      setWallets(subWallets);
+      setWalletCount(subWallets.length || 5);
+
+      if (project.tokenAddress) {
+        // Collect all wallet addresses to fetch balances
+        const allAddresses = [
+          ...(project.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...subWallets.map(w => w.publicKey)
+        ];
+
+        // Initial balance fetch with a longer delay
+        if (balanceUpdateTimeoutRef.current) {
+          clearTimeout(balanceUpdateTimeoutRef.current);
+        }
+        
+        // Use a longer initial delay to avoid rate limiting
+        balanceUpdateTimeoutRef.current = setTimeout(() => {
+          fetchBalances(allAddresses);
+        }, 5000);
+      }
     }
 
     // Cleanup when dialog closes
     return () => {
-      if (!open) {
-        setWallets([]);
-        setIsBnbDistributed(false);
-        setSimulationResult(null);
+      if (balanceUpdateTimeoutRef.current) {
+        clearTimeout(balanceUpdateTimeoutRef.current);
       }
+      setWallets([]);
+      setIsBnbDistributed(false);
+      setSimulationResult(null);
+      lastBalanceUpdateRef.current = 0;
     };
-  }, [open, projectId, project?.tokenAddress]);
+  }, [open, project]);
 
   const handleGenerateWallets = async () => {
     if (walletCount > 50) {
@@ -145,7 +269,7 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
     }
 
     try {
-      if (!botId) {
+      if (!project?.addons?.LiquidationSnipeBot) {
         toast({
           title: "Bot Not Found",
           description: "LiquidationSnipeBot is not configured for this project.",
@@ -155,35 +279,25 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
       }
       
       setIsGenerating(true)
-      await dispatch(generateWallets({ projectId, count: walletCount, botId })).unwrap()
+      await dispatch(generateWallets({ 
+        projectId: project._id, 
+        count: walletCount, 
+        botId: project.addons.LiquidationSnipeBot._id 
+      })).unwrap()
       
-      // After generating wallets, fetch their balances
-      if (project?.addons?.LiquidationSnipeBot?.subWalletIds) {
+      // After generating wallets, fetch their balances with a longer delay
+      if (project.addons.LiquidationSnipeBot.subWalletIds) {
         const addresses = project.addons.LiquidationSnipeBot.subWalletIds.map(
-          (wallet: any) => wallet.publicKey
-        )
-        const response = await dispatch(getWalletBalances({ tokenAddress: project.tokenAddress, walletAddresses: addresses })).unwrap()
+          (wallet: SubWallet) => wallet.publicKey
+        );
         
-        // Convert array response to object mapping
-        const balances = (response as any[]).reduce((acc: WalletBalances, item: any) => {
-          acc[item.publicKey] = {
-            bnb: item.bnbBalance || 0,
-            token: item.tokenBalance || 0
-          }
-          return acc
-        }, {})
-        
-        // Update wallets state with new data
-        const newWallets: WalletInfo[] = project.addons.LiquidationSnipeBot.subWalletIds.map(
-          (wallet: any) => ({
-            publicKey: wallet.publicKey,
-            bnbBalance: balances[wallet.publicKey]?.bnb || 0,
-            tokenBalance: balances[wallet.publicKey]?.token || 0,
-            bnbToSpend: 0,
-            tokenAmount: 0
-          })
-        )
-        setWallets(newWallets)
+        // Schedule balance fetch with a longer delay
+        if (balanceUpdateTimeoutRef.current) {
+          clearTimeout(balanceUpdateTimeoutRef.current);
+        }
+        balanceUpdateTimeoutRef.current = setTimeout(() => {
+          fetchBalances(addresses);
+        }, 5000);
       }
     } catch (error) {
       toast({
@@ -294,7 +408,7 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => copyToClipboard(project.addons.LiquidationSnipeBot.depositWalletId.publicKey)}
+                    onClick={() => project.addons.LiquidationSnipeBot.depositWalletId && copyToClipboard(project.addons.LiquidationSnipeBot.depositWalletId.publicKey)}
                   >
                     <Copy className="h-4 w-4" />
                     <span className="sr-only">Copy address</span>
@@ -313,15 +427,15 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                 <div className="flex items-center gap-4">
                   <div className="text-sm">
                     <span className="text-muted-foreground">BNB: </span>
-                    {wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}
+                    {wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}
                     <span className="mx-2 text-muted-foreground">|</span>
-                    <span className="text-muted-foreground">{project?.symbol}: </span>
-                    {wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId.publicKey)?.tokenBalance?.toFixed(0) || '0'}
+                    <span className="text-muted-foreground">{project.symbol}: </span>
+                    {wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.tokenBalance?.toFixed(0) || '0'}
                   </div>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                💡 Please ensure your deposit wallet has enough {project?.symbol || "tokens"} for adding initial liquidity and enough BNB to cover: {!project?.isImported ? "(1) adding initial liquidity, (2) opening trading, and (3)" : "(1) adding initial liquidity and (2)"} distributing BNB to sub-wallets for sniping. The exact amount needed will be calculated in the simulation.
+                💡 Please ensure your deposit wallet has enough {project.symbol || "tokens"} for adding initial liquidity and enough BNB to cover: {!project.isImported ? "(1) adding initial liquidity, (2) opening trading, and (3)" : "(1) adding initial liquidity and (2)"} distributing BNB to sub-wallets for sniping. The exact amount needed will be calculated in the simulation.
               </p>
             </div>
           )}
@@ -360,14 +474,14 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                 Snipe Amount(% to total supply)
               </Label>
               <div className="col-span-3 space-y-1">
-              <Input
-                id="snipePercentage"
-                type="number"
-                value={snipePercentage}
-                onChange={(e) => setSnipePercentage(Number(e.target.value))}
-                className="col-span-3"
-              />
-              <p className="text-xs text-muted-foreground">Total supply is {project?.totalSupply}</p>
+                <Input
+                  id="snipePercentage"
+                  type="number"
+                  value={snipePercentage}
+                  onChange={(e) => setSnipePercentage(Number(e.target.value))}
+                  className="col-span-3"
+                />
+                <p className="text-xs text-muted-foreground">Total supply is {project.totalSupply || 'not set'}</p>
               </div>
             </div>
           </div>
@@ -398,14 +512,7 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {isProjectLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center">
-                            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                            <span className="text-sm text-muted-foreground">Loading wallets...</span>
-                          </TableCell>
-                        </TableRow>
-                      ) : wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length > 0 ? (
+                      { wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length > 0 ? (
                         wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').map((wallet: WalletInfo) => (
                           <TableRow key={wallet.publicKey}>
                             <TableCell>{`${wallet.publicKey.slice(0, 6)}...${wallet.publicKey.slice(-4)}`}</TableCell>

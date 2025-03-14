@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Edit, Save, Copy, ExternalLink, HelpCircle } from "lucide-react"
+import { Edit, Save, Copy, ExternalLink, HelpCircle, RefreshCw } from "lucide-react"
 import { formatNumber, getBadgeVariant } from "@/lib/utils"
 import { EditBotDialog } from "@/components/projects/edit-bot-dialog"
 import { Separator } from "@/components/ui/separator"
@@ -19,6 +19,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/store/store"
 import { toggleBot, updateBotConfig, BotType } from "@/store/slices/botSlice"
 import { getWalletBalances } from "@/store/slices/walletSlice"
+import { ProjectWithAddons } from "@/types"
 
 // Define the Speed type here to avoid conflicts
 type Speed = "slow" | "medium" | "fast"
@@ -91,40 +92,6 @@ type ProjectAddons = {
   HolderBot?: BotData
 }
 
-// Define a custom project type for our component
-interface ProjectWithAddons {
-  _id: string
-  name: string
-  tokenAddress: string
-  pairAddress: string
-  chainId: number
-  chainName: string
-  symbol?: string
-  totalSupply?: number
-  status: string
-  isImported: boolean
-  owner: {
-    _id: string
-    walletAddress: string
-    nonce: string
-    role: string
-    createdAt: string
-    updatedAt: string
-    __v: number
-    nonceCounter: number
-  }
-  createdAt: string
-  updatedAt: string
-  __v: number
-  metrics: {
-    cumulativeProfit: number
-    volume24h: number
-    activeBots: number
-    lastUpdate: string
-  }
-  addons: ProjectAddons
-}
-
 interface ProjectAddOnsProps {
   project?: ProjectWithAddons
 }
@@ -193,7 +160,6 @@ interface SimulateAndExecuteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSimulationResult: (success: boolean) => void
-  projectId: string
 }
 
 // Update the VolumeBotDialog component props
@@ -238,13 +204,15 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const { toast } = useToast()
   const dispatch = useDispatch<AppDispatch>()
   const botState = useSelector((state: RootState) => state.bots)
-  const refreshIntervalRef = useRef<NodeJS.Timeout>()
+  const [isRefreshingBalances, setIsRefreshingBalances] = useState(false)
 
   // Function to refresh wallet balances
-  const refreshWalletBalances = async () => {
-    if (!project?.tokenAddress) return;
+  const refreshWalletBalances = useCallback(async () => {
+    if (!project?.tokenAddress || isRefreshingBalances) return;
 
     try {
+      setIsRefreshingBalances(true);
+
       // Collect all deposit wallet addresses
       const depositWallets = [];
       if (project.addons.LiquidationSnipeBot?.depositWalletId?.publicKey) {
@@ -259,13 +227,11 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
 
       if (depositWallets.length === 0) return;
 
-      // Get balances using the web3Utils function
       const balances = await dispatch(getWalletBalances({ 
         tokenAddress: project.tokenAddress, 
         walletAddresses: depositWallets 
       })).unwrap();
 
-      // Update addOns state with new balances
       setAddOns(prevAddOns => {
         return prevAddOns.map(addon => {
           const depositWallet = addon.depositWallet;
@@ -283,31 +249,37 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
           return addon;
         });
       });
-    } catch (error) {
-      console.error('Failed to refresh wallet balances:', error);
+
       toast({
-        title: "Error Refreshing Balances",
-        description: "Failed to fetch wallet balances. Please try again.",
-        variant: "destructive",
+        title: "Balances Updated",
+        description: "Wallet balances have been refreshed successfully.",
       });
-    }
-  };
-
-  // Set up periodic refresh
-  useEffect(() => {
-    // Initial refresh
-    refreshWalletBalances();
-
-    // Set up interval (every 10 seconds)
-    refreshIntervalRef.current = setInterval(refreshWalletBalances, 10000);
-
-    // Cleanup on unmount
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
+    } catch (error: any) {
+      console.error('Failed to refresh wallet balances:', error);
+      const isRateLimit = 
+        error?.response?.status === 429 || 
+        error?.status === 429 || 
+        error?.message?.includes('429') ||
+        error?.message?.toLowerCase().includes('rate limit');
+        
+      if (!isRateLimit) {
+        toast({
+          title: "Error Refreshing Balances",
+          description: "Failed to fetch wallet balances. Please try again.",
+          variant: "destructive",
+        });
       }
-    };
-  }, [project?.tokenAddress, project?.addons]);
+    } finally {
+      setIsRefreshingBalances(false);
+    }
+  }, [project?.tokenAddress, project?.addons, dispatch]);
+
+  // Initial fetch of balances when component mounts or project changes
+  useEffect(() => {
+    if (project?.tokenAddress) {
+      refreshWalletBalances();
+    }
+  }, [project?.tokenAddress]);
 
   // Update addOns and configs with project data if available
   useEffect(() => {
@@ -365,9 +337,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       // Update the state
       setAddOns(updatedAddOns);
       setConfigs(updatedConfigs);
-
-      // Refresh balances after updating addOns
-      refreshWalletBalances();
     }
   }, [project]);
 
@@ -586,7 +555,18 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         <div>Loading...</div>
       ) : (
         <>
-          <h2 className="text-2xl font-bold">Add-Ons & Configuration</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Add-Ons & Configuration</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshWalletBalances}
+              disabled={isRefreshingBalances}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshingBalances ? "animate-spin" : ""}`} />
+              {isRefreshingBalances ? "Refreshing..." : "Refresh Balances"}
+            </Button>
+          </div>
           <div className="flex flex-row gap-6 overflow-x-auto pb-4">
             {addOns.map((addon) => (
               <Card key={addon.botType} className="w-full">
@@ -803,8 +783,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
             open={isSimulateDialogOpen}
             onOpenChange={setIsSimulateDialogOpen}
             onSimulationResult={handleSimulationResult}
-            projectId={project._id}
-            botId={project.addons?.LiquidationSnipeBot?._id || ""}
           />
 
           {isAutoSellDialogOpen && (
