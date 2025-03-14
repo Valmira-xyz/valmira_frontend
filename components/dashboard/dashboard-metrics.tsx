@@ -101,9 +101,10 @@ export function DashboardMetrics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumber(metric.value)}</div>
-            <div className="h-10">
+            {/* <div className="h-10">
               <SparklineChart data={metric.chart.map(item => item.value)} color={`hsl(var(--chart-${index+1}))`} />
-            </div>
+            </div> */}
+            <p>+10% from last month</p>
           </CardContent>
         </Card>
       ))}
