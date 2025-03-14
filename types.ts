@@ -98,6 +98,12 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   userId: string;
+  metrics?: {
+    cumulativeProfit: number;
+    volume24h: number;
+    activeBots: number;
+    lastUpdate: string;
+  };
 }
 
 // Wallet related types

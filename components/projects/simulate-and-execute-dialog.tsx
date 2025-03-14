@@ -82,86 +82,56 @@ export function SimulateAndExecuteDialog({ open, onOpenChange, onSimulationResul
   const [isBnbDistributed, setIsBnbDistributed] = useState(false)
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null)
   const { toast } = useToast()
-  const project = currentProject as  ProjectWithAddons | null
+  const project = currentProject as ProjectWithAddons | null
 
-  // Fetch project data when dialog opens
+  // Fetch project data and balances when dialog opens
   useEffect(() => {
     if (open && projectId) {
       dispatch(fetchProject(projectId))
-    }
-  }, [open, projectId, dispatch])
-
-  // Load existing wallets from project addons when project data is loaded
-  useEffect(() => {
-    if (project && open) {
-      // Check if the project has the LiquidationSnipeBot addon with subWalletIds
-      const liquidationSnipeBot = project.addons.LiquidationSnipeBot
-      
-      if (liquidationSnipeBot && liquidationSnipeBot.subWalletIds && liquidationSnipeBot.subWalletIds.length > 0) {
-        // Set the wallet count to match the existing wallets
-        setWalletCount(liquidationSnipeBot.subWalletIds.length)
-        
-        // Convert subWalletIds to WalletInfo format
-        const walletInfo: WalletInfo[] = liquidationSnipeBot.subWalletIds.map(wallet => ({
-          publicKey: wallet.publicKey,
-          bnbBalance: 0,
-          tokenBalance: 0,
-          bnbToSpend: 0,
-          tokenAmount: 0,
-            role: 'botsub'
-        }))
-
-        // Add deposit wallet if it exists
-        if (liquidationSnipeBot.depositWalletId?.publicKey) {
-          walletInfo.push({
-            publicKey: liquidationSnipeBot.depositWalletId.publicKey,
-            bnbBalance: 0,
-            tokenBalance: 0,
-            role: 'botmain'
-          })
-        }
-        
-        setWallets(walletInfo)
-        
-        // Extract wallet addresses to fetch balances
-        const walletAddresses = walletInfo.map(wallet => wallet.publicKey)
-        
-        // Fetch balances for the existing wallets
-        if (walletAddresses.length > 0) {
-          console.log("Fetching balances for existing wallets:", walletAddresses)
-          dispatch(getWalletBalances({ tokenAddress: project.tokenAddress, walletAddresses }))
-            .unwrap()
-            .then((response: any) => {
-              // Convert array response to object mapping
-              const balances = response.reduce((acc: WalletBalances, item: any) => {
-                acc[item.publicKey] = {
-                  bnb: item.bnbBalance || 0,
-                  token: item.tokenBalance || 0
+        .unwrap()
+        .then(() => {
+          // After project is fetched, get initial balances
+          if (project?.tokenAddress && project.addons.LiquidationSnipeBot?.depositWalletId?.publicKey) {
+            dispatch(getWalletBalances({
+              tokenAddress: project.tokenAddress,
+              walletAddresses: [project.addons.LiquidationSnipeBot.depositWalletId.publicKey]
+            }))
+              .unwrap()
+              .then((response: any) => {
+                if (response && response.length > 0) {
+                  const balance = response[0];
+                  setWallets(prev => {
+                    const depositWallet = {
+                      publicKey: project.addons.LiquidationSnipeBot.depositWalletId.publicKey,
+                      bnbBalance: balance.bnbBalance || 0,
+                      tokenBalance: balance.tokenAmount || 0,
+                      role: 'botmain'
+                    };
+                    return [depositWallet, ...prev.filter(w => w.role !== 'botmain')];
+                  });
                 }
-                return acc
-              }, {})
-              
-              // Update wallets with fetched balances
-              setWallets(prevWallets => 
-                prevWallets.map(wallet => ({
-                  ...wallet,
-                  bnbBalance: balances[wallet.publicKey]?.bnb || 0,
-                  tokenBalance: balances[wallet.publicKey]?.token || 0
-                }))
-              )
-            })
-            .catch(error => {
-              console.error("Failed to fetch wallet balances:", error)
-              toast({
-                title: "Error Fetching Balances",
-                description: "Failed to fetch wallet balances",
-                variant: "destructive",
               })
-            })
-        }
-      }
+              .catch(error => {
+                console.error("Failed to fetch initial deposit wallet balance:", error);
+                toast({
+                  title: "Error Fetching Balance",
+                  description: "Failed to fetch deposit wallet balance",
+                  variant: "destructive",
+                });
+              });
+          }
+        });
     }
-  }, [project, open, dispatch])
+
+    // Cleanup when dialog closes
+    return () => {
+      if (!open) {
+        setWallets([]);
+        setIsBnbDistributed(false);
+        setSimulationResult(null);
+      }
+    };
+  }, [open, projectId, project?.tokenAddress]);
 
   const handleGenerateWallets = async () => {
     if (walletCount > 50) {

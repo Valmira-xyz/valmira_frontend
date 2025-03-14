@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/store/store"
 import { toggleBot, updateBotConfig, BotType } from "@/store/slices/botSlice"
+import { getWalletBalances } from "@/store/slices/walletSlice"
 
 // Define the Speed type here to avoid conflicts
 type Speed = "slow" | "medium" | "fast"
@@ -230,7 +231,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       {} as ConfigsType,
     ),
   )
-
   const [editingBot, setEditingBot] = useState<string | null>(null)
   const [isSimulateDialogOpen, setIsSimulateDialogOpen] = useState(false)
   const [isAutoSellDialogOpen, setIsAutoSellDialogOpen] = useState(false)
@@ -238,6 +238,76 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const { toast } = useToast()
   const dispatch = useDispatch<AppDispatch>()
   const botState = useSelector((state: RootState) => state.bots)
+  const refreshIntervalRef = useRef<NodeJS.Timeout>()
+
+  // Function to refresh wallet balances
+  const refreshWalletBalances = async () => {
+    if (!project?.tokenAddress) return;
+
+    try {
+      // Collect all deposit wallet addresses
+      const depositWallets = [];
+      if (project.addons.LiquidationSnipeBot?.depositWalletId?.publicKey) {
+        depositWallets.push(project.addons.LiquidationSnipeBot.depositWalletId.publicKey);
+      }
+      if (project.addons.VolumeBot?.depositWalletId?.publicKey) {
+        depositWallets.push(project.addons.VolumeBot.depositWalletId.publicKey);
+      }
+      if (project.addons.HolderBot?.depositWalletId?.publicKey) {
+        depositWallets.push(project.addons.HolderBot.depositWalletId.publicKey);
+      }
+
+      if (depositWallets.length === 0) return;
+
+      // Get balances using the web3Utils function
+      const balances = await dispatch(getWalletBalances({ 
+        tokenAddress: project.tokenAddress, 
+        walletAddresses: depositWallets 
+      })).unwrap();
+
+      // Update addOns state with new balances
+      setAddOns(prevAddOns => {
+        return prevAddOns.map(addon => {
+          const depositWallet = addon.depositWallet;
+          const balance = balances.find(b => b.address === depositWallet);
+          if (balance) {
+            return {
+              ...addon,
+              balances: {
+                ...addon.balances,
+                native: balance.bnbBalance,
+                token: balance.tokenAmount
+              }
+            };
+          }
+          return addon;
+        });
+      });
+    } catch (error) {
+      console.error('Failed to refresh wallet balances:', error);
+      toast({
+        title: "Error Refreshing Balances",
+        description: "Failed to fetch wallet balances. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Set up periodic refresh
+  useEffect(() => {
+    // Initial refresh
+    refreshWalletBalances();
+
+    // Set up interval (every 10 seconds)
+    refreshIntervalRef.current = setInterval(refreshWalletBalances, 10000);
+
+    // Cleanup on unmount
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [project?.tokenAddress, project?.addons]);
 
   // Update addOns and configs with project data if available
   useEffect(() => {
@@ -252,8 +322,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         const index = updatedAddOns.findIndex(addon => addon.botType === "LiquidationSnipeBot");
         if (index !== -1) {
           updatedAddOns[index].depositWallet = bot.depositWalletId?.publicKey || "";
-          updatedAddOns[index].balances.native = bot.bnbBalance || 0;
-          updatedAddOns[index].balances.token = bot.tokenBalance || 0;
           
           // Update config
           updatedConfigs["LiquidationSnipeBot"] = {
@@ -270,8 +338,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         const index = updatedAddOns.findIndex(addon => addon.botType === "VolumeBot");
         if (index !== -1) {
           updatedAddOns[index].depositWallet = bot.depositWalletId?.publicKey || "";
-          updatedAddOns[index].balances.native = bot.bnbBalance || 0;
-          updatedAddOns[index].generatedVolume = bot.generatedVolume || 0;
           
           // Update config
           updatedConfigs["VolumeBot"] = {
@@ -287,8 +353,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         const index = updatedAddOns.findIndex(addon => addon.botType === "HolderBot");
         if (index !== -1) {
           updatedAddOns[index].depositWallet = bot.depositWalletId?.publicKey || "";
-          updatedAddOns[index].balances.native = bot.bnbBalance || 0;
-          updatedAddOns[index].generatedHolders = bot.generatedHolders || 0;
           
           // Update config
           updatedConfigs["HolderBot"] = {
@@ -298,11 +362,12 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         }
       }
       
-      console.log("updatedAddOns : ", updatedAddOns)
-      console.log("updatedConfigs : ", updatedConfigs)
       // Update the state
       setAddOns(updatedAddOns);
       setConfigs(updatedConfigs);
+
+      // Refresh balances after updating addOns
+      refreshWalletBalances();
     }
   }, [project]);
 
