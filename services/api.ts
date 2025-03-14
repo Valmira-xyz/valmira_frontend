@@ -23,6 +23,13 @@ export const walletApi = {
     getAuthHeaders()
   );
     return response.data;
+  },
+  deleteMultipleWallets: async (walletIds: string[]) => {
+    const config = getAuthHeaders();
+    const response = await api.post('/wallets/delete-multiple', { walletIds },
+    config  
+  );
+    return response.data;
   }
 };
 

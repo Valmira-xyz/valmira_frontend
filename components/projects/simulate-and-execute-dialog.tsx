@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Loader2, Copy, ExternalLink } from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
-import { generateWallets, getWalletBalances, setAllWalletsBnbToSpend, clearWallets } from "@/store/slices/walletSlice"
+import { generateWallets, getWalletBalances, setAllWalletsBnbToSpend, clearWallets, deleteMultipleWallets } from "@/store/slices/walletSlice"
 import { fetchProject } from "@/store/slices/projectSlice"
 import type { AppDispatch, RootState } from "@/store/store"
 import type { Project, ProjectWithAddons } from "@/types"
@@ -258,6 +258,18 @@ export function SimulateAndExecuteDialog({
   }, [open, project]);
 
   const handleGenerateWallets = async () => {
+    if (!project?.addons?.LiquidationSnipeBot) {
+      toast({
+        title: "Bot Not Found",
+        description: "LiquidationSnipeBot is not configured for this project.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const existingWalletCount = project.addons.LiquidationSnipeBot.subWalletIds?.length || 0
+    const requestedCount = walletCount - existingWalletCount
+
     if (walletCount > 50) {
       toast({
         title: "Maximum Wallet Count Exceeded",
@@ -268,20 +280,47 @@ export function SimulateAndExecuteDialog({
       return
     }
 
-    try {
-      if (!project?.addons?.LiquidationSnipeBot) {
+    // Handle wallet deletion if requested count is less than existing count
+    if (requestedCount < 0) {
+      const walletsToDelete = project.addons.LiquidationSnipeBot.subWalletIds.slice(walletCount).map(w => w._id)
+      const confirmDelete = window.confirm(
+        `This will delete ${Math.abs(requestedCount)} wallets from the end of your wallet list. This action cannot be undone. Do you want to proceed?`
+      )
+      
+      if (!confirmDelete) {
+        setWalletCount(existingWalletCount)
+        return
+      }
+
+      try {
+        setIsGenerating(true)
+        await dispatch(deleteMultipleWallets({
+          projectId: project._id,
+          walletIds: walletsToDelete
+        })).unwrap()
+        
         toast({
-          title: "Bot Not Found",
-          description: "LiquidationSnipeBot is not configured for this project.",
+          title: "Wallets Deleted",
+          description: `Successfully deleted ${Math.abs(requestedCount)} wallets.`,
+        })
+        return
+      } catch (error) {
+        toast({
+          title: "Error Deleting Wallets",
+          description: error instanceof Error ? error.message : "Failed to delete wallets",
           variant: "destructive",
         })
         return
+      } finally {
+        setIsGenerating(false)
       }
+    }
       
+    try {
       setIsGenerating(true)
       await dispatch(generateWallets({ 
         projectId: project._id, 
-        count: walletCount, 
+        count: requestedCount, 
         botId: project.addons.LiquidationSnipeBot._id 
       })).unwrap()
       
@@ -485,87 +524,118 @@ export function SimulateAndExecuteDialog({
               </div>
             </div>
           </div>
-          <Button 
-            onClick={handleGenerateWallets} 
-            disabled={isGenerating || isProjectLoading}
-          >
-            {isGenerating || isProjectLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isProjectLoading ? "Loading Project Data..." : "Generating Wallets..."}
-              </>
-            ) : (
-              hasExistingWallets ? "Refresh Wallets & assign token amounts" : "Generate Wallets & assign token amounts"
-            )}
-          </Button>
-          <div className="flex justify-between items-start">
-            <div className="w-2/3 pr-4">
-              {(wallets.length > 0 || isProjectLoading) && (
-                <div className="max-h-[300px] overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Wallet Address</TableHead>
-                        <TableHead>BNB Balance</TableHead>
-                        <TableHead>Token Amount</TableHead>
-                        <TableHead>BNB to Spend</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      { wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length > 0 ? (
-                        wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').map((wallet: WalletInfo) => (
-                          <TableRow key={wallet.publicKey}>
-                            <TableCell>{`${wallet.publicKey.slice(0, 6)}...${wallet.publicKey.slice(-4)}`}</TableCell>
-                            <TableCell>{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
-                            <TableCell>{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
-                            <TableCell>{(wallet.bnbToSpend || 0).toFixed(4)}</TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center">
-                            <span className="text-sm text-muted-foreground">No wallets found. Generate wallets to start.</span>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleGenerateWallets} 
+              disabled={isGenerating || isProjectLoading}
+            >
+              {isGenerating || isProjectLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isProjectLoading ? "Loading Project Data..." : "Creating Wallets..."}
+                </>
+              ) : (
+                hasExistingWallets ? "Update Wallet Count" : "Create Wallets"
               )}
-              <div className="flex space-x-2 mt-4">
-                <Button onClick={handleDistributeBnb} disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isBnbDistributed || isProjectLoading}>
-                  Distribute BNB
-                </Button>
-                <Button onClick={handleSimulate} disabled={!isBnbDistributed || isProjectLoading}>
-                  Simulate
-                </Button>
+            </Button>
+            <Button
+              onClick={() => {
+                // Assign token amounts to wallets
+                const totalSupply = Number(project?.totalSupply || 0);
+                const amountPerWallet = (totalSupply * (snipePercentage / 100)) / walletCount;
+                
+                setWallets(prevWallets => 
+                  prevWallets.map(wallet => ({
+                    ...wallet,
+                    tokenAmount: wallet.role === 'botmain' ? 0 : amountPerWallet
+                  }))
+                );
+              }}
+              disabled={!wallets.length || isProjectLoading}
+            >
+              Assign Token Amounts
+            </Button>
+            <Button 
+              onClick={handleDistributeBnb} 
+              disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isBnbDistributed || isProjectLoading}
+            >
+              Distribute BNB
+            </Button>
+            <Button 
+              onClick={handleSimulate} 
+              disabled={!isBnbDistributed || isProjectLoading}
+            >
+              Simulate
+            </Button>
+          </div>
+          <div>
+            {(wallets.length > 0 || isProjectLoading) && (
+              <div className="max-h-[300px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Wallet Address</TableHead>
+                      <TableHead>BNB Balance</TableHead>
+                      <TableHead>Token Amount</TableHead>
+                      <TableHead>BNB to Spend</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    { wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length > 0 ? (
+                      wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').map((wallet: WalletInfo) => (
+                        <TableRow key={wallet.publicKey}>
+                          <TableCell>{`${wallet.publicKey.slice(0, 6)}...${wallet.publicKey.slice(-4)}`}</TableCell>
+                          <TableCell>{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
+                          <TableCell>{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
+                          <TableCell>{(wallet.bnbToSpend || 0).toFixed(4)}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center">
+                          <span className="text-sm text-muted-foreground">No wallets found. Generate wallets to start.</span>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-            </div>
-            <div className="w-1/3 pl-4">
-              <div className="space-y-2 mt-4">
-                <h3 className="font-semibold">Simulation Results</h3>
-                {simulationResult && (
-                  <>
-                    <p>Current Deposit Wallet BNB Balance: {simulationResult.currentBnbBalance.toFixed(4)} BNB</p>
-                    <p>Current Deposit Wallet Token Balance: {simulationResult.currentTokenBalance.toFixed(0)} Tokens</p>
-                    <p>BNB for Adding Liquidity: {simulationResult.addLiquidityBnb.toFixed(4)} BNB</p>
-                    <p>BNB for Sniping: {simulationResult.snipingBnb.toFixed(4)} BNB</p>
-                    <p>Total BNB Needed: {simulationResult.totalBnbNeeded.toFixed(4)} BNB</p>
-                    <p className="font-bold mt-2">
-                      {simulationResult.sufficientBalance
-                        ? "Simulation successful. You have sufficient balance to execute the sniping operation."
-                        : `You need to add ${(simulationResult.totalBnbNeeded - simulationResult.currentBnbBalance).toFixed(4)} BNB to your deposit wallet.`}
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
-        <DialogFooter>
-          <Button onClick={handleExecute} disabled={!simulationResult || !simulationResult.sufficientBalance || isProjectLoading}>
-            Execute
-          </Button>
+        <DialogFooter className="flex flex-col w-full gap-4">
+          <div className="w-full border rounded-lg p-4 bg-muted/30">
+            <h3 className="font-semibold mb-3">Simulation Results</h3>
+            {simulationResult ? (
+              <div className="text-sm space-y-1">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+                  <p>Current Deposit Wallet BNB Balance: {simulationResult.currentBnbBalance.toFixed(4)} BNB</p>
+                  <p>Current Deposit Wallet Token Balance: {simulationResult.currentTokenBalance.toFixed(0)} Tokens</p>
+                  <p>BNB for Adding Liquidity: {simulationResult.addLiquidityBnb.toFixed(4)} BNB</p>
+                  <p>BNB for Sniping: {simulationResult.snipingBnb.toFixed(4)} BNB</p>
+                  <p>Total BNB Needed: {simulationResult.totalBnbNeeded.toFixed(4)} BNB</p>
+                </div>
+                <div className="mt-3 p-2 rounded border bg-background">
+                  <p className={simulationResult.sufficientBalance ? "text-green-500 font-medium" : "text-red-500 font-medium"}>
+                    {simulationResult.sufficientBalance
+                      ? "✓ Simulation successful. You have sufficient balance."
+                      : `⚠ Insufficient balance. Need ${(simulationResult.totalBnbNeeded - simulationResult.currentBnbBalance).toFixed(4)} more BNB.`}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No simulation results yet. Click "Simulate" to see results.</p>
+            )}
+          </div>
+          <div className="flex justify-end w-full">
+            <Button 
+              onClick={handleExecute} 
+              disabled={!simulationResult || !simulationResult.sufficientBalance || isProjectLoading}
+              className="min-w-[100px]"
+            >
+              Execute
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

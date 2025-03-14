@@ -38,6 +38,24 @@ export const generateWallets = createAsyncThunk(
   }
 );
 
+export const deleteMultipleWallets = createAsyncThunk(
+  'wallets/deleteMultiple',
+  async ({ projectId, walletIds }: { projectId: string; walletIds: string[] }, { rejectWithValue, dispatch }) => {
+    try {
+      await walletApi.deleteMultipleWallets(walletIds);
+      setTimeout(() => {
+        dispatch(fetchProject(projectId));
+      }, 500);
+      return walletIds;
+    } catch (error) {
+      if (error instanceof Error) {
+        return rejectWithValue(error.message);
+      }
+      return rejectWithValue('Failed to delete wallets');
+    }
+  }
+);
+
 export const getWalletBalances = createAsyncThunk(
   'wallets/getBalances',
   async ({ tokenAddress, walletAddresses }: { tokenAddress: string; walletAddresses: string[] }, { rejectWithValue }) => {
@@ -92,6 +110,18 @@ const walletSlice = createSlice({
         }));
       })
       .addCase(generateWallets.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(deleteMultipleWallets.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteMultipleWallets.fulfilled, (state, action: PayloadAction<string[]>) => {
+        state.loading = false;
+        state.wallets = state.wallets.filter(wallet => !action.payload.includes(wallet._id));
+      })
+      .addCase(deleteMultipleWallets.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
