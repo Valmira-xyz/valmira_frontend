@@ -92,6 +92,9 @@ export function SimulateAndExecuteDialog({
   const [isBnbDistributed, setIsBnbDistributed] = useState(false)
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null)
   const [isLoadingBalances, setIsLoadingBalances] = useState(false)
+  const [doAddLiquidity, setDoAddLiquidity] = useState(false)
+  const [liquidityBnbAmount, setLiquidityBnbAmount] = useState(0)
+  const [liquidityTokenAmount, setLiquidityTokenAmount] = useState(0)
   const { toast } = useToast()
   const balanceUpdateTimeoutRef = useRef<NodeJS.Timeout>()
   const lastBalanceUpdateRef = useRef<number>(0)
@@ -436,7 +439,7 @@ export function SimulateAndExecuteDialog({
         <div className="flex flex-col space-y-4">
           {project?.addons?.LiquidationSnipeBot?.depositWalletId && (
             <div className="space-y-2 border rounded-lg p-2">
-              <Label className="text-sm font-medium">Deposit Wallet</Label>
+              <Label className="text-base font-medium">Deposit Wallet</Label>
               <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                 <div className="flex gap-2 items-center">
                   <code className="text-sm font-mono">
@@ -478,6 +481,59 @@ export function SimulateAndExecuteDialog({
               </p>
             </div>
           )}
+          
+          {/* Add Liquidity Section */}
+          <div className="space-y-3 border rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <Label className="text-base font-medium">Liquidity Settings</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="doAddLiquidity"
+                  className="h-4 w-4 rounded border-gray-300"
+                  checked={doAddLiquidity}
+                  onChange={(e) => setDoAddLiquidity(e.target.checked)}
+                />
+                <Label htmlFor="doAddLiquidity" className="text-sm font-normal">
+                  Add Initial Liquidity
+                </Label>
+              </div>
+            </div>
+            
+            {doAddLiquidity && (
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="bnbAmount" className="text-sm">
+                    BNB Amount for Liquidity
+                  </Label>
+                  <Input
+                    id="bnbAmount"
+                    type="number"
+                    value={liquidityBnbAmount}
+                    onChange={(e) => setLiquidityBnbAmount(Number(e.target.value))}
+                    placeholder="0.0"
+                    step="0.1"
+                    min="0"
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tokenAmount" className="text-sm">
+                    {project.symbol || "Token"} Amount for Liquidity
+                  </Label>
+                  <Input
+                    id="tokenAmount"
+                    type="number"
+                    value={liquidityTokenAmount}
+                    onChange={(e) => setLiquidityTokenAmount(Number(e.target.value))}
+                    placeholder="0"
+                    min="0"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="walletCount" className="text-right">
@@ -526,60 +582,82 @@ export function SimulateAndExecuteDialog({
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={handleGenerateWallets} 
-              disabled={isGenerating || isProjectLoading}
-            >
-              {isGenerating || isProjectLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isProjectLoading ? "Loading Project Data..." : "Creating Wallets..."}
-                </>
-              ) : (
-                hasExistingWallets ? "Update Wallet Count" : "Create Wallets"
-              )}
-            </Button>
-            <Button
-              onClick={() => {
-                // Assign token amounts to wallets with ±15% random variation
-                const totalSupply = Number(project?.totalSupply || 0);
-                const totalSnipeAmount = totalSupply * (snipePercentage / 100);
-                const baseAmountPerWallet = totalSnipeAmount / walletCount;
-                
-                // Calculate amounts with random variation for each wallet
-                setWallets(prevWallets => 
-                  prevWallets.map(wallet => {
-                    if (wallet.role === 'botmain') return { ...wallet, tokenAmount: 0 };
-                    
-                    // Generate random variation between -15% to +15%
-                    const variation = (Math.random() * 0.3) - 0.15; // -0.15 to +0.15
-                    const variationMultiplier = 1 + variation;
-                    const adjustedAmount = baseAmountPerWallet * variationMultiplier;
-                    
-                    return {
-                      ...wallet,
-                      tokenAmount: Math.floor(adjustedAmount) // Round down to ensure integer amounts
-                    };
-                  })
-                );
-                // Reset BNB distribution state when token amounts are reassigned
-                setIsBnbDistributed(false);
-              }}
-              disabled={!wallets.length || isProjectLoading}
-            >
-              Assign Token Amounts
-            </Button>
-            <Button 
-              onClick={handleDistributeBnb} 
-              disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isBnbDistributed || isProjectLoading}
-            >
-              Distribute BNB
-            </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleGenerateWallets} 
+                disabled={isGenerating || isProjectLoading}
+              >
+                {isGenerating || isProjectLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isProjectLoading ? "Loading Project Data..." : "Creating Wallets..."}
+                  </>
+                ) : (
+                  hasExistingWallets ? "Update Wallet Count" : "Create Wallets"
+                )}
+              </Button>
+              <Button
+                onClick={() => {
+                  // Assign token amounts to wallets with ±15% random variation
+                  const totalSupply = Number(project?.totalSupply || 0);
+                  const totalSnipeAmount = totalSupply * (snipePercentage / 100);
+                  const baseAmountPerWallet = totalSnipeAmount / walletCount;
+                  
+                  // Calculate amounts with random variation for each wallet
+                  setWallets(prevWallets => 
+                    prevWallets.map(wallet => {
+                      if (wallet.role === 'botmain') return { ...wallet, tokenAmount: 0 };
+                      
+                      // Generate random variation between -15% to +15%
+                      const variation = (Math.random() * 0.3) - 0.15; // -0.15 to +0.15
+                      const variationMultiplier = 1 + variation;
+                      const adjustedAmount = baseAmountPerWallet * variationMultiplier;
+                      
+                      return {
+                        ...wallet,
+                        tokenAmount: Math.floor(adjustedAmount) // Round down to ensure integer amounts
+                      };
+                    })
+                  );
+                  // Reset BNB distribution state when token amounts are reassigned
+                  setIsBnbDistributed(false);
+                }}
+                disabled={!wallets.length || isProjectLoading}
+              >
+                Assign Token Amounts
+              </Button>
+              <Button 
+                onClick={handleSimulate} 
+                disabled={isGenerating || isProjectLoading}
+              >
+                Estimate Fees
+              </Button>
+            </div>
+            <div className="flex gap-4 ml-auto text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Total Tokens:</span>
+                <span className="font-medium">
+                  {wallets
+                    .filter(w => w.role !== 'botmain')
+                    .reduce((sum, wallet) => sum + (wallet.tokenAmount || 0), 0)
+                    .toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Total BNB to spend:</span>
+                <span className="font-medium">
+                  {wallets
+                    .filter(w => w.role !== 'botmain')
+                    .reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
+                    .toFixed(4)}
+                </span>
+              </div>
+            </div>
           </div>
           <div>
             {(wallets.length > 0 || isProjectLoading) && (
-              <div className="max-h-[300px] overflow-y-auto">
+              <div className="max-h-[200px] overflow-y-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -638,9 +716,14 @@ export function SimulateAndExecuteDialog({
           </div>
           <div className="flex justify-end items-center gap-2">
             <Button 
+              onClick={handleDistributeBnb} 
+              disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isBnbDistributed || isProjectLoading}
+            >
+              Distribute BNB
+            </Button>
+            <Button 
               onClick={handleSimulate} 
               disabled={!isBnbDistributed || isProjectLoading}
-              variant="outline"
             >
               Simulate Snipe
             </Button>
