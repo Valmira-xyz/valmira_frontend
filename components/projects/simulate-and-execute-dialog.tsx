@@ -499,13 +499,15 @@ export function SimulateAndExecuteDialog({
                       setWalletCount(50)
                     } else {
                       setWalletCount(value)
+                      // Reset BNB distribution state when wallet count changes
+                      setIsBnbDistributed(false)
                     }
                   }}
                   min="1"
                   max="50"
                   className="w-full"
                 />
-                <p className="text-xs text-muted-foreground">Maximum 50 wallets allowed</p>
+                <p className="text-xs text-muted-foreground">Maximum 50 wallets allowed for this bot</p>
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -540,16 +542,29 @@ export function SimulateAndExecuteDialog({
             </Button>
             <Button
               onClick={() => {
-                // Assign token amounts to wallets
+                // Assign token amounts to wallets with ±15% random variation
                 const totalSupply = Number(project?.totalSupply || 0);
-                const amountPerWallet = (totalSupply * (snipePercentage / 100)) / walletCount;
+                const totalSnipeAmount = totalSupply * (snipePercentage / 100);
+                const baseAmountPerWallet = totalSnipeAmount / walletCount;
                 
+                // Calculate amounts with random variation for each wallet
                 setWallets(prevWallets => 
-                  prevWallets.map(wallet => ({
-                    ...wallet,
-                    tokenAmount: wallet.role === 'botmain' ? 0 : amountPerWallet
-                  }))
+                  prevWallets.map(wallet => {
+                    if (wallet.role === 'botmain') return { ...wallet, tokenAmount: 0 };
+                    
+                    // Generate random variation between -15% to +15%
+                    const variation = (Math.random() * 0.3) - 0.15; // -0.15 to +0.15
+                    const variationMultiplier = 1 + variation;
+                    const adjustedAmount = baseAmountPerWallet * variationMultiplier;
+                    
+                    return {
+                      ...wallet,
+                      tokenAmount: Math.floor(adjustedAmount) // Round down to ensure integer amounts
+                    };
+                  })
                 );
+                // Reset BNB distribution state when token amounts are reassigned
+                setIsBnbDistributed(false);
               }}
               disabled={!wallets.length || isProjectLoading}
             >
@@ -560,12 +575,6 @@ export function SimulateAndExecuteDialog({
               disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isBnbDistributed || isProjectLoading}
             >
               Distribute BNB
-            </Button>
-            <Button 
-              onClick={handleSimulate} 
-              disabled={!isBnbDistributed || isProjectLoading}
-            >
-              Simulate
             </Button>
           </div>
           <div>
@@ -627,7 +636,14 @@ export function SimulateAndExecuteDialog({
               <p className="text-sm text-muted-foreground">No simulation results yet. Click "Simulate" to see results.</p>
             )}
           </div>
-          <div className="flex justify-end w-full">
+          <div className="flex justify-end items-center gap-2">
+            <Button 
+              onClick={handleSimulate} 
+              disabled={!isBnbDistributed || isProjectLoading}
+              variant="outline"
+            >
+              Simulate Snipe
+            </Button>
             <Button 
               onClick={handleExecute} 
               disabled={!simulationResult || !simulationResult.sufficientBalance || isProjectLoading}
