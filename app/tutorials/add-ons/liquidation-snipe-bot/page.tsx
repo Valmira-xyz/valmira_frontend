@@ -1,7 +1,5 @@
 "use client"
 
-import { Bell } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/page-header"
 
 export default function LiquidationSnipeBotTutorialPage() {
@@ -116,8 +114,7 @@ export default function LiquidationSnipeBotTutorialPage() {
           <li className="flex items-start">
             <span className="mr-2 text-primary">📊</span>
             <span>
-              <strong>Status Badge:</strong> Shows the current state of your bot (Ready to Snipe, Snipe Succeeded, Snipe
-              Failed, Auto Sell Active)
+              <strong>Status Badge:</strong> Shows the current state of your bot (Ready to Simulate, Simulating, Simulation Failed, Simulation Succeeded, Sniping, Snipe Succeeded, Snipe Failed, Auto Selling, Selling, Sell Failed, Sell Succeeded)
             </span>
           </li>
           <li className="flex items-start">

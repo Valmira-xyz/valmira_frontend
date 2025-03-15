@@ -31,7 +31,10 @@ type AutoSellConfig = {
   stopLoss: number
 }
 
-type LiquidationSnipeBotStatus = "ready_to_snipe" | "snipe_succeeded" | "snipe_failed" | "auto_sell" | "sold_all" | "Inactive"
+type LiquidationSnipeBotStatus = 'ready_to_simulation' 
+  | "simulating" | "simulation_failed" | "simulation_succeeded" 
+  | "sniping" |  'snipe_succeeded' | 'snipe_failed' 
+  | 'auto_selling' | "selling" | "sell_failed" | "sell_succeeded" | "Inactive"
 
 type BotConfig = {
   status?: LiquidationSnipeBotStatus
@@ -181,7 +184,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       (acc, addon) => ({
         ...acc,
         [addon.botType]: {
-          status: addon.botType === "LiquidationSnipeBot" ? ("ready_to_snipe" as LiquidationSnipeBotStatus) : undefined,
+          status: addon.botType === "LiquidationSnipeBot" ? ("ready_to_simulation" as LiquidationSnipeBotStatus) : undefined,
           enabled: false,
           amount: 1000,
           nativeCurrency: 0,
@@ -402,7 +405,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   }
 
   const handleEdit = (id: string) => {
-    if (id === "LiquidationSnipeBot" && configs[id].status === "auto_sell") {
+    if (id === "LiquidationSnipeBot" && configs[id].status === "auto_selling") {
       setIsAutoSellDialogOpen(true)
     } else if (id === "VolumeBot") {
       setIsVolumeBotDialogOpen(true)
@@ -429,6 +432,10 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   }
 
   const handleSave = (id: string) => {
+    if (id === "LiquidationSnipeBot" && configs[id].status === "auto_selling") {
+      handleSaveAutoSell({ wallets: configs[id].wallets || [] })
+      return
+    }
     setConfigs((prev) => ({
       ...prev,
       [id]: { ...prev[id], isEditing: false },
@@ -494,7 +501,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       ...prev,
       "LiquidationSnipeBot": {
         ...prev["LiquidationSnipeBot"],
-        status: "auto_sell",
+        status: "auto_selling" as LiquidationSnipeBotStatus,
         wallets: snipedWallets,
       },
     }))
@@ -510,7 +517,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       ...prev,
       [id]: {
         ...prev[id],
-        status: "ready_to_snipe" as LiquidationSnipeBotStatus,
+        status: "ready_to_simulation" as LiquidationSnipeBotStatus,
         enabled: false,
         amount: 1000,
         nativeCurrency: 0,
@@ -591,11 +598,17 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       <Badge
                         variant={getBadgeVariant(configs[addon.botType].enabled ? "active" : "inactive")} className="font-medium text-sm px-3 py-1 rounded-full"
                       >
-                        {configs[addon.botType].status === "ready_to_snipe" && "Ready to Snipe"}
+                        {configs[addon.botType].status === "ready_to_simulation" && "Ready to Simulate"}
+                        {configs[addon.botType].status === "simulating" && "Simulating"}
+                        {configs[addon.botType].status === "simulation_failed" && "Simulation Failed"}
+                        {configs[addon.botType].status === "simulation_succeeded" && "Simulation Succeeded"}
+                        {configs[addon.botType].status === "sniping" && "Sniping"}
                         {configs[addon.botType].status === "snipe_succeeded" && "Snipe Succeeded"}
                         {configs[addon.botType].status === "snipe_failed" && "Snipe Failed"}
-                        {configs[addon.botType].status === "auto_sell" && "Auto Sell Active"}
-                        {configs[addon.botType].status === "sold_all" && "All Tokens Sold"}
+                        {configs[addon.botType].status === "auto_selling" && "Auto Selling"}
+                        {configs[addon.botType].status === "selling" && "Selling"}
+                        {configs[addon.botType].status === "sell_failed" && "Sell Failed"}
+                        {configs[addon.botType].status === "sell_succeeded" && "Sell Succeeded"}
                         {configs[addon.botType].status === "Inactive" && "Inactive"}
                       </Badge>
                     )}
@@ -733,7 +746,38 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     </div>
                   )}
                 </CardContent>
-                <CardFooter className="flex flex-wrap gap-2">
+                <CardFooter className="flex flex-col items-start gap-4">
+                  {configs[addon.botType].status === "snipe_succeeded" && (
+                    <div className="flex flex-col w-full gap-2">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold">Sniped Wallets</h3>
+                        <Button variant="outline" size="sm" onClick={() => handleMigrateToAutoSell()}>
+                          Migrate to Auto Sell
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {configs[addon.botType].status === "ready_to_simulation" && (
+                    <div className="flex flex-col w-full gap-2">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold">Snipe Configuration</h3>
+                      </div>
+                    </div>
+                  )}
+                  {configs[addon.botType].status === "auto_selling" && (
+                    <div className="flex flex-col w-full gap-2">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold">Auto Sell Configuration</h3>
+                      </div>
+                    </div>
+                  )}
+                  {configs[addon.botType].status === "sell_succeeded" && (
+                    <div className="flex flex-col w-full gap-2">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold">All Tokens Sold</h3>
+                      </div>
+                    </div>
+                  )}
                   {addon.botType === "HolderBot" ? (
                     <>
                       <p className="text-sm text-muted-foreground mb-2">
@@ -749,7 +793,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     </>
                   ) : addon.botType === "LiquidationSnipeBot" ? (
                     <>
-                      {(configs[addon.botType].status === "snipe_succeeded" || configs[addon.botType].status === "auto_sell") && (
+                      {(configs[addon.botType].status === "snipe_succeeded" || configs[addon.botType].status === "auto_selling") && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -759,7 +803,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                           <Edit className="h-4 w-4 mr-1" /> Edit
                         </Button>
                       )}
-                      {configs[addon.botType].status === "ready_to_snipe" && (
+                      {configs[addon.botType].status === "ready_to_simulation" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
                           onClick={() => setIsSimulateDialogOpen(true)}
@@ -783,7 +827,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                           Retry Sniping
                         </Button>
                       )}
-                      {configs[addon.botType].status === "auto_sell" && (
+                      {configs[addon.botType].status === "auto_selling" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
                           onClick={() => handleEdit(addon.botType)}
@@ -791,7 +835,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                           Manage Auto Sell
                         </Button>
                       )}
-                      {configs[addon.botType].status === "sold_all" && (
+                      {configs[addon.botType].status === "sell_succeeded" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
                           onClick={() => handleReset(addon.botType)}

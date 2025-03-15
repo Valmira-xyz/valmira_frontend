@@ -4,8 +4,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { generateAvatarColor, getBadgeVariant } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ProjectWithAddons, ProjectHeaderProps } from "@/types"
+import { Button } from "../ui/button"
+import { Copy } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
+  const { toast } = useToast()
   if (!project) {
     return (
       <Card>
@@ -27,6 +31,14 @@ export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
         </CardContent>
       </Card>
     )
+  }
+  
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({
+      title: "Address copied",
+      description: "Deposit wallet address has been copied to clipboard",
+    })
   }
   
   return (
@@ -51,7 +63,16 @@ export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
                     className="h-4 w-4"
                   />
                 )}
-                <span>{project.tokenAddress || "No token address"}</span>
+                <span>{project.tokenAddress || "No token address"}</span>                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => copyToClipboard(project.tokenAddress || "No token address")}
+                >
+                  <Copy className="h-4 w-4" />
+                  <span className="sr-only">Copy address</span>
+                </Button>
               </div>
             </div>
           </div>

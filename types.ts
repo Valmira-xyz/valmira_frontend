@@ -230,7 +230,10 @@ export interface ProjectHeaderProps {
 
 // Bot related types
 export type BotType = 'LiquidationSnipeBot' | 'VolumeBot' | 'HolderBot';
-export type BotStatus = 'ready_to_snipe' | 'snipe_succeeded' | 'snipe_failed' | 'auto_sell' | 'sold_all' | 'Inactive';
+export type BotStatus = 'ready_to_simulation' 
+  | "simulating" | "simulation_failed" | "simulation_succeeded" 
+  | "sniping" |  'snipe_succeeded' | 'snipe_failed' 
+  | 'auto_selling' | "selling" | "sell_failed" | "sell_succeeded" | 'Inactive';
 export type Speed = 'slow' | 'medium' | 'fast';
 
 export interface AutoSellConfig {
