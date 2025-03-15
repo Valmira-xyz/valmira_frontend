@@ -853,9 +853,9 @@ export function SimulateAndExecuteDialog({
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid grid-cols-4 items-start gap-4">
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="walletCount" className="text-right">
-                Wallet Count
+                Wallet Count(Maximum is 50)
               </Label>
               <div className="col-span-2 space-y-1">
                 <Input
@@ -881,7 +881,7 @@ export function SimulateAndExecuteDialog({
                   max="50"
                   className="w-full"
                 />
-                <p className="text-xs text-muted-foreground">Maximum 50 wallets allowed for this bot</p>
+              
               </div>
               <Button
                 onClick={handleGenerateWallets}
@@ -897,7 +897,7 @@ export function SimulateAndExecuteDialog({
                 )}
               </Button>
             </div>
-            <div className="grid grid-cols-4 items-start gap-4">
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="snipePercentage" className="text-right">
                 Snipe Amount(% to total supply)
               </Label>
@@ -909,7 +909,7 @@ export function SimulateAndExecuteDialog({
                   onChange={(e) => setSnipePercentage(Number(e.target.value))}
                   className="col-span-3"
                 />
-                <p className="text-xs text-muted-foreground">Total supply is {project.totalSupply || 'not set'}</p>
+                
               </div>
 
               <Button
@@ -970,7 +970,7 @@ export function SimulateAndExecuteDialog({
             </div>
             <div className="flex gap-4 ml-auto text-sm">
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Total Tokens:</span>
+                <span className="text-muted-foreground">Total Tokens to snipe:</span>
                 <span className="font-medium">
                   {wallets
                     .filter(w => w.role !== 'botmain')
