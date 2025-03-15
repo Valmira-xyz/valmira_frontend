@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Edit, Save, Copy, ExternalLink, HelpCircle, RefreshCw } from "lucide-react"
+import { Edit, Save, Copy, ExternalLink, HelpCircle, RefreshCw, Download } from "lucide-react"
 import { formatNumber, getBadgeVariant } from "@/lib/utils"
 import { EditBotDialog } from "@/components/projects/edit-bot-dialog"
 import { Separator } from "@/components/ui/separator"
@@ -20,6 +20,7 @@ import { AppDispatch, RootState } from "@/store/store"
 import { toggleBot, updateBotConfig, BotType } from "@/store/slices/botSlice"
 import { getWalletBalances } from "@/store/slices/walletSlice"
 import { ProjectWithAddons } from "@/types"
+import { walletApi } from "@/services/walletApi"
 
 // Define the Speed type here to avoid conflicts
 type Speed = "slow" | "medium" | "fast"
@@ -205,6 +206,19 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const dispatch = useDispatch<AppDispatch>()
   const botState = useSelector((state: RootState) => state.bots)
   const [isRefreshingBalances, setIsRefreshingBalances] = useState(false)
+  // Get current user from auth state
+  const { user } = useSelector((state: RootState) => state.auth)
+
+  // Check if current user is the project owner
+  const isProjectOwner = useMemo(() => {
+    if (!user || !project || !project.owner) return false;
+    
+    const ownerWalletAddress = typeof project.owner === 'string' 
+      ? project.owner 
+      : project.owner.walletAddress;
+    
+    return user.walletAddress?.toLowerCase() === ownerWalletAddress?.toLowerCase();
+  }, [user, project]);
 
   // Function to refresh wallet balances
   const refreshWalletBalances = useCallback(async () => {
@@ -639,6 +653,54 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                                 <span className="sr-only">View on Explorer</span>
                               </a>
                             </Button>
+                            
+                            {/* Only show download button for project owners */}
+                            {isProjectOwner && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={async () => {
+                                  if (project.addons.LiquidationSnipeBot.depositWalletId) {
+                                    try {
+                                      const publicKey = project.addons.LiquidationSnipeBot.depositWalletId.publicKey;
+                                      const blob = await walletApi.downloadWalletAsCsv(publicKey);
+                                      
+                                      // Create a URL for the blob
+                                      const url = window.URL.createObjectURL(blob);
+                                      
+                                      // Create a temporary link element
+                                      const link = document.createElement("a");
+                                      link.href = url;
+                                      link.setAttribute("download", `wallet-${publicKey}.csv`);
+                                      
+                                      // Append to the document, click it, and remove it
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      
+                                      // Clean up the URL object
+                                      window.URL.revokeObjectURL(url);
+                                      
+                                      toast({
+                                        title: "Success",
+                                        description: "Wallet downloaded successfully",
+                                      });
+                                    } catch (error) {
+                                      console.error("Failed to download wallet:", error);
+                                      toast({
+                                        title: "Download Failed",
+                                        description: "Could not download wallet. Please try again.",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4" />
+                                <span className="sr-only">Download Wallet</span>
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
