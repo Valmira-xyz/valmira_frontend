@@ -37,6 +37,60 @@ export interface BotResponse {
   generatedHolders?: number;
 }
 
+// Add new interfaces for snipe operations
+export interface SnipeSimulationResult {
+  success: boolean;
+  data: {
+    totalBnbNeeded: number;
+    depositWalletRequirements: {
+      currentBnb: number;
+      currentToken: number;
+      bnbNeeded: number;
+      bnbForLiquidity?: number;
+      bnbForTip: number;
+      bnbForDistribution: number;
+      tokenAmountRequired: number;
+      gasCost: number;
+    };
+    subWalletRequirements: {
+      address: string;
+      bnbBalance: number;
+      tokenAmount: number;
+      bnbToSpend: number;
+      bnbNeeded: number;
+    }[];
+    estimatedGasCosts: {
+      tipTransactionGas: number;
+      addLiquidityGas?: number;
+      openTradingGas?: number;
+      snipeGas: number;
+      distributionGas: number;
+    };
+    poolSimulation: {
+      initialReserves: {
+        bnb: number;
+        token: number;
+      };
+      finalReserves: {
+        bnb: number;
+        token: number;
+      };
+      priceImpact: number;
+    };
+    gasPrice: number;
+  };
+  error?: string;
+}
+
+export interface ExecuteSnipeResult {
+  success: boolean;
+  data?: {
+    bundleHash?: string;
+    transactions?: string[];
+  };
+  error?: string;
+}
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // Helper function to get auth headers
@@ -126,5 +180,86 @@ export class BotService {
       console.error('Error toggling or creating bot:', error);
       throw error;
     }
+  }
+
+  /**
+   * Estimate fees for sniping operation
+   */
+  static async estimateSnipeFees(params: {
+    projectId: string;
+    botId: string;
+    depositWallet: string;
+    subWallets: string[];
+    tokenAmounts2Buy: number[];
+    tokenAddress: string;
+    addInitialLiquidity: boolean;
+    bnbForLiquidity?: number;
+    tokenAmountForLiquidity?: number;
+  }): Promise<SnipeSimulationResult> {
+    const response = await api.post<SnipeSimulationResult>(
+      `${BACKEND_URL}/snipe/estimateFees`,
+      params,
+      getAuthHeaders()
+    );
+    return response.data;
+  }
+
+  /**
+   * Distribute BNB to sub-wallets
+   */
+  static async distributeBnb(params: {
+    subWallets: string[];
+    amounts: number[];
+  }): Promise<{ success: boolean; message: string }> {
+    const response = await api.post<ApiResponse<{ success: boolean; message: string }>>(
+      `${BACKEND_URL}/snipe/distribute`,
+      params,
+      getAuthHeaders()
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Simulate sniping operation
+   */
+  static async simulateSnipe(params: {
+    projectId: string;
+    botId: string;
+    depositWallet: string;
+    subWallets: string[];
+    tokenAddress: string;
+    snipeAmountPercent: number;
+    addInitialLiquidity: boolean;
+    bnbForLiquidity?: number;
+    tokenAmountForLiquidity?: number;
+  }): Promise<ExecuteSnipeResult> {
+    const response = await api.post<ExecuteSnipeResult>(
+      `${BACKEND_URL}/snipe/simulate`,
+      params,
+      getAuthHeaders()
+    );
+    return response.data;
+  }
+
+  /**
+   * Execute sniping operation
+   */
+  static async executeSnipe(params: {
+    projectId: string;
+    botId: string;
+    depositWallet: string;
+    subWallets: string[];
+    tokenAddress: string;
+    snipeAmountPercent: number;
+    addInitialLiquidity: boolean;
+    bnbForLiquidity?: number;
+    tokenAmountForLiquidity?: number;
+  }): Promise<ExecuteSnipeResult> {
+    const response = await api.post<ExecuteSnipeResult>(
+      `${BACKEND_URL}/snipe/execute`,
+      params,
+      getAuthHeaders()
+    );
+    return response.data;
   }
 } 
