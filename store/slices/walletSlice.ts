@@ -7,7 +7,7 @@ import type {
   WalletsResponse,
   BalancesResponse 
 } from '@/types';
-import { walletApi } from '@/services/api';
+import { walletApi } from '@/services/walletApi';
 import { fetchProject } from './projectSlice';
 import { getWalletBalances as getWeb3WalletBalances } from '@/services/web3Utils';
 import { formatBalance } from '@/services/web3Utils';

@@ -1,4 +1,4 @@
-import api from './api';
+import api from './walletApi';
 import { BotType } from '@/store/slices/botSlice';
 
 // Define API response type

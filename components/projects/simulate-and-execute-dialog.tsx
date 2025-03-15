@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Loader2, Copy, ExternalLink } from "lucide-react"
+import { Loader2, Copy, ExternalLink, Download } from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
 import { generateWallets, getWalletBalances, setAllWalletsBnbToSpend, clearWallets, deleteMultipleWallets } from "@/store/slices/walletSlice"
 import { fetchProject } from "@/store/slices/projectSlice"
 import type { AppDispatch, RootState } from "@/store/store"
 import type { Project, ProjectWithAddons } from "@/types"
 import { BotService } from "@/services/botService"
+import { walletApi } from "@/services/walletApi"
 
 // Define the SubWallet type for the LiquidationSnipeBot addon
 interface SubWallet {
@@ -718,6 +719,50 @@ export function SimulateAndExecuteDialog({
                       <span className="sr-only">View on Explorer</span>
                     </a>
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={async () => {
+                      if (project.addons.LiquidationSnipeBot.depositWalletId) {
+                        try {
+                          const publicKey = project.addons.LiquidationSnipeBot.depositWalletId.publicKey;
+                          const blob = await walletApi.downloadWalletAsCsv(publicKey);
+                          
+                          // Create a URL for the blob
+                          const url = window.URL.createObjectURL(blob);
+                          
+                          // Create a temporary link element
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.setAttribute("download", `wallet-${publicKey}.csv`);
+                          
+                          // Append to the document, click it, and remove it
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          
+                          // Clean up the URL object
+                          window.URL.revokeObjectURL(url);
+                          
+                          toast({
+                            title: "Success",
+                            description: "Wallet downloaded successfully",
+                          });
+                        } catch (error) {
+                          console.error("Failed to download wallet:", error);
+                          toast({
+                            title: "Download Failed",
+                            description: "Could not download wallet. Please try again.",
+                            variant: "destructive",
+                          });
+                        }
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="sr-only">Download Wallet</span>
+                  </Button>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-sm">
@@ -979,6 +1024,7 @@ export function SimulateAndExecuteDialog({
                       </TableHead>
                       <TableHead>Token Amount</TableHead>
                       <TableHead>BNB to Spend</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -989,11 +1035,72 @@ export function SimulateAndExecuteDialog({
                           <TableCell>{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
                           <TableCell>{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
                           <TableCell>{(wallet.bnbToSpend || 0).toFixed(4)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={async () => {
+                                  try {
+                                    const publicKey = wallet.publicKey;
+                                    const blob = await walletApi.downloadWalletAsCsv(publicKey);
+                                    
+                                    // Create a URL for the blob
+                                    const url = window.URL.createObjectURL(blob);
+                                    
+                                    // Create a temporary link element
+                                    const link = document.createElement("a");
+                                    link.href = url;
+                                    link.setAttribute("download", `wallet-${publicKey}.csv`);
+                                    
+                                    // Append to the document, click it, and remove it
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    
+                                    // Clean up the URL object
+                                    window.URL.revokeObjectURL(url);
+                                    
+                                    toast({
+                                      title: "Success",
+                                      description: "Wallet downloaded successfully",
+                                    });
+                                  } catch (error) {
+                                    console.error("Failed to download wallet:", error);
+                                    toast({
+                                      title: "Download Failed",
+                                      description: "Could not download wallet. Please try again.",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4" />
+                                <span className="sr-only">Download Wallet</span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                asChild
+                              >
+                                <a
+                                  href={`https://bscscan.com/address/${wallet.publicKey}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                  <span className="sr-only">View on Explorer</span>
+                                </a>
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center">
+                        <TableCell colSpan={5} className="text-center">
                           <span className="text-sm text-muted-foreground">No wallets found. Generate wallets to start.</span>
                         </TableCell>
                       </TableRow>

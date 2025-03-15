@@ -30,6 +30,22 @@ export const walletApi = {
     config  
   );
     return response.data;
+  },
+  downloadWalletAsCsv: async (publicKey: string): Promise<Blob> => {
+    const config = {
+      ...getAuthHeaders(),
+      responseType: 'blob' as 'blob', // Important for file downloads
+    };
+    const response = await api.get(`/wallets/download/${publicKey}`, config);
+    return response.data as Blob;
+  },
+  downloadAllWalletsAsCsv: async (projectId: string, botId: string): Promise<Blob> => {
+    const config = {
+      ...getAuthHeaders(),
+      responseType: 'blob' as 'blob', // Important for file downloads
+    };
+    const response = await api.get(`/wallets/download-all/${projectId}/${botId}`, config);
+    return response.data as Blob;
   }
 };
 
