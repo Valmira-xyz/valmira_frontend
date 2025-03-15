@@ -727,9 +727,34 @@ export function SimulateAndExecuteDialog({
                     <span className="text-muted-foreground">{project.symbol}: </span>
                     {wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.tokenBalance?.toFixed(0) || '0'}
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      const allAddresses = [
+                        ...(project.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+                        ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+                      ];
+                      fetchBalances(allAddresses);
+                    }}
+                    disabled={isLoadingBalances}
+                  >
+                    {isLoadingBalances ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                        <path d="M21 3v5h-5"></path>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                        <path d="M3 21v-5h5"></path>
+                      </svg>
+                    )}
+                    <span className="sr-only">Refresh Balances</span>
+                  </Button>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-blue-600 mt-2">
                 💡 Please ensure your deposit wallet has enough {project.symbol || "tokens"} for adding initial liquidity and enough BNB to cover: {!project.isImported ? "(1) adding initial liquidity, (2) opening trading, and (3)" : "(1) adding initial liquidity and (2)"} distributing BNB to sub-wallets for sniping. The exact amount needed will be calculated in the simulation.
               </p>
             </div>
@@ -922,7 +947,36 @@ export function SimulateAndExecuteDialog({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Wallet Address</TableHead>
-                      <TableHead>BNB Balance</TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                        <div>BNB Balance</div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            const allAddresses = [
+                              ...(project.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+                              ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+                            ];
+                            fetchBalances(allAddresses);
+                          }}
+                          disabled={isLoadingBalances}
+                        >
+                          {isLoadingBalances ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw">
+                              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                              <path d="M21 3v5h-5"></path>
+                              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                              <path d="M3 21v-5h5"></path>
+                            </svg>
+                          )}
+                          <span className="sr-only">Refresh Balances</span>
+                        </Button>
+                        </div>
+                      </TableHead>
                       <TableHead>Token Amount</TableHead>
                       <TableHead>BNB to Spend</TableHead>
                     </TableRow>
