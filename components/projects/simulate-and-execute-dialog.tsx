@@ -853,7 +853,7 @@ export function SimulateAndExecuteDialog({
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid grid-cols-4 items-start gap-4">
               <Label htmlFor="walletCount" className="text-right">
                 Wallet Count
               </Label>
@@ -890,14 +890,14 @@ export function SimulateAndExecuteDialog({
                 {isGenerating || isProjectLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isProjectLoading ? "Loading Project Data..." : "Creating Wallets..."}
+                    {isProjectLoading ? "Loading ..." : "Applying Wallets..."}
                   </>
                 ) : (
                   hasExistingWallets ? "Apply Counts" : "Create Wallets"
                 )}
               </Button>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid grid-cols-4 items-start gap-4">
               <Label htmlFor="snipePercentage" className="text-right">
                 Snipe Amount(% to total supply)
               </Label>
@@ -1157,7 +1157,7 @@ export function SimulateAndExecuteDialog({
                   <p className={simulationResult.sufficientBalance ? "text-green-500 font-medium" : "text-red-500 font-medium"}>
                     {simulationResult.sufficientBalance
                       ? "✓ Simulation successful. You have sufficient balance."
-                      : `⚠ Insufficient balance. Need ${(simulationResult.totalBnbNeeded - simulationResult.currentBnbBalance).toFixed(4)} more BNB.`}
+                      : `⚠ Insufficient balance. Need ${(simulationResult.totalBnbNeeded - simulationResult.currentBnbBalance).toFixed(4)} more BNB to Deposit Wallet.`}
                   </p>
                 </div>
               </div>
