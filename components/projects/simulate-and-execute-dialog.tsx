@@ -1023,20 +1023,17 @@ export function SimulateAndExecuteDialog({
                       </TableHead>
                       <TableHead>Token Amount</TableHead>
                       <TableHead>BNB to Spend</TableHead>
-                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     { wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length > 0 ? (
                       wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').map((wallet: WalletInfo) => (
                         <TableRow key={wallet.publicKey}>
-                          <TableCell>{`${wallet.publicKey.slice(0, 6)}...${wallet.publicKey.slice(-4)}`}</TableCell>
-                          <TableCell>{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
-                          <TableCell>{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
-                          <TableCell>{(wallet.bnbToSpend || 0).toFixed(4)}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button
+                            
+                          <div className="flex items-center gap-2">
+                            <div>{`${wallet.publicKey.slice(0, 6)}...${wallet.publicKey.slice(-4)}`}</div>                            
+                              {/* <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
@@ -1077,7 +1074,7 @@ export function SimulateAndExecuteDialog({
                               >
                                 <Download className="h-4 w-4" />
                                 <span className="sr-only">Download Wallet</span>
-                              </Button>
+                              </Button> */}
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1094,7 +1091,10 @@ export function SimulateAndExecuteDialog({
                                 </a>
                               </Button>
                             </div>
-                          </TableCell>
+                            </TableCell>
+                          <TableCell>{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
+                          <TableCell>{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
+                          <TableCell>{(wallet.bnbToSpend || 0).toFixed(4)}</TableCell>
                         </TableRow>
                       ))
                     ) : (
