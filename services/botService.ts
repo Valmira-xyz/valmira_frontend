@@ -5,7 +5,7 @@ import { BotType } from '@/store/slices/botSlice';
 interface ApiResponse<T> {
   status: string;
   message: string;
-  data: T;
+  data?: T;
 }
 
 export interface BotResponse {
@@ -111,6 +111,9 @@ export class BotService {
       { enabled },
       getAuthHeaders()
     );
+    if (!response.data.data) {
+      throw new Error('No data returned from toggle bot API');
+    }
     return response.data.data;
   }
 
@@ -122,6 +125,9 @@ export class BotService {
       `${BACKEND_URL}/bots/${botId}`,
       getAuthHeaders()
     );
+    if (!response.data.data) {
+      throw new Error('No data returned from get bot API');
+    }
     return response.data.data;
   }
 
@@ -133,6 +139,9 @@ export class BotService {
       `${BACKEND_URL}/bots/project/${projectId}`,
       getAuthHeaders()
     );
+    if (!response.data.data) {
+      return [];
+    }
     return response.data.data;
   }
 
@@ -148,6 +157,9 @@ export class BotService {
       {},
       getAuthHeaders()
     );
+    if (!response.data.data) {
+      throw new Error('No data returned from enable addon bot API');
+    }
     return response.data.data;
   }
 
@@ -217,12 +229,12 @@ export class BotService {
     subWallets: string[];
     amounts: number[];
   }): Promise<{ success: boolean; message: string }> {
-    const response = await api.post<ApiResponse<{ success: boolean; message: string }>>(
+    const response = await api.post<{ success: boolean; message: string }>(
       `${BACKEND_URL}/snipe/distribute`,
       params,
       getAuthHeaders()
     );
-    return response.data.data;
+    return response.data;
   }
 
   /**

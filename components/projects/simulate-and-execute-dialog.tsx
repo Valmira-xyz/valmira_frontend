@@ -126,6 +126,7 @@ export function SimulateAndExecuteDialog({
   const lastBalanceUpdateRef = useRef<number>(0)
   const MIN_BALANCE_UPDATE_INTERVAL = 5000 // Minimum 5 seconds between balance updates
   const [isEstimatingFees, setIsEstimatingFees] = useState(false)
+  const [isDistributingBNBs, setIsDistributingBNBs] = useState(false)
   const [isSimulating, setIsSimulating] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
   const [estimationResult, setEstimationResult] = useState<any>(null)
@@ -414,13 +415,13 @@ export function SimulateAndExecuteDialog({
         return;
       }
 
-      setIsEstimatingFees(true);
+      setIsDistributingBNBs(true);
       const result = await BotService.distributeBnb({
         depositWallet: depositWallet.publicKey,
         subWallets: subWalletAddresses,
         amounts,
       });
-      setIsEstimatingFees(false);
+      setIsDistributingBNBs(false);
 
       if (result.success) {
         setIsBnbDistributed(true);
@@ -1103,9 +1104,18 @@ export function SimulateAndExecuteDialog({
 
               <Button
                 onClick={handleDistributeBnb}
-                disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isBnbDistributed || isProjectLoading}
+                disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isDistributingBNBs || isBnbDistributed || isProjectLoading}
               >
-                Distribute BNB
+                {
+                  isDistributingBNBs ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Distributing...
+                    </>
+                  ) : (
+                    "Distribute BNB"
+                  )
+                }
               </Button>
             </div>
             <div className="flex gap-4 ml-auto text-sm">
