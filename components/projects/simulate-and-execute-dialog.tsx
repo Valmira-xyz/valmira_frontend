@@ -1423,85 +1423,87 @@ export function SimulateAndExecuteDialog({
             </div>
             <div>
               {(wallets.length > 0 || isProjectLoading) && (
-                <div className="max-h-[200px] overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Wallet Address</TableHead>
-                        <TableHead>
-                          <div className="flex items-center gap-2">
-                            <div>BNB Balance</div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => {
-                                const allAddresses = [
-                                  ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
-                                  ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
-                                ];
-                                fetchBalances(allAddresses);
-                              }}
-                              disabled={isLoadingBalances}
-                            >
-                              {isLoadingBalances ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw">
-                                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-                                  <path d="M21 3v5h-5"></path>
-                                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-                                  <path d="M3 21v-5h5"></path>
-                                </svg>
-                              )}
-                              <span className="sr-only">Refresh Balances</span>
-                            </Button>
-                          </div>
-                        </TableHead>
-                        <TableHead>Token Amount</TableHead>
-                        <TableHead>BNB to add</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length > 0 ? (
-                        wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').map((wallet: WalletInfo) => (
-                          <TableRow key={wallet.publicKey}>
-                            <TableCell>
-
-                              <div className="flex items-center gap-2">
-                                <div>{`${wallet.publicKey.slice(0, 6)}...${wallet.publicKey.slice(-4)}`}</div>
-
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  asChild
-                                >
-                                  <a
-                                    href={`https://bscscan.com/address/${wallet.publicKey}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                    <span className="sr-only">View on Explorer</span>
-                                  </a>
-                                </Button>
-                              </div>
-                            </TableCell>
-                            <TableCell>{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
-                            <TableCell>{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
-                            <TableCell>{(wallet.bnbToSpend || 0).toFixed(4)}</TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
+                <div className="relative border rounded-md mt-4">
+                  <div className="max-h-[200px] overflow-y-auto">
+                    <Table className="w-full table-fixed">
+                      <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center">
-                            <span className="text-sm text-muted-foreground">No wallets found. Generate wallets to start.</span>
-                          </TableCell>
+                          <TableHead className="bg-muted/50 font-medium w-[40%]">Wallet Address</TableHead>
+                          <TableHead className="bg-muted/50 font-medium w-[20%]">
+                            <div className="flex items-center gap-2">
+                              <div>BNB Balance</div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  const allAddresses = [
+                                    ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+                                    ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+                                  ];
+                                  fetchBalances(allAddresses);
+                                }}
+                                disabled={isLoadingBalances}
+                              >
+                                {isLoadingBalances ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw">
+                                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                                    <path d="M21 3v5h-5"></path>
+                                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                                    <path d="M3 21v-5h5"></path>
+                                  </svg>
+                                )}
+                                <span className="sr-only">Refresh Balances</span>
+                              </Button>
+                            </div>
+                          </TableHead>
+                          <TableHead className="bg-muted/50 font-medium w-[20%]">Token Amount</TableHead>
+                          <TableHead className="bg-muted/50 font-medium w-[20%]">BNB to add</TableHead>
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length > 0 ? (
+                          wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').map((wallet: WalletInfo) => (
+                            <TableRow key={wallet.publicKey}>
+                              <TableCell>
+
+                                <div className="flex items-center gap-2">
+                                  <div>{`${wallet.publicKey.slice(0, 6)}...${wallet.publicKey.slice(-4)}`}</div>
+
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    asChild
+                                  >
+                                    <a
+                                      href={`https://bscscan.com/address/${wallet.publicKey}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                      <span className="sr-only">View on Explorer</span>
+                                    </a>
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
+                              <TableCell>{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
+                              <TableCell>{(wallet.bnbToSpend || 0).toFixed(4)}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center">
+                              <span className="text-sm text-muted-foreground">No wallets found. Generate wallets to start.</span>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
             </div>
