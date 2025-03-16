@@ -3,6 +3,36 @@ import MemeTemplateJson from '@/lib/deploy-token/abi/MemeTemplate.json';
 
 const ERC20_ABI = MemeTemplateJson.abi;
 
+// PancakeSwap V2 Router ABI (minimal)
+const ROUTER_ABI = [
+  "function factory() external pure returns (address)",
+  "function WETH() external pure returns (address)"
+];
+
+// PancakeSwap V2 Factory ABI (minimal)
+const FACTORY_ABI = [
+  "function getPair(address tokenA, address tokenB) external view returns (address pair)"
+];
+
+// PancakeSwap V2 Pair ABI (minimal)
+const PAIR_ABI = [
+  "function token0() external view returns (address)",
+  "function token1() external view returns (address)",
+  "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)"
+];
+
+// PancakeSwap V2 addresses
+const PANCAKESWAP_ADDRESSES = {
+  mainnet: {
+    router: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
+    factory: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
+  },
+  testnet: {
+    router: '0xD99D1c33F9fC3444f8101754aBC46c52416550D1',
+    factory: '0x6725F303b657a9451d8BA641348b6761A6CC7a17',
+  }
+};
+
 // Network type definition
 type Network = 'mainnet' | 'testnet';
 
@@ -35,6 +65,13 @@ interface WalletBalance {
   address: string;
   bnbBalance: number;
   tokenAmount: number;
+}
+
+interface PoolInfo {
+  bnbReserve: number;
+  tokenReserve: number;
+  tokenAddress: string;
+  bnbAddress: string;
 }
 
 /**
@@ -140,5 +177,93 @@ export async function getTokenOwner(tokenAddress: string): Promise<string> {
 export async function isTokenTradingEnabled(tokenAddress: string): Promise<boolean> {
   const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
   return await tokenContract.swapEnabled();
+}
+
+/**
+ * Gets the current pool reserves for a token/BNB pair
+ * @param tokenAddress The token contract address
+ * @returns Pool information including reserves
+ */
+export async function getPoolInfo(tokenAddress: string): Promise<PoolInfo | null> {
+  try {
+    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
+    const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+    
+    const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
+    const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
+    
+    // Get WBNB address
+    const wbnbAddress = await router.WETH();
+    
+    // Get pair address
+    const pairAddress = await factory.getPair(tokenAddress, wbnbAddress);
+    
+    // If pair doesn't exist, return null
+    if (pairAddress === ethers.ZeroAddress) {
+      return null;
+    }
+    
+    const pair = new ethers.Contract(pairAddress, PAIR_ABI, provider);
+    const [token0, token1] = await Promise.all([
+      pair.token0(),
+      pair.token1()
+    ]);
+    
+    // Get reserves
+    const [reserve0, reserve1] = await pair.getReserves();
+    
+    // Determine which token is which in the pair
+    const [bnbReserve, tokenReserve] = token0.toLowerCase() === wbnbAddress.toLowerCase()
+      ? [reserve0, reserve1]
+      : [reserve1, reserve0];
+    
+    return {
+      bnbReserve: Number(ethers.formatEther(bnbReserve)),
+      tokenReserve: Number(ethers.formatUnits(tokenReserve, await getTokenDecimals(tokenAddress))),
+      tokenAddress,
+      bnbAddress: wbnbAddress
+    };
+  } catch (error) {
+    console.error('Failed to get pool info:', error);
+    return null;
+  }
+}
+
+/**
+ * Calculates the snipe amount based on pool liquidity
+ * @param tokenAddress The token contract address
+ * @param percentageToSnipe Percentage of pool tokens to snipe
+ * @param addingLiquidity Whether initial liquidity will be added
+ * @param addingTokenAmount Token amount to be added as liquidity (if adding liquidity)
+ * @returns Calculated token amount to snipe
+ */
+export async function calculateSnipeAmount(
+  tokenAddress: string,
+  percentageToSnipe: number,
+  addingLiquidity: boolean = false,
+  addingTokenAmount: number = 0
+): Promise<number> {
+  try {
+    const poolInfo = await getPoolInfo(tokenAddress);
+    
+    if (!poolInfo && !addingLiquidity) {
+      throw new Error('No liquidity pool exists and no initial liquidity is being added');
+    }
+    
+    // Calculate based on current pool + adding liquidity (if applicable)
+    const totalTokensInPool = (poolInfo?.tokenReserve || 0) + (addingLiquidity ? addingTokenAmount : 0);
+    
+    if (totalTokensInPool === 0) {
+      throw new Error('No tokens in pool to calculate snipe amount');
+    }
+    
+    // Calculate snipe amount based on percentage
+    const snipeAmount = totalTokensInPool * (percentageToSnipe / 100);
+    
+    return snipeAmount;
+  } catch (error) {
+    console.error('Failed to calculate snipe amount:', error);
+    throw error;
+  }
 }
 

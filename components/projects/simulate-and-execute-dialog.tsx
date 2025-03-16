@@ -17,7 +17,7 @@ import { walletApi } from "@/services/walletApi"
 import { ethers } from "ethers"
 import { useEthersSigner } from "@/lib/ether-adapter"
 import { useChainId } from "wagmi"
-import { getTokenOwner, isTokenTradingEnabled } from "@/services/web3Utils"
+import { getTokenOwner, isTokenTradingEnabled, calculateSnipeAmount as calculatePoolSnipeAmount } from "@/services/web3Utils"
 
 // Define the SubWallet type for the LiquidationSnipeBot addon
 interface SubWallet {
@@ -747,6 +747,20 @@ export function SimulateAndExecuteDialog({
   // Check if we have existing wallets from the project addons
   const hasExistingWallets = Boolean(project?.addons?.LiquidationSnipeBot?.subWalletIds?.length)
 
+  const calculateSnipeAmount = async (
+    tokenAddress: string,
+    snipePercentage: number,
+    addInitialLiquidity: boolean,
+    liquidityTokenAmount: number
+  ): Promise<number> => {
+    return calculatePoolSnipeAmount(
+      tokenAddress,
+      snipePercentage,
+      addInitialLiquidity,
+      liquidityTokenAmount
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
@@ -1007,7 +1021,7 @@ export function SimulateAndExecuteDialog({
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="snipePercentage" className="text-right">
-                Snipe Amount(% to total supply)
+                Snipe Amount(% to tokens in pool)
               </Label>
               <div className="col-span-2 space-y-1">
                 <Input
@@ -1022,29 +1036,46 @@ export function SimulateAndExecuteDialog({
 
               <Button
                 onClick={() => {
-                  // Assign token amounts to wallets with ±15% random variation
-                  const totalSupply = Number(project?.totalSupply || 0);
-                  const totalSnipeAmount = totalSupply * (snipePercentage / 100);
-                  const baseAmountPerWallet = totalSnipeAmount / walletCount;
+                  // Calculate snipe amounts based on pool liquidity
+                  calculateSnipeAmount(
+                    project.tokenAddress,
+                    snipePercentage,
+                    doAddLiquidity,
+                    doAddLiquidity ? liquidityTokenAmount : 0
+                  ).then(totalSnipeAmount => {
+                    // Calculate amounts with random variation for each wallet
+                    const baseAmountPerWallet = totalSnipeAmount / walletCount;
 
-                  // Calculate amounts with random variation for each wallet
-                  setWallets(prevWallets =>
-                    prevWallets.map(wallet => {
-                      if (wallet.role === 'botmain') return { ...wallet, tokenAmount: 0 };
+                    // Update wallets with new amounts
+                    setWallets(prevWallets =>
+                      prevWallets.map(wallet => {
+                        if (wallet.role === 'botmain') return { ...wallet, tokenAmount: 0 };
 
-                      // Generate random variation between -15% to +15%
-                      const variation = (Math.random() * 0.3) - 0.15; // -0.15 to +0.15
-                      const variationMultiplier = 1 + variation;
-                      const adjustedAmount = baseAmountPerWallet * variationMultiplier;
+                        // Generate random variation between -15% to +15%
+                        const variation = (Math.random() * 0.3) - 0.15; // -0.15 to +0.15
+                        const variationMultiplier = 1 + variation;
+                        const adjustedAmount = baseAmountPerWallet * variationMultiplier;
 
-                      return {
-                        ...wallet,
-                        tokenAmount: Math.floor(adjustedAmount) // Round down to ensure integer amounts
-                      };
-                    })
-                  );
-                  // Reset BNB distribution state when token amounts are reassigned
-                  setIsBnbDistributed(false);
+                        return {
+                          ...wallet,
+                          tokenAmount: Math.floor(adjustedAmount) // Round down to ensure integer amounts
+                        };
+                      })
+                    );
+                    // Reset BNB distribution state when token amounts are reassigned
+                    setIsBnbDistributed(false);
+
+                    toast({
+                      title: "Success",
+                      description: "Snipe amounts calculated based on pool liquidity",
+                    });
+                  }).catch(error => {
+                    toast({
+                      title: "Error",
+                      description: error.message || "Failed to calculate snipe amounts",
+                      variant: "destructive",
+                    });
+                  });
                 }}
                 disabled={!wallets.length || isProjectLoading}
               >
@@ -1270,13 +1301,14 @@ export function SimulateAndExecuteDialog({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No simulation results yet. Click "Simulate" to see results.</p>
+              <p className="text-muted-foreground text-center">Run simulation to see results</p>
             )}
           </div>
-          <div className="flex justify-end items-center gap-2">
+
+          <div className="flex justify-end gap-4">
             <Button
               onClick={handleSimulate}
-              disabled={isSimulating || isProjectLoading || !estimationResult}
+              disabled={isSimulating || !simulationResult || isExecuting}
             >
               {isSimulating ? (
                 <>
@@ -1284,13 +1316,17 @@ export function SimulateAndExecuteDialog({
                   Simulating...
                 </>
               ) : (
-                "Simulate Snipe"
+                "Simulate"
               )}
             </Button>
             <Button
               onClick={handleExecute}
-              disabled={isExecuting || !simulationResult || !simulationResult.sufficientBalance || isProjectLoading}
-              className="min-w-[100px]"
+              disabled={
+                isExecuting ||
+                !simulationResult ||
+                !simulationResult.sufficientBalance ||
+                isSimulating
+              }
             >
               {isExecuting ? (
                 <>
@@ -1305,6 +1341,5 @@ export function SimulateAndExecuteDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-
