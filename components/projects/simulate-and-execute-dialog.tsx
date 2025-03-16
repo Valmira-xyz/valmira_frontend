@@ -835,8 +835,8 @@ export function SimulateAndExecuteDialog({
           <DialogTitle>Add Liquidity(optional) & Simulate & Execute Sniping</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col space-y-3">
-          
-        <div className="flex items-center gap-2 mb-2">
+
+          <div className="flex items-center gap-2 mb-2">
             <input
               type="checkbox"
               id="doAddLiquidity"
@@ -849,22 +849,84 @@ export function SimulateAndExecuteDialog({
             </Label>
           </div>
           {doAddLiquidity && (
-          <div className="border rounded-lg p-3">
-            {/* Connected Wallet and Pool Information in a compact row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-              {/* Connected Wallet Balance */}
-              {address && (
+            <div className="border rounded-lg p-3">
+              {/* Connected Wallet and Pool Information in a compact row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                {/* Connected Wallet Balance */}
+                {address && (
+                  <div className="p-2 bg-muted/10 rounded-md">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">Connected Wallet</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={fetchConnectedWalletBalance}
+                        disabled={isLoadingConnectedWalletBalance}
+                        className="h-6 px-2"
+                      >
+                        {isLoadingConnectedWalletBalance ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M3 21v-5h5"></path>
+                          </svg>
+                        )}
+                        <span className="text-xs">Refresh</span>
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground">BNB Balance:</span>
+                        <span className="font-medium">{connectedWalletBalance.bnb.toFixed(4)} BNB</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground">Token Balance:</span>
+                        <span className="font-medium">{connectedWalletBalance.token.toLocaleString()} {project?.symbol}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-muted-foreground">Address:</span>
+                      <code className="text-xs font-mono bg-muted/20 px-1 py-0.5 rounded">
+                        {address.slice(0, 6)}...{address.slice(-4)}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => copyToClipboard(address)}
+                      >
+                        <Copy className="h-3 w-3" />
+                        <span className="sr-only">Copy address</span>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-5 w-5" asChild>
+                        <a
+                          href={`https://bscscan.com/address/${address}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          <span className="sr-only">View on Explorer</span>
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pool Information */}
                 <div className="p-2 bg-muted/10 rounded-md">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium">Connected Wallet</span>
+                    <span className="text-sm font-medium">Pool Information</span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={fetchConnectedWalletBalance}
-                      disabled={isLoadingConnectedWalletBalance}
+                      onClick={fetchPoolInfo}
+                      disabled={isLoadingPoolInfo}
                       className="h-6 px-2"
                     >
-                      {isLoadingConnectedWalletBalance ? (
+                      {isLoadingPoolInfo ? (
                         <Loader2 className="h-3 w-3 animate-spin mr-1" />
                       ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
@@ -877,97 +939,35 @@ export function SimulateAndExecuteDialog({
                       <span className="text-xs">Refresh</span>
                     </Button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">BNB Balance:</span>
-                      <span className="font-medium">{connectedWalletBalance.bnb.toFixed(4)} BNB</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">Token Balance:</span>
-                      <span className="font-medium">{connectedWalletBalance.token.toLocaleString()} {project?.symbol}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-muted-foreground">Address:</span>
-                    <code className="text-xs font-mono bg-muted/20 px-1 py-0.5 rounded">
-                      {address.slice(0, 6)}...{address.slice(-4)}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5"
-                      onClick={() => copyToClipboard(address)}
-                    >
-                      <Copy className="h-3 w-3" />
-                      <span className="sr-only">Copy address</span>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-5 w-5" asChild>
-                      <a
-                        href={`https://bscscan.com/address/${address}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        <span className="sr-only">View on Explorer</span>
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Pool Information */}
-              <div className="p-2 bg-muted/10 rounded-md">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium">Pool Information</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={fetchPoolInfo}
-                    disabled={isLoadingPoolInfo}
-                    className="h-6 px-2"
-                  >
-                    {isLoadingPoolInfo ? (
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-                        <path d="M21 3v5h-5"></path>
-                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-                        <path d="M3 21v-5h5"></path>
-                      </svg>
-                    )}
-                    <span className="text-xs">Refresh</span>
-                  </Button>
-                </div>
-                {poolInfo ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">BNB in Pool:</span>
-                      <span className="font-medium">{poolInfo?.bnbReserve?.toFixed(4)} BNB</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">Tokens in Pool:</span>
-                      <span className="font-medium">{poolInfo?.tokenReserve?.toLocaleString()} {project?.symbol}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-1">
-                    {isLoadingPoolInfo ? (
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
-                        <span className="text-sm">Loading...</span>
+                  {poolInfo ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground">BNB in Pool:</span>
+                        <span className="font-medium">{poolInfo?.bnbReserve?.toFixed(4)} BNB</span>
                       </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground block">
-                        {project?.tokenAddress ? "No liquidity pool found. You may need to add initial liquidity." : "Connect a token to view pool information."}
-                      </span>
-                    )}
-                  </div>
-                )}
+                      <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground">Tokens in Pool:</span>
+                        <span className="font-medium">{poolInfo?.tokenReserve?.toLocaleString()} {project?.symbol}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-1">
+                      {isLoadingPoolInfo ? (
+                        <div className="flex items-center justify-center">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                          <span className="text-sm">Loading...</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground block">
+                          {project?.tokenAddress ? "No liquidity pool found. You may need to add initial liquidity." : "Connect a token to view pool information."}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="border-t pt-2 mt-2">
+              <div className="border-t pt-2 mt-2">
 
 
                 <div className="grid md:grid-cols-3 gap-4 bg-muted/10 p-2 rounded-md">
@@ -1127,9 +1127,9 @@ export function SimulateAndExecuteDialog({
                     </p>
                   </div>
                 </div>
-              
+
+              </div>
             </div>
-          </div>
           )}
           <div className="border rounded-lg p-3">
             <Label className="text-base font-medium mb-2 block">Sniping Settings</Label>
@@ -1331,9 +1331,36 @@ export function SimulateAndExecuteDialog({
                         <span className="sr-only">Download Wallet</span>
                       </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      BNB Balance: <span className="font-medium text-black"> {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}</span>
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        BNB Balance: <span className="font-medium text-black"> {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}</span>
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          const allAddresses = [
+                            ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+                            ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+                          ];
+                          fetchBalances(allAddresses);
+                        }}
+                        disabled={isLoadingBalances}
+                      >
+                        {isLoadingBalances ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M3 21v-5h5"></path>
+                          </svg>
+                        )}
+                        <span className="sr-only">Refresh Balances</span>
+                      </Button>
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">BNB to be added for Sniping:</span>
                       <span className="font-medium">
@@ -1490,7 +1517,7 @@ export function SimulateAndExecuteDialog({
                   <p>BNB for Adding Liquidity: {simulationResult.addLiquidityBnb.toFixed(4)} BNB</p>
                   <p>BNB for Sniping: {simulationResult.snipingBnb.toFixed(4)} BNB</p>
                   {simulationResult.tipBnb !== undefined && (
-                    <p>BNB for Tip: {simulationResult.tipBnb.toFixed(4)} BNB</p>
+                    <p>BNB for Bundle Tip: {simulationResult.tipBnb.toFixed(4)} BNB</p>
                   )}
                   {simulationResult.gasCost !== undefined && (
                     <p>Gas Cost: {simulationResult.gasCost.toFixed(6)} BNB</p>
