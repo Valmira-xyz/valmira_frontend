@@ -245,8 +245,8 @@ export class BotService {
     botId: string;
     depositWallet: string;
     subWallets: string[];
+    tokenAmounts2Buy: number[];
     tokenAddress: string;
-    snipeAmountPercent: number;
     addInitialLiquidity: boolean;
     bnbForLiquidity?: number;
     tokenAmountForLiquidity?: number;
@@ -267,8 +267,8 @@ export class BotService {
     botId: string;
     depositWallet: string;
     subWallets: string[];
+    tokenAmounts2Buy: number[];
     tokenAddress: string;
-    snipeAmountPercent: number;
     addInitialLiquidity: boolean;
     bnbForLiquidity?: number;
     tokenAmountForLiquidity?: number;
