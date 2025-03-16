@@ -24,7 +24,8 @@ export default function ProjectDetailPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   
   const projectId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : ''
-  const { currentProject: project, loading: isLoading, error } = useSelector((state: RootState) => state.projects)
+  const { projects, loading: isLoading, error } = useSelector((state: RootState) => state.projects)
+  const project = projects.find((project) => project._id?.toString() === projectId)
 
   // Combined authentication check and data fetching
   useEffect(() => {
@@ -71,10 +72,13 @@ export default function ProjectDetailPage() {
     )
   }
 
+  // Safely cast project to ProjectWithAddons or use default values
+  const projectWithAddons = project as unknown as ProjectWithAddons | undefined
+
   const metricsProject = {
-    cumulativeProfit: (project as ProjectWithAddons)?.metrics?.cumulativeProfit || 0,
-    tradingVolume24h: (project as ProjectWithAddons)?.metrics?.volume24h || 0,
-    activeBots: (project as ProjectWithAddons)?.metrics?.activeBots || 0,
+    cumulativeProfit: projectWithAddons?.metrics?.cumulativeProfit || 0,
+    tradingVolume24h: projectWithAddons?.metrics?.volume24h || 0,
+    activeBots: projectWithAddons?.metrics?.activeBots || 0,
     liquidity: 0
   }
 
@@ -87,12 +91,12 @@ export default function ProjectDetailPage() {
         />
       </PageHeader>
       <ProjectHeader 
-        project={project as ProjectWithAddons} 
-        walletAddress={(project as ProjectWithAddons)?.tokenAddress} 
+        project={projectWithAddons} 
+        walletAddress={projectWithAddons?.tokenAddress} 
       />
       <ProjectMetrics project={metricsProject} />
       <ProjectAnalytics project={project} />
-      <ProjectAddOns project={project as any} />
+      <ProjectAddOns project={projectWithAddons} />
       <ProjectDangerZone projectName={project?.name || ''} projectId={projectId} />
     </div>
   )
