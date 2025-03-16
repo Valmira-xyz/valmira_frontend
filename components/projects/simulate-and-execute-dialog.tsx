@@ -846,7 +846,7 @@ export function SimulateAndExecuteDialog({
                     <span className="text-muted-foreground">BNB: </span>
                     {wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}
                     <span className="mx-2 text-muted-foreground">|</span>
-                    <span className="text-muted-foreground">{project.symbol}: </span>
+                    <span className="text-muted-foreground">{project?.symbol || project.name}: </span>
                     {wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.tokenBalance?.toFixed(0) || '0'}
                   </div>
                   <Button

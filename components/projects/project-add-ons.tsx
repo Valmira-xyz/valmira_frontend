@@ -19,7 +19,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/store/store"
 import { toggleBot, updateBotConfig, BotType } from "@/store/slices/botSlice"
 import { getWalletBalances } from "@/store/slices/walletSlice"
-import { ProjectWithAddons } from "@/types"
+import { ProjectWithAddons, WalletBalance } from "@/types"
 import { walletApi } from "@/services/walletApi"
 
 // Define the Speed type here to avoid conflicts
@@ -249,21 +249,49 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         walletAddresses: depositWallets 
       })).unwrap();
 
+      console.debug("balances", balances)
+
+      // Create a mapping of wallet addresses to their balances for easier lookup
+      const balanceMap = balances.reduce((map, balance) => {
+        map[balance.address.toLowerCase()] = balance;
+        return map;
+      }, {} as Record<string, WalletBalance>);
+
       setAddOns(prevAddOns => {
         return prevAddOns.map(addon => {
-          const depositWallet = addon.depositWallet;
-          const balance = balances.find(b => b.address === depositWallet);
-          if (balance) {
-            return {
-              ...addon,
-              balances: {
-                ...addon.balances,
-                native: balance.bnbBalance,
-                token: balance.tokenAmount
-              }
-            };
+          // Get the current deposit wallet address from project data to ensure it's up-to-date
+          let currentDepositWallet = "";
+          
+          if (addon.botType === "LiquidationSnipeBot" && project.addons.LiquidationSnipeBot?.depositWalletId?.publicKey) {
+            currentDepositWallet = project.addons.LiquidationSnipeBot.depositWalletId.publicKey;
+          } else if (addon.botType === "VolumeBot" && project.addons.VolumeBot?.depositWalletId?.publicKey) {
+            currentDepositWallet = project.addons.VolumeBot.depositWalletId.publicKey;
+          } else if (addon.botType === "HolderBot" && project.addons.HolderBot?.depositWalletId?.publicKey) {
+            currentDepositWallet = project.addons.HolderBot.depositWalletId.publicKey;
           }
-          return addon;
+          
+          // Update the addon's depositWallet to ensure it's current
+          const updatedAddon = {
+            ...addon,
+            depositWallet: currentDepositWallet
+          };
+          
+          // Look up the balance using the current deposit wallet address
+          if (currentDepositWallet) {
+            const balance = balanceMap[currentDepositWallet.toLowerCase()];
+            if (balance) {
+              return {
+                ...updatedAddon,
+                balances: {
+                  ...updatedAddon.balances,
+                  native: balance.bnbBalance,
+                  token: balance.tokenAmount
+                }
+              };
+            }
+          }
+          
+          return updatedAddon;
         });
       });
 
@@ -723,12 +751,12 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     <div className="grid grid-cols-1 gap-4">
                       <div>
                         <Label>BNB Balance</Label>
-                        <p className="text-xl font-bold">{addon.balances.native} BNB</p>
+                        <p className="text-xl font-bold">{typeof addon.balances.native === 'number' ? addon.balances.native.toFixed(2) : '0'} BNB</p>
                       </div>
                       {addon.botType === "LiquidationSnipeBot" && addon.balances.token !== undefined && (
                         <div>
                           <Label>Token Balance</Label>
-                          <p className="text-xl font-bold">{formatNumber(addon.balances.token)} {project?.symbol || project.name}</p>
+                          <p className="text-xl font-bold">{typeof addon.balances.token === 'number' ? addon.balances.token : '0'} {project?.symbol || project.name}</p>
                         </div>
                       )}
                       {addon.botType === "VolumeBot" && addon.generatedVolume !== undefined && (

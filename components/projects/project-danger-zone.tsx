@@ -41,8 +41,6 @@ export function ProjectDangerZone({ projectName, projectId }: ProjectDangerZoneP
   useEffect(() => {
     const isTokenNameValid = tokenNameInput === projectName
     const isPhraseValid = confirmationPhrase === "I understand the consequences"
-    console.log("isTokenNameValid", isTokenNameValid)
-    console.log("isPhraseValid", isPhraseValid)
     setIsValid(isTokenNameValid && isPhraseValid)
   }, [tokenNameInput, confirmationPhrase, projectName])
 
