@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Trash2, AlertTriangle } from "lucide-react"
+import { useDispatch } from "react-redux"
+import { deleteProject } from "@/store/slices/projectSlice"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
 
 interface ProjectDangerZoneProps {
   projectName: string
@@ -28,30 +32,52 @@ export function ProjectDangerZone({ projectName, projectId }: ProjectDangerZoneP
   const [tokenNameInput, setTokenNameInput] = useState("")
   const [confirmationPhrase, setConfirmationPhrase] = useState("")
   const [isValid, setIsValid] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const dispatch = useDispatch()
+  const router = useRouter()
+  const { toast } = useToast()
 
-  const handleInputChange = () => {
-    // Check if both inputs match the required values
+  // Use useEffect to validate inputs whenever they change
+  useEffect(() => {
     const isTokenNameValid = tokenNameInput === projectName
     const isPhraseValid = confirmationPhrase === "I understand the consequences"
+    console.log("isTokenNameValid", isTokenNameValid)
+    console.log("isPhraseValid", isPhraseValid)
     setIsValid(isTokenNameValid && isPhraseValid)
-  }
+  }, [tokenNameInput, confirmationPhrase, projectName])
 
   const handleTokenNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTokenNameInput(e.target.value)
-    handleInputChange()
   }
 
   const handlePhraseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setConfirmationPhrase(e.target.value)
-    handleInputChange()
   }
 
-  const handleDestroyProject = () => {
-    console.log(`Project ${projectId} (${projectName}) destroyed`)
-    // Reset form
-    setTokenNameInput("")
-    setConfirmationPhrase("")
-    setIsValid(false)
+  const handleDestroyProject = async () => {
+    try {
+      setIsDeleting(true)
+      await dispatch(deleteProject(projectId) as any)
+      toast({
+        title: "Project Deleted",
+        description: "Project has been successfully deleted."
+      })
+      // Navigate back to projects list
+      router.push("/projects")
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete project. Please try again.",
+        variant: "destructive"
+      })
+      console.error("Error deleting project:", error)
+    } finally {
+      // Reset form
+      setTokenNameInput("")
+      setConfirmationPhrase("")
+      setIsValid(false)
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -109,10 +135,20 @@ export function ProjectDangerZone({ projectName, projectId }: ProjectDangerZoneP
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDestroyProject}
-                disabled={!isValid}
+                disabled={!isValid || isDeleting}
                 className="bg-destructive hover:bg-destructive/90"
               >
-                Yes, destroy project
+                {isDeleting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  "Yes, destroy project"
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
