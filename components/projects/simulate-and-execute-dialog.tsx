@@ -1109,7 +1109,7 @@ export function SimulateAndExecuteDialog({
             </div>
             <div className="flex gap-4 ml-auto text-sm">
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Total Tokens to snipe:</span>
+                <span className="text-muted-foreground">Tokens will be sniped:</span>
                 <span className="font-medium">
                   {wallets
                     .filter(w => w.role !== 'botmain')
@@ -1118,7 +1118,7 @@ export function SimulateAndExecuteDialog({
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Total BNB to spend:</span>
+                <span className="text-muted-foreground">BNB will be spend for sniping:</span>
                 <span className="font-medium">
                   {wallets
                     .filter(w => w.role !== 'botmain')
