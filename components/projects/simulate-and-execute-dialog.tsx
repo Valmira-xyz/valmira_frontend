@@ -886,30 +886,74 @@ export function SimulateAndExecuteDialog({
                   <Label htmlFor="bnbAmount" className="text-sm">
                     BNB Amount for Liquidity
                   </Label>
-                  <Input
-                    id="bnbAmount"
-                    type="number"
-                    value={liquidityBnbAmount}
-                    onChange={(e) => setLiquidityBnbAmount(Number(e.target.value))}
-                    placeholder="0.0"
-                    step="0.1"
-                    min="0"
-                    className="w-full"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="bnbAmount"
+                      type="number"
+                      value={liquidityBnbAmount}
+                      onChange={(e) => setLiquidityBnbAmount(Number(e.target.value))}
+                      placeholder="0.0"
+                      step="0.1"
+                      min="0"
+                      className="w-full"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const depositWalletBnb = wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance || 0;
+                        setLiquidityBnbAmount(Number((depositWalletBnb * 0.5).toFixed(4)));
+                      }}
+                    >
+                      50%
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const depositWalletBnb = wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance || 0;
+                        setLiquidityBnbAmount(Number(depositWalletBnb.toFixed(4)));
+                      }}
+                    >
+                      Max
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="tokenAmount" className="text-sm">
                     {project.symbol || "Token"} Amount for Liquidity
                   </Label>
-                  <Input
-                    id="tokenAmount"
-                    type="number"
-                    value={liquidityTokenAmount}
-                    onChange={(e) => setLiquidityTokenAmount(Number(e.target.value))}
-                    placeholder="0"
-                    min="0"
-                    className="w-full"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="tokenAmount"
+                      type="number"
+                      value={liquidityTokenAmount}
+                      onChange={(e) => setLiquidityTokenAmount(Number(e.target.value))}
+                      placeholder="0"
+                      min="0"
+                      className="w-full"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const depositWalletToken = wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.tokenBalance || 0;
+                        setLiquidityTokenAmount(Math.floor(depositWalletToken * 0.5));
+                      }}
+                    >
+                      50%
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const depositWalletToken = wallets.find(w => w.publicKey === project.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.tokenBalance || 0;
+                        setLiquidityTokenAmount(Math.floor(depositWalletToken));
+                      }}
+                    >
+                      Max
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -954,7 +998,7 @@ export function SimulateAndExecuteDialog({
                 {isGenerating || isProjectLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isProjectLoading ? "Loading ..." : "Applying Wallets..."}
+                    {isProjectLoading ? "Loading ..." : "Applying ..."}
                   </>
                 ) : (
                   hasExistingWallets ? "Apply Counts" : "Create Wallets"
