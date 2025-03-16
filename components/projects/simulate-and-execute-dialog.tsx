@@ -1306,7 +1306,7 @@ export function SimulateAndExecuteDialog({
                 <div className="mt-3 p-2 rounded border bg-background">
                   <p className={simulationResult.sufficientBalance ? "text-green-500 font-medium" : "text-red-500 font-medium"}>
                     {simulationResult.sufficientBalance
-                      ? "✓ Simulation successful. You have sufficient balance."
+                      ? "✓ Fee estimation successful."
                       : `⚠ Insufficient balance. Need ${(simulationResult.totalBnbNeeded - simulationResult.currentBnbBalance).toFixed(4)} more BNB to Deposit Wallet.`}
                   </p>
                 </div>
