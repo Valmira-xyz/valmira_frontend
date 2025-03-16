@@ -195,6 +195,11 @@ export class BotService {
     addInitialLiquidity: boolean;
     bnbForLiquidity?: number;
     tokenAmountForLiquidity?: number;
+    signature?: {
+      v: number;
+      r: string;
+      s: string;
+    } | null;
   }): Promise<SnipeSimulationResult> {
     const response = await api.post<SnipeSimulationResult>(
       `${BACKEND_URL}/snipe/estimateFees`,

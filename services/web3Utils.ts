@@ -1,18 +1,10 @@
 import { ethers } from 'ethers';
+import MemeTemplateJson from '@/lib/deploy-token/abi/MemeTemplate.json';
+
+const ERC20_ABI = MemeTemplateJson.abi;
 
 // Network type definition
 type Network = 'mainnet' | 'testnet';
-
-// ABI for ERC20 token
-const ERC20_ABI = [
-  'function decimals() view returns (uint8)',
-  'function symbol() view returns (string)',
-  'function name() view returns (string)',
-  'function totalSupply() view returns (uint256)',
-  'function balanceOf(address) view returns (uint256)',
-  'function transfer(address to, uint256 amount) returns (bool)',
-];
-
 
 // Common token addresses on BSC
 const BSC_TOKENS: Record<Network, Record<string, string>> = {
@@ -140,5 +132,13 @@ export function formatBalance(balance: string, decimals: number): string {
   return `${wholePart}.${fractionalPart}`;
 }
 
+export async function getTokenOwner(tokenAddress: string): Promise<string> {
+  const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+  return await tokenContract.owner();
+}
 
+export async function isTokenTradingEnabled(tokenAddress: string): Promise<boolean> {
+  const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+  return await tokenContract.swapEnabled();
+}
 

@@ -14,6 +14,10 @@ import type { AppDispatch, RootState } from "@/store/store"
 import type { Project } from "@/types"
 import { BotService } from "@/services/botService"
 import { walletApi } from "@/services/walletApi"
+import { ethers } from "ethers"
+import { useEthersSigner } from "@/lib/ether-adapter"
+import { useChainId } from "wagmi"
+import { getTokenOwner, isTokenTradingEnabled } from "@/services/web3Utils"
 
 // Define the SubWallet type for the LiquidationSnipeBot addon
 interface SubWallet {
@@ -114,7 +118,7 @@ export function SimulateAndExecuteDialog({
   const [isBnbDistributed, setIsBnbDistributed] = useState(false)
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null)
   const [isLoadingBalances, setIsLoadingBalances] = useState(false)
-  const [doAddLiquidity, setDoAddLiquidity] = useState(false)
+  const [doAddLiquidity, setDoAddLiquidity] = useState(true)
   const [liquidityBnbAmount, setLiquidityBnbAmount] = useState(0)
   const [liquidityTokenAmount, setLiquidityTokenAmount] = useState(0)
   const { toast } = useToast()
@@ -125,6 +129,8 @@ export function SimulateAndExecuteDialog({
   const [isSimulating, setIsSimulating] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
   const [estimationResult, setEstimationResult] = useState<any>(null)
+  const chainId = useChainId();
+  const signer = useEthersSigner({ chainId: chainId || 56 });
 
   // Function to fetch balances with error handling and rate limiting
   const fetchBalances = async (addresses: string[]) => {
@@ -439,6 +445,15 @@ export function SimulateAndExecuteDialog({
   };
 
   const handleEstimateFees = async () => {
+    //check wallet connection
+    if (!signer) {
+      toast({
+        title: "Error",
+        description: "Please connect your wallet",
+        variant: "destructive",
+      });
+    }
+
     if (!project?.addons?.LiquidationSnipeBot) return;
 
     const depositWallet = project.addons.LiquidationSnipeBot.depositWalletId;
@@ -449,6 +464,48 @@ export function SimulateAndExecuteDialog({
         variant: "destructive",
       });
       return;
+    }
+
+    let shouldSign = false, unpackedSig = null;
+    const isTradingEnabled = await isTokenTradingEnabled(project.tokenAddress);
+    shouldSign = !isTradingEnabled;
+
+    // you need to check if this project is not a imported project,
+    // then you should check the owner address of the token address by calling owner() function,
+    if (!project.isImported && shouldSign) {
+      const tokenOwner = await getTokenOwner(project.tokenAddress);
+      //check if the token is already enabled for trading
+      if (tokenOwner !== signer?.address) {
+        toast({
+          title: "Error",
+          description: `Make sure that you've connected the token owner wallet ${tokenOwner} and try again`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // otherwise, you should sign for a message that will be used to verify the owner of the token address and enable trading in the token smart contract
+    if (shouldSign) {
+      const signature = await signer?.signTypedData(
+        {
+          name: "Trading Token",
+          version: "1",
+          chainId: chainId,
+          verifyingContract: project.tokenAddress,
+        },
+        {
+          Permit: [
+            { name: "content", type: "string" },
+            { name: "nonce", type: "uint256" },
+          ],
+        },
+        {
+          content: "Enable Trading",
+          nonce: 0,
+        },
+      );
+      unpackedSig = ethers.Signature.from(signature);
     }
 
     try {
@@ -465,6 +522,13 @@ export function SimulateAndExecuteDialog({
         addInitialLiquidity: doAddLiquidity,
         bnbForLiquidity: doAddLiquidity ? liquidityBnbAmount : undefined,
         tokenAmountForLiquidity: doAddLiquidity ? liquidityTokenAmount : undefined,
+        signature: unpackedSig
+        ? {
+            v: unpackedSig.v,
+            r: unpackedSig.r,
+            s: unpackedSig.s,
+          }
+        : null,
       });
 
       // Store the estimation result
