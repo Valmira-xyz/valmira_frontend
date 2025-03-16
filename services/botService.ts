@@ -213,6 +213,7 @@ export class BotService {
    * Distribute BNB to sub-wallets
    */
   static async distributeBnb(params: {
+    depositWallet: string;
     subWallets: string[];
     amounts: number[];
   }): Promise<{ success: boolean; message: string }> {

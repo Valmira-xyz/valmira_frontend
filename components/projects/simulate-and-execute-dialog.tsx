@@ -408,7 +408,7 @@ export function SimulateAndExecuteDialog({
       if (amounts.some(amount => amount <= 0)) {
         toast({
           title: "Error",
-          description: "Please assign BNB amounts to all wallets first",
+          description: "Please assign BNB amounts to all wallets first and estimate fees",
           variant: "destructive",
         });
         return;
@@ -416,6 +416,7 @@ export function SimulateAndExecuteDialog({
 
       setIsEstimatingFees(true);
       const result = await BotService.distributeBnb({
+        depositWallet: depositWallet.publicKey,
         subWallets: subWalletAddresses,
         amounts,
       });
