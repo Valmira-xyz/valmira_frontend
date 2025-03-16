@@ -864,6 +864,22 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                         >
                           Simulate & Execute
                         </Button>
+                      )}                      
+                      {configs[addon.botType].status === "simulation_failed" && (
+                        <Button
+                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
+                          onClick={() => setIsSimulateDialogOpen(true)}
+                        >
+                          Retry Simulation
+                        </Button>
+                      )}                      
+                      {configs[addon.botType].status === "simulation_succeeded" && (
+                        <Button
+                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
+                          onClick={() => setIsSimulateDialogOpen(true)}
+                        >
+                          Go on for sniping
+                        </Button>
                       )}
                       {configs[addon.botType].status === "snipe_succeeded" && (
                         <Button
