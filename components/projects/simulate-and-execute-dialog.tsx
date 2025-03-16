@@ -1267,7 +1267,7 @@ export function SimulateAndExecuteDialog({
         </div>
         <DialogFooter className="flex flex-col w-full gap-4">
           <div className="w-full border rounded-lg p-4 bg-muted/30">
-            <h3 className="font-semibold mb-3">Simulation Results</h3>
+            <h3 className="font-semibold mb-3">Fee Estimation Results</h3>
             {simulationResult ? (
               <div className="text-sm space-y-1">
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
@@ -1316,7 +1316,7 @@ export function SimulateAndExecuteDialog({
             )}
           </div>
 
-          <div className="flex justify-end gap-4">
+          <div className="flex flex-col justify-start gap-4">
             <Button
               onClick={handleSimulate}
               disabled={isSimulating || !simulationResult || isExecuting}
@@ -1327,7 +1327,7 @@ export function SimulateAndExecuteDialog({
                   Simulating...
                 </>
               ) : (
-                "Simulate"
+                "Simulate Bundle"
               )}
             </Button>
             <Button
@@ -1345,7 +1345,7 @@ export function SimulateAndExecuteDialog({
                   Executing...
                 </>
               ) : (
-                "Execute"
+                "Execute Bundle"
               )}
             </Button>
           </div>

@@ -806,19 +806,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       </div>
                     </div>
                   )}
-                  {configs[addon.botType].status === "simulation_failed" && (
-                    <>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      The simulation has failed. You can retry the simulation with adjusted parameters.
-                    </p>
-                    <Button
-                      className="w-full mt-2 hover:bg-destructive/90 transition-colors"
-                      onClick={() => setIsSimulateDialogOpen(true)}
-                    >
-                      Retry Simulation
-                    </Button>
-                    </>
-                  )}
                   {configs[addon.botType].status === "Inactive" && (
                     <>
                     <p className="text-sm text-muted-foreground mb-2">
