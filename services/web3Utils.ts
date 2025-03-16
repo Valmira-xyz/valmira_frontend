@@ -6,7 +6,8 @@ const ERC20_ABI = MemeTemplateJson.abi;
 // PancakeSwap V2 Router ABI (minimal)
 const ROUTER_ABI = [
   "function factory() external pure returns (address)",
-  "function WETH() external pure returns (address)"
+  "function WETH() external pure returns (address)",
+  "function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity)"
 ];
 
 // PancakeSwap V2 Factory ABI (minimal)
@@ -263,6 +264,109 @@ export async function calculateSnipeAmount(
     return snipeAmount;
   } catch (error) {
     console.error('Failed to calculate snipe amount:', error);
+    throw error;
+  }
+}
+
+/**
+ * Checks if the spender has sufficient allowance for the token
+ * @param tokenAddress The token contract address
+ * @param ownerAddress The token owner address
+ * @param spenderAddress The spender address (usually router)
+ * @param amount The amount to check allowance for
+ * @param signer The ethers signer
+ * @returns Boolean indicating if allowance is sufficient
+ */
+export async function hasTokenAllowance(
+  tokenAddress: string,
+  ownerAddress: string,
+  spenderAddress: string,
+  amount: string,
+  signer: ethers.Signer
+): Promise<boolean> {
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    const allowance = await tokenContract.allowance(ownerAddress, spenderAddress);
+    return allowance >= ethers.parseUnits(amount, await getTokenDecimals(tokenAddress));
+  } catch (error) {
+    console.error('Failed to check token allowance:', error);
+    throw error;
+  }
+}
+
+/**
+ * Approves tokens for a spender
+ * @param tokenAddress The token contract address
+ * @param spenderAddress The spender address (usually router)
+ * @param amount The amount to approve
+ * @param signer The ethers signer
+ * @returns Transaction receipt
+ */
+export async function approveTokens(
+  tokenAddress: string,
+  spenderAddress: string,
+  amount: string,
+  signer: ethers.Signer
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    const decimals = await getTokenDecimals(tokenAddress);
+    const amountInWei = ethers.parseUnits(amount, decimals);
+    
+    // Approve the tokens
+    const tx = await tokenContract.approve(spenderAddress, amountInWei);
+    return await tx.wait();
+  } catch (error) {
+    console.error('Failed to approve tokens:', error);
+    throw error;
+  }
+}
+
+/**
+ * Adds liquidity to PancakeSwap
+ * @param tokenAddress The token contract address
+ * @param tokenAmount The amount of tokens to add
+ * @param bnbAmount The amount of BNB to add
+ * @param signer The ethers signer
+ * @returns Transaction receipt
+ */
+export async function addLiquidity(
+  tokenAddress: string,
+  tokenAmount: string,
+  bnbAmount: string,
+  signer: ethers.Signer
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
+    const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
+    const tokenDecimals = await getTokenDecimals(tokenAddress);
+    
+    // Convert amounts to wei
+    const tokenAmountInWei = ethers.parseUnits(tokenAmount, tokenDecimals);
+    const bnbAmountInWei = ethers.parseEther(bnbAmount);
+    
+    // Set slippage tolerance (e.g., 5%)
+    const slippageTolerance = 0.05;
+    const minTokenAmount = tokenAmountInWei * BigInt(Math.floor((1 - slippageTolerance) * 1000)) / BigInt(1000);
+    const minBnbAmount = bnbAmountInWei * BigInt(Math.floor((1 - slippageTolerance) * 1000)) / BigInt(1000);
+    
+    // Set deadline to 20 minutes from now
+    const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+    
+    // Add liquidity
+    const tx = await router.addLiquidityETH(
+      tokenAddress,
+      tokenAmountInWei,
+      minTokenAmount,
+      minBnbAmount,
+      await signer.getAddress(),
+      deadline,
+      { value: bnbAmountInWei }
+    );
+    
+    return await tx.wait();
+  } catch (error) {
+    console.error('Failed to add liquidity:', error);
     throw error;
   }
 }

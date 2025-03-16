@@ -16,8 +16,9 @@ import { BotService } from "@/services/botService"
 import { walletApi } from "@/services/walletApi"
 import { ethers } from "ethers"
 import { useEthersSigner } from "@/lib/ether-adapter"
-import { useChainId } from "wagmi"
-import { getTokenOwner, isTokenTradingEnabled, calculateSnipeAmount as calculatePoolSnipeAmount, getPoolInfo } from "@/services/web3Utils"
+import { useChainId, useAccount } from "wagmi"
+import { getTokenOwner, isTokenTradingEnabled, calculateSnipeAmount as calculatePoolSnipeAmount, getPoolInfo, getWalletBalances as getWeb3WalletBalances } from "@/services/web3Utils"
+import { ApproveAndAddLiquidityButtons } from "@/components/projects/ApproveAndAddLiquidityButtons"
 
 // Define the SubWallet type for the LiquidationSnipeBot addon
 interface SubWallet {
@@ -141,6 +142,9 @@ export function SimulateAndExecuteDialog({
   const [estimationResult, setEstimationResult] = useState<any>(null)
   const chainId = useChainId();
   const signer = useEthersSigner({ chainId: chainId || 56 });
+  const { address } = useAccount();
+  const [connectedWalletBalance, setConnectedWalletBalance] = useState<{ bnb: number; token: number }>({ bnb: 0, token: 0 });
+  const [isLoadingConnectedWalletBalance, setIsLoadingConnectedWalletBalance] = useState(false);
 
   // Function to fetch balances with error handling and rate limiting
   const fetchBalances = async (addresses: string[]) => {
@@ -257,7 +261,7 @@ export function SimulateAndExecuteDialog({
   // Function to fetch pool information
   const fetchPoolInfo = async () => {
     if (!project?.tokenAddress) return;
-    
+
     try {
       setIsLoadingPoolInfo(true);
       const info = await getPoolInfo(project?.tokenAddress);
@@ -271,6 +275,27 @@ export function SimulateAndExecuteDialog({
       });
     } finally {
       setIsLoadingPoolInfo(false);
+    }
+  };
+
+  // Function to fetch connected wallet balance
+  const fetchConnectedWalletBalance = async () => {
+    if (!address || !project?.tokenAddress) return;
+
+    try {
+      setIsLoadingConnectedWalletBalance(true);
+      const balances = await getWeb3WalletBalances([address], project.tokenAddress);
+
+      if (balances && balances.length > 0) {
+        setConnectedWalletBalance({
+          bnb: balances[0].bnbBalance,
+          token: balances[0].tokenAmount
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch connected wallet balance:", error);
+    } finally {
+      setIsLoadingConnectedWalletBalance(false);
     }
   };
 
@@ -307,7 +332,7 @@ export function SimulateAndExecuteDialog({
         balanceUpdateTimeoutRef.current = setTimeout(() => {
           fetchBalances(allAddresses);
         }, 5000);
-        
+
         // Fetch pool information
         fetchPoolInfo();
       }
@@ -325,6 +350,13 @@ export function SimulateAndExecuteDialog({
       lastBalanceUpdateRef.current = 0;
     };
   }, [open, project]);
+
+  // Fetch connected wallet balance when address or token changes
+  useEffect(() => {
+    if (open && address && project?.tokenAddress) {
+      fetchConnectedWalletBalance();
+    }
+  }, [open, address, project?.tokenAddress]);
 
   const handleGenerateWallets = async () => {
     if (!project?.addons?.LiquidationSnipeBot) {
@@ -799,61 +831,130 @@ export function SimulateAndExecuteDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="pb-2">
           <DialogTitle>Simulate & Execute Sniping</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col space-y-4">
-          <div className="space-y-2 border rounded-lg p-2">
-            <div className="flex justify-between items-center">
-              <Label className="text-base font-medium">Pool information</Label>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={fetchPoolInfo}
-                disabled={isLoadingPoolInfo}
-              >
-                {isLoadingPoolInfo ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw mr-2">
-                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-                    <path d="M21 3v5h-5"></path>
-                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-                    <path d="M3 21v-5h5"></path>
-                  </svg>
-                )}
-                Refresh
-              </Button>
-            </div>
-            
-            {poolInfo ? (
-              <div className="grid grid-cols-2 gap-4 p-2 bg-muted/30 rounded-md mb-2">
-                <div className="flex flex-col">
-                  <span className="text-sm text-muted-foreground">BNB in Pool:</span>
-                  <span className="font-medium">{poolInfo?.bnbReserve?.toFixed(4)} BNB</span>
+        <div className="flex flex-col space-y-3">
+          <div className="border rounded-lg p-3">
+            {/* Connected Wallet and Pool Information in a compact row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              {/* Connected Wallet Balance */}
+              {address && (
+                <div className="p-2 bg-muted/10 rounded-md">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">Connected Wallet</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={fetchConnectedWalletBalance}
+                      disabled={isLoadingConnectedWalletBalance}
+                      className="h-6 px-2"
+                    >
+                      {isLoadingConnectedWalletBalance ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                          <path d="M21 3v5h-5"></path>
+                          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                          <path d="M3 21v-5h5"></path>
+                        </svg>
+                      )}
+                      <span className="text-xs">Refresh</span>
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">BNB Balance:</span>
+                      <span className="font-medium">{connectedWalletBalance.bnb.toFixed(4)} BNB</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">Token Balance:</span>
+                      <span className="font-medium">{connectedWalletBalance.token.toLocaleString()} {project?.symbol}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-muted-foreground">Address:</span>
+                    <code className="text-xs font-mono bg-muted/20 px-1 py-0.5 rounded">
+                      {address.slice(0, 6)}...{address.slice(-4)}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() => copyToClipboard(address)}
+                    >
+                      <Copy className="h-3 w-3" />
+                      <span className="sr-only">Copy address</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-5 w-5" asChild>
+                      <a
+                        href={`https://bscscan.com/address/${address}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span className="sr-only">View on Explorer</span>
+                      </a>
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-sm text-muted-foreground">Tokens in Pool:</span>
-                  <span className="font-medium">{poolInfo?.tokenReserve?.toLocaleString()} {project?.symbol}</span>
+              )}
+
+              {/* Pool Information */}
+              <div className="p-2 bg-muted/10 rounded-md">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium">Pool Information</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={fetchPoolInfo}
+                    disabled={isLoadingPoolInfo}
+                    className="h-6 px-2"
+                  >
+                    {isLoadingPoolInfo ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                        <path d="M21 3v5h-5"></path>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                        <path d="M3 21v-5h5"></path>
+                      </svg>
+                    )}
+                    <span className="text-xs">Refresh</span>
+                  </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="p-2 bg-muted/30 rounded-md mb-2 text-center">
-                {isLoadingPoolInfo ? (
-                  <div className="flex items-center justify-center">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span>Loading pool information...</span>
+                {poolInfo ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">BNB in Pool:</span>
+                      <span className="font-medium">{poolInfo?.bnbReserve?.toFixed(4)} BNB</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">Tokens in Pool:</span>
+                      <span className="font-medium">{poolInfo?.tokenReserve?.toLocaleString()} {project?.symbol}</span>
+                    </div>
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">
-                    {project?.tokenAddress ? "No liquidity pool found. You may need to add initial liquidity." : "Connect a token to view pool information."}
-                  </span>
+                  <div className="text-center py-1">
+                    {isLoadingPoolInfo ? (
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                        <span className="text-sm">Loading...</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground block">
+                        {project?.tokenAddress ? "No liquidity pool found. You may need to add initial liquidity." : "Connect a token to view pool information."}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-            
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
+            </div>
+
+            <div className="border-t pt-2 mt-2">
+              <div className="flex items-center gap-2 mb-2">
                 <input
                   type="checkbox"
                   id="doAddLiquidity"
@@ -861,18 +962,66 @@ export function SimulateAndExecuteDialog({
                   checked={doAddLiquidity}
                   onChange={(e) => setDoAddLiquidity(e.target.checked)}
                 />
-                <Label htmlFor="doAddLiquidity" className="text-sm font-normal">
+                <Label htmlFor="doAddLiquidity" className="font-medium text-sm">
                   Add Liquidity
                 </Label>
               </div>
-            </div>
-            {doAddLiquidity && (
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <div className="space-y-2">
-                  <Label htmlFor="bnbAmount" className="text-sm">
-                    BNB Amount for Liquidity
-                  </Label>
-                  <div className="flex gap-2">
+
+              {doAddLiquidity && (
+                <div className="grid md:grid-cols-3 gap-4 bg-muted/10 p-2 rounded-md">
+                  <div className="space-y-1">
+                    <div className="flex w-full justify-between gap-1 items-center">
+                      <Label htmlFor="bnbAmount" className="text-xs font-medium">
+                        BNB Amount
+                      </Label>
+                      <div className="flex gap-1 mt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2 flex-1"
+                          onClick={() => {
+                            const maxBnb = connectedWalletBalance.bnb;
+                            setLiquidityBnbAmount(Number((maxBnb * 0.1).toFixed(4)));
+                          }}
+                        >
+                          10%
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2 flex-1"
+                          onClick={() => {
+                            const maxBnb = connectedWalletBalance.bnb;
+                            setLiquidityBnbAmount(Number((maxBnb * 0.2).toFixed(4)));
+                          }}
+                        >
+                          20%
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2 flex-1"
+                          onClick={() => {
+                            const maxBnb = connectedWalletBalance.bnb;
+                            setLiquidityBnbAmount(Number((maxBnb * 0.5).toFixed(4)));
+                          }}
+                        >
+                          50%
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2 flex-1"
+                          onClick={() => {
+                            const maxBnb = connectedWalletBalance.bnb;
+                            // Leave a small amount for gas
+                            setLiquidityBnbAmount(Number((maxBnb * 0.99).toFixed(4)));
+                          }}
+                        >
+                          Max
+                        </Button>
+                      </div>
+                    </div>
                     <Input
                       id="bnbAmount"
                       type="number"
@@ -881,35 +1030,63 @@ export function SimulateAndExecuteDialog({
                       placeholder="0.0"
                       step="0.1"
                       min="0"
-                      className="w-full"
+                      className="w-full h-8"
                     />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const depositWalletBnb = wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance || 0;
-                        setLiquidityBnbAmount(Number((depositWalletBnb * 0.5).toFixed(4)));
-                      }}
-                    >
-                      50%
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const depositWalletBnb = wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance || 0;
-                        setLiquidityBnbAmount(Number(depositWalletBnb.toFixed(4)));
-                      }}
-                    >
-                      Max
-                    </Button>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tokenAmount" className="text-sm">
-                    {project?.symbol || "Token"} Amount for Liquidity
-                  </Label>
-                  <div className="flex gap-2">
+                  <div className="space-y-1">
+
+                    <div className="flex w-full justify-between gap-1 items-center">
+                      <Label htmlFor="tokenAmount" className="text-xs font-medium">
+                        {project?.symbol || "Token"} Amount
+                      </Label>
+
+                      <div className="flex gap-1 mt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2 flex-1"
+                          onClick={() => {
+                            const maxToken = connectedWalletBalance.token;
+                            setLiquidityTokenAmount(Number((maxToken * 0.1).toFixed(0)));
+                          }}
+                        >
+                          10%
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2 flex-1"
+                          onClick={() => {
+                            const maxToken = connectedWalletBalance.token;
+                            setLiquidityTokenAmount(Number((maxToken * 0.2).toFixed(0)));
+                          }}
+                        >
+                          20%
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2 flex-1"
+                          onClick={() => {
+                            const maxToken = connectedWalletBalance.token;
+                            setLiquidityTokenAmount(Number((maxToken * 0.5).toFixed(0)));
+                          }}
+                        >
+                          50%
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2 flex-1"
+                          onClick={() => {
+                            const maxToken = connectedWalletBalance.token;
+                            setLiquidityTokenAmount(Number(maxToken.toFixed(0)));
+                          }}
+                        >
+                          Max
+                        </Button>
+                      </div>
+                    </div>
                     <Input
                       id="tokenAmount"
                       type="number"
@@ -917,179 +1094,295 @@ export function SimulateAndExecuteDialog({
                       onChange={(e) => setLiquidityTokenAmount(Number(e.target.value))}
                       placeholder="0"
                       min="0"
-                      className="w-full"
+                      className="w-full h-8"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Actions</Label>
+                    <div className="flex gap-1">
+                      <ApproveAndAddLiquidityButtons
+                        tokenAddress={project?.tokenAddress}
+                        tokenAmount={liquidityTokenAmount.toString()}
+                        bnbAmount={liquidityBnbAmount.toString()}
+                        signer={signer || null}
+                        onSuccess={() => {
+                          setLiquidityTokenAmount(0);
+                          setLiquidityBnbAmount(0);
+                          fetchPoolInfo();
+                          fetchConnectedWalletBalance();
+                        }}
+                      />
+                    </div>
+                    {!signer && (
+                      <p className="text-xs text-amber-500 mt-1">
+                        ⚠️ Connect wallet
+                      </p>
+                    )}
+                  </div>
+                  <div className="md:col-span-3">
+                    <p className="text-xs text-muted-foreground">
+                      Note: Approve tokens before adding liquidity if this is your first time using this token with PancakeSwap.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-3">
+            <Label className="text-base font-medium mb-2 block">Sniping Settings</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <Label htmlFor="walletCount" className="text-sm">
+                    Wallet Count:
+                  </Label>
+                  <div className="col-span-2 flex items-center gap-2">
+                    <Input
+                      id="walletCount"
+                      type="number"
+                      value={walletCount}
+                      onChange={(e) => {
+                        const value = Number.parseInt(e.target.value)
+                        if (value > 50) {
+                          toast({
+                            title: "Maximum Wallet Count Exceeded",
+                            description: "The maximum number of wallets allowed is 50.",
+                            variant: "destructive",
+                          })
+                          setWalletCount(50)
+                        } else {
+                          setWalletCount(value)
+                          // Reset BNB distribution state when wallet count changes
+                          setIsBnbDistributed(false)
+                        }
+                      }}
+                      min="1"
+                      max="50"
+                      className="h-8"
                     />
                     <Button
-                      variant="outline"
+                      onClick={handleGenerateWallets}
+                      disabled={isGenerating || isProjectLoading}
+                      className="h-8 whitespace-nowrap"
                       size="sm"
-                      onClick={() => {
-                        const depositWalletToken = wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.tokenBalance || 0;
-                        setLiquidityTokenAmount(Math.floor(depositWalletToken * 0.5));
-                      }}
                     >
-                      50%
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const depositWalletToken = wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.tokenBalance || 0;
-                        setLiquidityTokenAmount(Math.floor(depositWalletToken));
-                      }}
-                    >
-                      Max
+                      {isGenerating || isProjectLoading ? (
+                        <>
+                          <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          {isProjectLoading ? "Loading..." : "Applying..."}
+                        </>
+                      ) : (
+                        hasExistingWallets ? "Apply" : "Create"
+                      )}
                     </Button>
                   </div>
                 </div>
+                <div className="text-xs text-muted-foreground">
+                  Maximum 50 wallets allowed
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <Label htmlFor="snipePercentage" className="text-sm">
+                    Snipe Amount:
+                  </Label>
+                  <div className="col-span-2 flex items-center gap-2">
+                    <Input
+                      id="snipePercentage"
+                      type="number"
+                      value={snipePercentage}
+                      onChange={(e) => setSnipePercentage(Number(e.target.value))}
+                      className="h-8"
+                    />
+                    <Button
+                      onClick={() => {
+                        // Calculate snipe amounts based on pool liquidity
+                        calculateSnipeAmount(
+                          project?.tokenAddress,
+                          snipePercentage,
+                          doAddLiquidity,
+                          doAddLiquidity ? liquidityTokenAmount : 0
+                        ).then(totalSnipeAmount => {
+                          // Calculate amounts with random variation for each wallet
+                          const baseAmountPerWallet = totalSnipeAmount / walletCount;
+
+                          // Update wallets with new amounts
+                          setWallets(prevWallets =>
+                            prevWallets.map(wallet => {
+                              if (wallet.role === 'botmain') return { ...wallet, tokenAmount: 0 };
+
+                              // Generate random variation between -15% to +15%
+                              const variation = (Math.random() * 0.3) - 0.15; // -0.15 to +0.15
+                              const variationMultiplier = 1 + variation;
+                              const adjustedAmount = baseAmountPerWallet * variationMultiplier;
+
+                              return {
+                                ...wallet,
+                                tokenAmount: Math.floor(adjustedAmount) // Round down to ensure integer amounts
+                              };
+                            })
+                          );
+                          // Reset BNB distribution state when token amounts are reassigned
+                          setIsBnbDistributed(false);
+
+                          toast({
+                            title: "Success",
+                            description: "Snipe amounts calculated based on pool liquidity",
+                          });
+                        }).catch(error => {
+                          toast({
+                            title: "Error",
+                            description: error.message || "Failed to calculate snipe amounts",
+                            variant: "destructive",
+                          });
+                        });
+                      }}
+                      disabled={!wallets.length || isProjectLoading}
+                      className="h-8 whitespace-nowrap"
+                      size="sm"
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Percentage of tokens in pool to snipe
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <div className="w-full flex gap-4 ml-auto text-sm">
+
+            {project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey && (
+              <div className="flex-1 space-y-2 border rounded-lg p-2">
+                <Label className="text-base font-medium">Deposit Wallet</Label>
+                <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                  <div className="flex gap-2 items-center">
+                    <code className="text-sm font-mono">
+                      {project?.addons.LiquidationSnipeBot.depositWalletId.publicKey.slice(0, 6)}...
+                      {project?.addons.LiquidationSnipeBot.depositWalletId.publicKey.slice(-4)}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => project?.addons.LiquidationSnipeBot.depositWalletId && copyToClipboard(project?.addons.LiquidationSnipeBot.depositWalletId.publicKey)}
+                    >
+                      <Copy className="h-4 w-4" />
+                      <span className="sr-only">Copy address</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                      <a
+                        href={`https://bscscan.com/address/${project?.addons.LiquidationSnipeBot.depositWalletId.publicKey}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        <span className="sr-only">View on Explorer</span>
+                      </a>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={async () => {
+                        if (project?.addons.LiquidationSnipeBot.depositWalletId) {
+                          try {
+                            const publicKey = project?.addons.LiquidationSnipeBot.depositWalletId.publicKey;
+                            const blob = await walletApi.downloadWalletAsCsv(publicKey);
+
+                            // Create a URL for the blob
+                            const url = window.URL.createObjectURL(blob);
+
+                            // Create a temporary link element
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.setAttribute("download", `wallet-${publicKey}.csv`);
+
+                            // Append to the document, click it, and remove it
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+
+                            // Clean up the URL object
+                            window.URL.revokeObjectURL(url);
+
+                            toast({
+                              title: "Success",
+                              description: "Wallet downloaded successfully",
+                            });
+                          } catch (error) {
+                            console.error("Failed to download wallet:", error);
+                            toast({
+                              title: "Download Failed",
+                              description: "Could not download wallet. Please try again.",
+                              variant: "destructive",
+                            });
+                          }
+                        }
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                      <span className="sr-only">Download Wallet</span>
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                  BNB Balance: <span className="font-medium text-black"> {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}</span>
+                  </p>                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">BNB to be added for Sniping:</span>
+                    <span className="font-medium">
+                      {wallets
+                        .filter(w => w.role !== 'botmain')
+                        .reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
+                        .toFixed(4)}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-blue-600 mt-2">
+                  💡 Please ensure your Deposit Wallet has enough BNB to cover distributing BNB to sub-wallets for sniping.
+                </p>
+
               </div>
             )}
-            
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="walletCount" className="text-right">
-                Wallet Count(Maximum is 50)
-              </Label>
-              <div className="col-span-2 space-y-1">
-                <Input
-                  id="walletCount"
-                  type="number"
-                  value={walletCount}
-                  onChange={(e) => {
-                    const value = Number.parseInt(e.target.value)
-                    if (value > 50) {
-                      toast({
-                        title: "Maximum Wallet Count Exceeded",
-                        description: "The maximum number of wallets allowed is 50.",
-                        variant: "destructive",
-                      })
-                      setWalletCount(50)
-                    } else {
-                      setWalletCount(value)
-                      // Reset BNB distribution state when wallet count changes
-                      setIsBnbDistributed(false)
-                    }
-                  }}
-                  min="1"
-                  max="50"
-                  className="w-full"
-                />
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-2">
 
-              </div>
-              <Button
-                onClick={handleGenerateWallets}
-                disabled={isGenerating || isProjectLoading}
-              >
-                {isGenerating || isProjectLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isProjectLoading ? "Loading ..." : "Applying ..."}
-                  </>
-                ) : (
-                  hasExistingWallets ? "Apply Counts" : "Create Wallets"
-                )}
-              </Button>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="snipePercentage" className="text-right">
-                Snipe Amount(% to tokens in pool)
-              </Label>
-              <div className="col-span-2 space-y-1">
-                <Input
-                  id="snipePercentage"
-                  type="number"
-                  value={snipePercentage}
-                  onChange={(e) => setSnipePercentage(Number(e.target.value))}
-                  className="col-span-3"
-                />
-
-              </div>
-
-              <Button
-                onClick={() => {
-                  // Calculate snipe amounts based on pool liquidity
-                  calculateSnipeAmount(
-                    project?.tokenAddress,
-                    snipePercentage,
-                    doAddLiquidity,
-                    doAddLiquidity ? liquidityTokenAmount : 0
-                  ).then(totalSnipeAmount => {
-                    // Calculate amounts with random variation for each wallet
-                    const baseAmountPerWallet = totalSnipeAmount / walletCount;
-
-                    // Update wallets with new amounts
-                    setWallets(prevWallets =>
-                      prevWallets.map(wallet => {
-                        if (wallet.role === 'botmain') return { ...wallet, tokenAmount: 0 };
-
-                        // Generate random variation between -15% to +15%
-                        const variation = (Math.random() * 0.3) - 0.15; // -0.15 to +0.15
-                        const variationMultiplier = 1 + variation;
-                        const adjustedAmount = baseAmountPerWallet * variationMultiplier;
-
-                        return {
-                          ...wallet,
-                          tokenAmount: Math.floor(adjustedAmount) // Round down to ensure integer amounts
-                        };
-                      })
-                    );
-                    // Reset BNB distribution state when token amounts are reassigned
-                    setIsBnbDistributed(false);
-
-                    toast({
-                      title: "Success",
-                      description: "Snipe amounts calculated based on pool liquidity",
-                    });
-                  }).catch(error => {
-                    toast({
-                      title: "Error",
-                      description: error.message || "Failed to calculate snipe amounts",
-                      variant: "destructive",
-                    });
-                  });
-                }}
-                disabled={!wallets.length || isProjectLoading}
-              >
-                Apply Amounts
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex gap-2">
-
-              <Button
-                onClick={handleEstimateFees}
-                disabled={isEstimatingFees || isProjectLoading || !wallets.filter(w => w.role !== 'botmain').length}
-              >
-                {isEstimatingFees ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Estimating...
-                  </>
-                ) : (
-                  "Estimate Fees"
-                )}
-              </Button>
-
-              <Button
-                onClick={handleDistributeBnb}
-                disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isDistributingBNBs || isBnbDistributed || isProjectLoading}
-              >
-                {
-                  isDistributingBNBs ? (
+                <Button
+                  onClick={handleEstimateFees}
+                  disabled={isEstimatingFees || isProjectLoading || !wallets.filter(w => w.role !== 'botmain').length}
+                >
+                  {isEstimatingFees ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Distributing...
+                      Estimating...
                     </>
                   ) : (
-                    "Distribute BNB"
-                  )
-                }
-              </Button>
-            </div>
-            <div className="flex gap-4 ml-auto text-sm">
+                    "Estimate Fees"
+                  )}
+                </Button>
+
+                <Button
+                  onClick={handleDistributeBnb}
+                  disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isDistributingBNBs || isBnbDistributed || isProjectLoading}
+                >
+                  {
+                    isDistributingBNBs ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Distributing...
+                      </>
+                    ) : (
+                      "Distribute BNB"
+                    )
+                  }
+                </Button>
+              </div>              
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Tokens will be sniped:</span>
+                <span className="text-muted-foreground">Sniping Tokens:</span>
                 <span className="font-medium">
                   {wallets
                     .filter(w => w.role !== 'botmain')
@@ -1097,17 +1390,9 @@ export function SimulateAndExecuteDialog({
                     .toLocaleString()}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">BNB needed to add for sniping:</span>
-                <span className="font-medium">
-                  {wallets
-                    .filter(w => w.role !== 'botmain')
-                    .reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
-                    .toFixed(4)}
-                </span>
-              </div>
             </div>
           </div>
+
           <div>
             {(wallets.length > 0 || isProjectLoading) && (
               <div className="max-h-[200px] overflow-y-auto">
@@ -1199,8 +1484,7 @@ export function SimulateAndExecuteDialog({
             {simulationResult ? (
               <div className="text-sm space-y-1">
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                  <p>Deposit Wallet BNB Balance: {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'} BNB</p>
-                  <p>Deposit Wallet Token Balance: {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.tokenBalance?.toFixed(4) || '0.0000'} Tokens</p>
+                  <p>Deposit Wallet BNB Balance: {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'} BNB</p>                  
                   <p>BNB for Adding Liquidity: {simulationResult.addLiquidityBnb.toFixed(4)} BNB</p>
                   <p>BNB for Sniping: {simulationResult.snipingBnb.toFixed(4)} BNB</p>
                   {simulationResult.tipBnb !== undefined && (
@@ -1238,86 +1522,6 @@ export function SimulateAndExecuteDialog({
                       : `⚠ Insufficient balance. Need ${(simulationResult.totalBnbNeeded - simulationResult.currentBnbBalance).toFixed(4)} more BNB to Deposit Wallet.`}
                   </p>
                 </div>
-                {project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey && (
-                  <div className="space-y-2 border rounded-lg p-2">
-                    <Label className="text-base font-medium">Deposit Wallet</Label>
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                      <div className="flex gap-2 items-center">
-                        <code className="text-sm font-mono">
-                          {project?.addons.LiquidationSnipeBot.depositWalletId.publicKey.slice(0, 6)}...
-                          {project?.addons.LiquidationSnipeBot.depositWalletId.publicKey.slice(-4)}
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => project?.addons.LiquidationSnipeBot.depositWalletId && copyToClipboard(project?.addons.LiquidationSnipeBot.depositWalletId.publicKey)}
-                        >
-                          <Copy className="h-4 w-4" />
-                          <span className="sr-only">Copy address</span>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                          <a
-                            href={`https://bscscan.com/address/${project?.addons.LiquidationSnipeBot.depositWalletId.publicKey}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            <span className="sr-only">View on Explorer</span>
-                          </a>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={async () => {
-                            if (project?.addons.LiquidationSnipeBot.depositWalletId) {
-                              try {
-                                const publicKey = project?.addons.LiquidationSnipeBot.depositWalletId.publicKey;
-                                const blob = await walletApi.downloadWalletAsCsv(publicKey);
-
-                                // Create a URL for the blob
-                                const url = window.URL.createObjectURL(blob);
-
-                                // Create a temporary link element
-                                const link = document.createElement("a");
-                                link.href = url;
-                                link.setAttribute("download", `wallet-${publicKey}.csv`);
-
-                                // Append to the document, click it, and remove it
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-
-                                // Clean up the URL object
-                                window.URL.revokeObjectURL(url);
-
-                                toast({
-                                  title: "Success",
-                                  description: "Wallet downloaded successfully",
-                                });
-                              } catch (error) {
-                                console.error("Failed to download wallet:", error);
-                                toast({
-                                  title: "Download Failed",
-                                  description: "Could not download wallet. Please try again.",
-                                  variant: "destructive",
-                                });
-                              }
-                            }
-                          }}
-                        >
-                          <Download className="h-4 w-4" />
-                          <span className="sr-only">Download Wallet</span>
-                        </Button>
-                      </div>
-                    </div>
-                    <p className="text-sm text-blue-600 mt-2">
-                      💡 Please ensure your Deposit Wallet has enough {project?.symbol || "tokens"} for adding initial liquidity and enough BNB to cover: {!project?.isImported ? "(1) adding initial liquidity, (2) opening trading, and (3)" : "(1) adding initial liquidity and (2)"} distributing BNB to sub-wallets for sniping. The exact amount needed will be calculated in the simulation.
-                    </p>
-
-                  </div>
-                )}
               </div>
             ) : (
               <p className="text-muted-foreground text-center">Run simulation to see results</p>
