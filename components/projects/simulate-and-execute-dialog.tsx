@@ -1093,11 +1093,18 @@ export function SimulateAndExecuteDialog({
   };
 
   const handleMultiSell = async () => {
-    const selectedWallets = wallets.filter(w => w.isSelectedForMutilSell && w.role !== 'botmain');
+    // Filter wallets that are selected for multi-sell and have token balance > 0
+    const selectedWallets = wallets.filter(w => 
+      w.isSelectedForMutilSell && 
+      w.role !== 'botmain' && 
+      (w.tokenBalance || 0) > 0 &&
+      (w.sellPercentage || 0) > 0
+    );
+
     if (selectedWallets.length === 0) {
       toast({
         title: "Error",
-        description: "No wallets selected for multi-sell",
+        description: "No wallets selected with sufficient token balance for multi-sell",
         variant: "destructive",
       });
       return;
@@ -1105,12 +1112,13 @@ export function SimulateAndExecuteDialog({
 
     try {
       setIsExecutingMultiSell(true);
+      
       const result = await BotService.multiWalletSell({
         walletAddresses: selectedWallets.map(w => w.publicKey),
         tokenAddress: project?.tokenAddress,
         sellPercentages: selectedWallets.map(w => w.sellPercentage || 0),
         slippageTolerance,
-        targetWalletAddress: project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey
+        targetWalletAddress: project?.addons.LiquidationSnipeBot?.depositWalletId?.publicKey
       });
 
       if (result.success) {
@@ -1793,7 +1801,6 @@ export function SimulateAndExecuteDialog({
                       <TableHead className="bg-muted/50 font-medium w-[20%]">
                         <div className="flex gap-1 items-center ">
                           <div>Sniping Wallet</div>
-
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1893,7 +1900,15 @@ export function SimulateAndExecuteDialog({
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div>{`${wallet.publicKey.slice(0, 6)}...${wallet.publicKey.slice(-4)}`}</div>
-
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => wallet?.publicKey && copyToClipboard(wallet.publicKey) }
+                              >
+                                <Copy className="h-4 w-4" />
+                                <span className="sr-only">Copy address</span>
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1928,7 +1943,7 @@ export function SimulateAndExecuteDialog({
                               type="number" 
                               min={0} 
                               max={100} 
-                              value={wallet.sellPercentage || 0} 
+                              value={wallet.sellPercentage === undefined ? 100 : wallet.sellPercentage} 
                               onChange={(e) => setWallets(prev => 
                                 prev.map(w => w.publicKey === wallet.publicKey 
                                   ? { ...w, sellPercentage: Number(e.target.value) } 
@@ -1939,20 +1954,25 @@ export function SimulateAndExecuteDialog({
                           </TableCell>
                           <TableCell className="text-center">
                             <Checkbox 
-                              checked={wallet.isSelectedForMutilSell || false}
+                              checked={(wallet.tokenBalance || 0) <= 0 ? false : (wallet.isSelectedForMutilSell || false)}
                               onCheckedChange={(checked) => setWallets(prev => 
                                 prev.map(w => w.publicKey === wallet.publicKey 
                                   ? { ...w, isSelectedForMutilSell: checked === true } 
                                   : w
                                 )
                               )}
+                              disabled={(wallet.tokenBalance || 0) <= 0}
                             />
                           </TableCell>
                           <TableCell className="text-center">
                             <Button 
                               className="h-8"
-                              onClick={() => handleSingleSell(wallet.publicKey, wallet.sellPercentage || 0)}
-                              disabled={executingSingleSells[wallet.publicKey] || wallet.isSelectedForMutilSell || !wallet.sellPercentage}
+                              onClick={() => handleSingleSell(wallet.publicKey, wallet.sellPercentage || 100)}
+                              disabled={
+                                executingSingleSells[wallet.publicKey] || 
+                                wallet.isSelectedForMutilSell || 
+                                (wallet.tokenBalance || 0) <= 0
+                              }
                             >
                               {executingSingleSells[wallet.publicKey] ? (
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
