@@ -1453,7 +1453,7 @@ export function SimulateAndExecuteDialog({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">BNB for Sniping wallets:</span>
-                      <span className="font-medium text-red-500">
+                      <span className="font-medium ">
                         {simulationResult ? (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))).toFixed(6) : '0.000000'}
                       </span>
                     </div>
