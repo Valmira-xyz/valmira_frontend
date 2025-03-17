@@ -35,6 +35,7 @@ interface WalletInfo {
   tokenBalance?: number
   role?: string
   _id?: string
+  insufficientBnb?: number
 }
 
 // Define the LiquidationSnipeBot addon type
@@ -148,6 +149,13 @@ export function SimulateAndExecuteDialog({
   const [lpTokenBalance, setLpTokenBalance] = useState<number>(0);
   const [isLoadingLpBalance, setIsLoadingLpBalance] = useState(false);
   const [isBurningLiquidity, setIsBurningLiquidity] = useState(false);
+  const [insufficientFundsDetails, setInsufficientFundsDetails] = useState<{
+    walletAddress: string;
+    walletType: string;
+    availableBnb: number;
+    requiredBnb: number;
+    missingBnb: number;
+  } | null>(null);
 
   // Function to fetch balances with error handling and rate limiting
   const fetchBalances = async (addresses: string[]) => {
@@ -463,6 +471,7 @@ export function SimulateAndExecuteDialog({
       setIsBnbDistributed(false);
       setSimulationResult(null);
       setPoolInfo(null);
+      setInsufficientFundsDetails(null);
       lastBalanceUpdateRef.current = 0;
     };
   }, [open, project]);
@@ -588,10 +597,10 @@ export function SimulateAndExecuteDialog({
         .filter(w => w.role !== 'botmain')
         .map(w => w.bnbToSpend || 0);
 
-      if (amounts.some(amount => amount <= 0)) {
+      if (amounts.some(amount => amount <= 0) === false) {
         toast({
-          title: "Error",
-          description: "Please assign BNB amounts to all wallets first and estimate fees",
+          title: "Information",
+          description: "All wallets already have enough balance for sniping.",
           variant: "destructive",
         });
         return;
@@ -647,6 +656,9 @@ export function SimulateAndExecuteDialog({
         variant: "destructive",
       });
     }
+
+    // Reset insufficient funds details when starting a new fee estimation
+    setInsufficientFundsDetails(null);
 
     if (!project?.addons?.LiquidationSnipeBot) return;
 
@@ -800,6 +812,9 @@ export function SimulateAndExecuteDialog({
   const handleSimulate = async () => {
     if (!project?.addons?.LiquidationSnipeBot) return;
 
+    // Reset insufficient funds details when starting a new simulation
+    setInsufficientFundsDetails(null);
+
     const depositWallet = project?.addons.LiquidationSnipeBot.depositWalletId;
     if (!depositWallet) {
       toast({
@@ -847,6 +862,70 @@ export function SimulateAndExecuteDialog({
       });
 
       if (!result.success) {
+        // Check if the error is related to insufficient funds
+        if (result.error && result.error.includes("Insufficient funds")) {
+          // Extract wallet address, available amount, and required amount from the error message
+          const errorMsg = result.error;
+          const addressMatch = errorMsg.match(/address\s+([0-9a-fA-Fx]+)/);
+          const amountsMatch = errorMsg.match(/have\s+(\d+)\s+want\s+(\d+)/);
+          
+          if (addressMatch && amountsMatch) {
+            const walletAddress = addressMatch[1];
+            const availableWei = BigInt(amountsMatch[1]);
+            const requiredWei = BigInt(amountsMatch[2]);
+            
+            // Convert from wei to BNB (1 BNB = 10^18 wei)
+            const availableBnb = Number(availableWei) / 1e18;
+            const requiredBnb = Number(requiredWei) / 1e18;
+            const missingBnb = Number(requiredWei - availableWei) / 1e18;
+            
+            // Find which wallet has insufficient funds
+            const walletType = wallets.find(w => w.publicKey?.toString()?.toLowerCase() === walletAddress?.toString()?.toLowerCase())?.role === 'botmain' 
+              ? 'Deposit Wallet' 
+              : 'Sniping Wallet';
+            
+            // Update simulation result to reflect insufficient balance
+            setSimulationResult(prev => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                sufficientBalance: false,
+                totalBnbNeeded: prev.totalBnbNeeded + missingBnb,
+              };
+            });
+            
+            // Set insufficient funds details
+            setInsufficientFundsDetails({
+              walletAddress,
+              walletType,
+              availableBnb,
+              requiredBnb,
+              missingBnb
+            });
+            
+            // Update the wallet with the insufficientBnb property
+            setWallets(prevWallets => 
+              prevWallets.map(wallet => 
+                wallet.publicKey === walletAddress 
+                  ? { ...wallet, insufficientBnb: missingBnb }
+                  : wallet
+              )
+            );
+            
+            // Show detailed error message
+            toast({
+              title: "Insufficient BNB Balance",
+              description: `${walletType} (${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}) has ${availableBnb.toFixed(6)} BNB but needs ${requiredBnb.toFixed(6)} BNB. Missing ${missingBnb.toFixed(6)} BNB.`,
+              variant: "destructive",
+            });
+            
+            // Return early to prevent the generic error message
+            setIsSimulating(false);
+            return;
+          }
+        }
+        
+        // If not an insufficient funds error or couldn't parse it, throw the original error
         throw new Error(result.error || "Simulation failed");
       }
 
@@ -860,6 +939,8 @@ export function SimulateAndExecuteDialog({
         description: error instanceof Error ? error.message : "Failed to simulate snipe",
         variant: "destructive",
       });
+
+
     } finally {
       setIsSimulating(false);
     }
@@ -874,6 +955,9 @@ export function SimulateAndExecuteDialog({
       });
       return;
     }
+
+    // Reset insufficient funds details when starting execution
+    setInsufficientFundsDetails(null);
 
     const depositWallet = project?.addons.LiquidationSnipeBot.depositWalletId;
     if (!depositWallet) {
@@ -1369,11 +1453,8 @@ export function SimulateAndExecuteDialog({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">BNB for Sniping wallets:</span>
-                      <span className="font-medium">
-                        {wallets
-                          .filter(w => w.role !== 'botmain')
-                          .reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
-                          .toFixed(4)}
+                      <span className="font-medium text-red-500">
+                        {simulationResult ? (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))).toFixed(6) : '0.000000'}
                       </span>
                     </div>
                   </div>
@@ -1494,7 +1575,7 @@ export function SimulateAndExecuteDialog({
 
                         toast({
                           title: "Success",
-                          description: "Snipe amounts calculated based on pool liquidity",
+                          description: "Snipe amounts calculated based on pool liquidity, please Estimate Fees and Distribute BNB before Simulating",
                         });
                       }).catch(error => {
                         toast({
@@ -1540,13 +1621,24 @@ export function SimulateAndExecuteDialog({
                 </Button>
                 <Button
                   onClick={handleDistributeBnb}
-                  variant={wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0) <= 0 ? "outline" : "default"}
                   disabled={
                     !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || 
                     isDistributingBNBs || 
-                    isBnbDistributed || 
-                    isProjectLoading || 
-                    wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0) <= 0
+                    isProjectLoading
+                  }
+                  className={
+                    simulationResult && 
+                    (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) < 
+                    (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))
+                      ? "border-red-500 hover:border-red-600"
+                      : ""
+                  }
+                  title={
+                    simulationResult && 
+                    (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) < 
+                    (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))
+                      ? "Deposit wallet has insufficient BNB balance"
+                      : ""
                   }
                 >
                   {
@@ -1554,6 +1646,13 @@ export function SimulateAndExecuteDialog({
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Distributing...
+                      </>
+                    ) : simulationResult && 
+                       (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) < 
+                       (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))) ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-red-500"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        Insufficient BNB
                       </>
                     ) : (
                       "Distribute BNB"
@@ -1657,7 +1756,7 @@ export function SimulateAndExecuteDialog({
                               {wallets
                                 .filter(w => w.role !== 'botmain')
                                 .reduce((sum, wallet) => sum + (wallet.tokenBalance || 0), 0)
-                                .toLocaleString()}
+                                .toFixed(0)}
                             </div>
                           )}
                         </div>
@@ -1717,7 +1816,15 @@ export function SimulateAndExecuteDialog({
                           </TableCell>
                           <TableCell className="text-center">{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
                           <TableCell className="text-center">{(wallet.tokenBalance || 0).toLocaleString()}</TableCell>
-                          <TableCell className="text-center">{(wallet.bnbToSpend || 0).toFixed(4)}</TableCell>
+                          <TableCell className="text-center">
+                            {wallet.insufficientBnb ? (
+                              <div className="flex flex-col text-red-500 font-medium">
+                                <span>{Number((wallet.bnbToSpend || 0).toFixed(6)) + Number(wallet.insufficientBnb.toFixed(6))}</span>                                
+                              </div>
+                            ) : (
+                              (wallet.bnbToSpend || 0).toFixed(4)
+                            )}
+                          </TableCell>
                           <TableCell className="text-center">{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
                         </TableRow>
                       ))
@@ -1742,14 +1849,20 @@ export function SimulateAndExecuteDialog({
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
                   <p>Deposit Wallet BNB Balance: {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'} BNB</p>
                   <p>BNB for Adding Liquidity: {simulationResult.addLiquidityBnb.toFixed(4)} BNB</p>
-                  <p>BNB for Sniping wallets: {simulationResult.snipingBnb.toFixed(4)} BNB</p>
+                  <p>BNB for Sniping wallets: {
+                    // Calculate total BNB needed for sniping including any insufficient amounts
+                    (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))).toFixed(6)
+                  } BNB</p>
                   {simulationResult.tipBnb !== undefined && (
                     <p>BNB for Bundle Tip: {simulationResult.tipBnb.toFixed(4)} BNB</p>
                   )}
                   {simulationResult.gasCost !== undefined && (
                     <p>Gas Cost: {simulationResult.gasCost.toFixed(6)} BNB</p>
                   )}
-                  <p>Total BNB Needed: {simulationResult.totalBnbNeeded.toFixed(4)} BNB</p>
+                  <p>Total BNB Needed: {
+                    // Update total BNB needed to include insufficient amounts
+                    (simulationResult.totalBnbNeeded + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))).toFixed(6)
+                  } BNB</p>
                 </div>
 
                 {simulationResult.poolSimulation && simulationResult.poolSimulation.initialReserves && (
@@ -1775,9 +1888,26 @@ export function SimulateAndExecuteDialog({
                   <p className={simulationResult.sufficientBalance ? "text-green-500 font-medium" : "text-red-500 font-medium"}>
                     {simulationResult.sufficientBalance
                       ? "✓ Fee estimation successful."
-                      : `⚠ Insufficient balance. Need ${(simulationResult.totalBnbNeeded - simulationResult.currentBnbBalance).toFixed(4)} more BNB to Deposit Wallet.`}
+                      : `⚠ Insufficient balance. Check the wallet table for details on required BNB.`}
                   </p>
                 </div>
+
+                {!simulationResult.sufficientBalance && insufficientFundsDetails && (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800">
+                    <p className="font-medium mb-1">Insufficient BNB Details:</p>
+                    <ul className="list-disc pl-5 space-y-1 text-xs">
+                      <li>
+                        <span className="font-medium">{insufficientFundsDetails.walletType}:</span> {insufficientFundsDetails.walletAddress.slice(0, 6)}...{insufficientFundsDetails.walletAddress.slice(-4)}
+                      </li>
+                      <li>Available: {insufficientFundsDetails.availableBnb.toFixed(6)} BNB</li>
+                      <li>Required: {insufficientFundsDetails.requiredBnb.toFixed(6)} BNB</li>
+                      <li>Missing: <span className="font-medium">{insufficientFundsDetails.missingBnb.toFixed(6)} BNB</span></li>
+                    </ul>
+                    <p className="text-xs mt-2">
+                      Please add more BNB to this wallet before proceeding with the simulation.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-muted-foreground text-center">Run simulation to see results</p>
