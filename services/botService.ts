@@ -280,4 +280,40 @@ export class BotService {
     );
     return response.data;
   }
+
+  /**
+   * Execute single wallet sell operation
+   */
+  static async singleWalletSell(params: {
+    walletAddress: string;
+    tokenAddress: string;
+    sellPercentage: number;
+    slippageTolerance: number;
+    targetWalletAddress?: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    const response = await api.post<{ success: boolean; error?: string }>(
+      `${BACKEND_URL}/snipe/singleSell`,
+      params,
+      getAuthHeaders()
+    );
+    return response.data;
+  }
+
+  /**
+   * Execute multi wallet sell operation
+   */
+  static async multiWalletSell(params: {
+    walletAddresses: string[];
+    tokenAddress: string;
+    sellPercentages: number[];
+    slippageTolerance: number;
+    targetWalletAddress?: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    const response = await api.post<{ success: boolean; error?: string }>(
+      `${BACKEND_URL}/snipe/multiSell`,
+      params,
+      getAuthHeaders()
+    );
+    return response.data;
+  }
 } 

@@ -19,6 +19,7 @@ import { useEthersSigner } from "@/lib/ether-adapter"
 import { useChainId, useAccount } from "wagmi"
 import { getTokenOwner, isTokenTradingEnabled, calculateSnipeAmount as calculatePoolSnipeAmount, getPoolInfo, getWalletBalances as getWeb3WalletBalances, getLPTokenBalance, burnLiquidity } from "@/services/web3Utils"
 import { ApproveAndAddLiquidityButtons } from "@/components/projects/ApproveAndAddLiquidityButtons"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // Define the SubWallet type for the LiquidationSnipeBot addon
 interface SubWallet {
@@ -28,14 +29,16 @@ interface SubWallet {
 }
 
 interface WalletInfo {
-  publicKey: string
-  bnbToSpend?: number
-  bnbBalance?: number
-  tokenAmount?: number
-  tokenBalance?: number
-  role?: string
-  _id?: string
-  insufficientBnb?: number
+  _id?: string;
+  publicKey: string;
+  role: string;
+  bnbToSpend?: number;
+  bnbBalance?: number;
+  tokenAmount?: number;
+  tokenBalance?: number;
+  insufficientBnb?: number;
+  sellPercentage?: number;
+  isSelectedForMutilSell?: boolean;
 }
 
 // Define the LiquidationSnipeBot addon type
@@ -156,6 +159,9 @@ export function SimulateAndExecuteDialog({
     requiredBnb: number;
     missingBnb: number;
   } | null>(null);
+  const [executingSingleSells, setExecutingSingleSells] = useState<Record<string, boolean>>({});
+  const [isExecutingMultiSell, setIsExecutingMultiSell] = useState(false);
+  const [slippageTolerance, setSlippageTolerance] = useState(5); // Default 5% slippage
 
   // Function to fetch balances with error handling and rate limiting
   const fetchBalances = async (addresses: string[]) => {
@@ -1050,6 +1056,88 @@ export function SimulateAndExecuteDialog({
     );
   };
 
+  const handleSingleSell = async (walletAddress: string, sellPercentage: number) => {
+    try {
+      setExecutingSingleSells(prev => ({ ...prev, [walletAddress]: true }));
+      const result = await BotService.singleWalletSell({
+        walletAddress,
+        tokenAddress: project?.tokenAddress,
+        sellPercentage,
+        slippageTolerance,
+        targetWalletAddress: project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey
+      });
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Tokens sold successfully",
+        });
+        // Refresh balances after successful sell
+        const allAddresses = [
+          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+        ];
+        fetchBalances(allAddresses);
+      } else {
+        throw new Error(result.error || "Failed to sell tokens");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to sell tokens",
+        variant: "destructive",
+      });
+    } finally {
+      setExecutingSingleSells(prev => ({ ...prev, [walletAddress]: false }));
+    }
+  };
+
+  const handleMultiSell = async () => {
+    const selectedWallets = wallets.filter(w => w.isSelectedForMutilSell && w.role !== 'botmain');
+    if (selectedWallets.length === 0) {
+      toast({
+        title: "Error",
+        description: "No wallets selected for multi-sell",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsExecutingMultiSell(true);
+      const result = await BotService.multiWalletSell({
+        walletAddresses: selectedWallets.map(w => w.publicKey),
+        tokenAddress: project?.tokenAddress,
+        sellPercentages: selectedWallets.map(w => w.sellPercentage || 0),
+        slippageTolerance,
+        targetWalletAddress: project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey
+      });
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Tokens sold successfully from all selected wallets",
+        });
+        // Refresh balances after successful sell
+        const allAddresses = [
+          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+        ];
+        fetchBalances(allAddresses);
+      } else {
+        throw new Error(result.error || "Failed to sell tokens");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to sell tokens",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExecutingMultiSell(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
@@ -1787,6 +1875,15 @@ export function SimulateAndExecuteDialog({
                           )}
                         </div>
                       </TableHead>
+                      <TableHead className="bg-muted/50 font-medium w-[20%]">
+                          Sell amount(% of token balance)
+                      </TableHead>
+                      <TableHead className="bg-muted/50 font-medium w-[20%]">
+                          Select for mutil sell
+                      </TableHead>
+                      <TableHead className="bg-muted/50 font-medium w-[20%]">
+                          Single sell
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1826,20 +1923,73 @@ export function SimulateAndExecuteDialog({
                             )}
                           </TableCell>
                           <TableCell className="text-center">{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
+                          <TableCell className="text-center">
+                            <Input 
+                              type="number" 
+                              min={0} 
+                              max={100} 
+                              value={wallet.sellPercentage || 0} 
+                              onChange={(e) => setWallets(prev => 
+                                prev.map(w => w.publicKey === wallet.publicKey 
+                                  ? { ...w, sellPercentage: Number(e.target.value) } 
+                                  : w
+                                )
+                              )} 
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Checkbox 
+                              checked={wallet.isSelectedForMutilSell || false}
+                              onCheckedChange={(checked) => setWallets(prev => 
+                                prev.map(w => w.publicKey === wallet.publicKey 
+                                  ? { ...w, isSelectedForMutilSell: checked === true } 
+                                  : w
+                                )
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button 
+                              className="h-8"
+                              onClick={() => handleSingleSell(wallet.publicKey, wallet.sellPercentage || 0)}
+                              disabled={executingSingleSells[wallet.publicKey] || wallet.isSelectedForMutilSell || !wallet.sellPercentage}
+                            >
+                              {executingSingleSells[wallet.publicKey] ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : null}
+                              Sell
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center">
+                        <TableCell colSpan={8} className="text-center">
                           <span className="text-sm text-muted-foreground">No wallets found. Generate wallets to start.</span>
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
-              </div>
+              </div>              
             </div>
           )}
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button
+            onClick={handleMultiSell}
+            disabled={
+              isExecutingMultiSell || 
+              !wallets.some(w => w.isSelectedForMutilSell) ||
+              !wallets.some(w => w.isSelectedForMutilSell && w.sellPercentage)
+            }
+            className="bg-primary"
+          >
+            {isExecutingMultiSell ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Execute Multi Sell
+          </Button>
         </div>
         <DialogFooter className="flex flex-col w-full gap-4">
           <div className="w-full border rounded-lg p-4 bg-muted/30">
