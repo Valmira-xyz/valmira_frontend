@@ -1368,7 +1368,7 @@ export function SimulateAndExecuteDialog({
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">BNB to be added for Sniping:</span>
+                      <span className="text-muted-foreground">BNB for Sniping wallets:</span>
                       <span className="font-medium">
                         {wallets
                           .filter(w => w.role !== 'botmain')
@@ -1391,7 +1391,7 @@ export function SimulateAndExecuteDialog({
                 </div>
               )}
 
-              <div className="grid grid-cols-1  gap-3">
+              <div className="flex flex-col  gap-3">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="walletCount" className="text-sm">
@@ -1540,7 +1540,14 @@ export function SimulateAndExecuteDialog({
                 </Button>
                 <Button
                   onClick={handleDistributeBnb}
-                  disabled={!wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || isDistributingBNBs || isBnbDistributed || isProjectLoading}
+                  variant={wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0) <= 0 ? "outline" : "default"}
+                  disabled={
+                    !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || 
+                    isDistributingBNBs || 
+                    isBnbDistributed || 
+                    isProjectLoading || 
+                    wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0) <= 0
+                  }
                 >
                   {
                     isDistributingBNBs ? (
@@ -1555,7 +1562,7 @@ export function SimulateAndExecuteDialog({
                 </Button>
                 <Button
                   onClick={handleSimulate}
-                  disabled={isSimulating || !simulationResult || isExecuting}
+                  disabled={isSimulating || !simulationResult || isExecuting || isProjectLoading }
                 >
                   {isSimulating ? (
                     <>
@@ -1572,7 +1579,7 @@ export function SimulateAndExecuteDialog({
                     isExecuting ||
                     !simulationResult ||
                     !simulationResult.sufficientBalance ||
-                    isSimulating
+                    isSimulating || isProjectLoading
                   }
                 >
                   {isExecuting ? (
@@ -1598,7 +1605,7 @@ export function SimulateAndExecuteDialog({
                     <TableRow>
                       <TableHead className="bg-muted/50 font-medium w-[20%]">
                         <div className="flex gap-1 items-center ">
-                          <div>Wallet Address</div>
+                          <div>Sniping Wallet</div>
 
                           <Button
                             variant="ghost"
@@ -1735,7 +1742,7 @@ export function SimulateAndExecuteDialog({
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
                   <p>Deposit Wallet BNB Balance: {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'} BNB</p>
                   <p>BNB for Adding Liquidity: {simulationResult.addLiquidityBnb.toFixed(4)} BNB</p>
-                  <p>BNB for Sniping: {simulationResult.snipingBnb.toFixed(4)} BNB</p>
+                  <p>BNB for Sniping wallets: {simulationResult.snipingBnb.toFixed(4)} BNB</p>
                   {simulationResult.tipBnb !== undefined && (
                     <p>BNB for Bundle Tip: {simulationResult.tipBnb.toFixed(4)} BNB</p>
                   )}
