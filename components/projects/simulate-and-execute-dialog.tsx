@@ -302,6 +302,21 @@ export function SimulateAndExecuteDialog({
   // Initialize wallets when dialog opens
   useEffect(() => {
     if (open && project?.addons?.LiquidationSnipeBot) {
+      // Try to load saved state from localStorage
+      const depositWalletAddress = project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey;
+      let savedState = null;
+      
+      if (depositWalletAddress) {
+        try {
+          const savedStateString = localStorage.getItem(`modalState_${depositWalletAddress}`);
+          if (savedStateString) {
+            savedState = JSON.parse(savedStateString);
+          }
+        } catch (error) {
+          console.error("Failed to load saved state:", error);
+        }
+      }
+
       // Initialize wallets from currentProject
       const subWallets = project?.addons.LiquidationSnipeBot.subWalletIds?.map((wallet: SubWallet) => ({
         publicKey: wallet.publicKey,
@@ -313,7 +328,54 @@ export function SimulateAndExecuteDialog({
         _id: wallet._id
       })) || [];
 
-      setWallets(subWallets);
+      // Apply saved state if available
+      if (savedState) {
+        // Restore snipe percentage
+        if (savedState.snipePercentage) {
+          setSnipePercentage(savedState.snipePercentage);
+        }
+        
+        // Restore liquidity settings
+        if (savedState.doAddLiquidity !== undefined) {
+          setDoAddLiquidity(savedState.doAddLiquidity);
+        }
+        
+        if (savedState.liquidityBnbAmount) {
+          setLiquidityBnbAmount(savedState.liquidityBnbAmount);
+        }
+        
+        if (savedState.liquidityTokenAmount) {
+          setLiquidityTokenAmount(savedState.liquidityTokenAmount);
+        }
+        
+        // Restore BNB distribution state
+        if (savedState.isBnbDistributed !== undefined) {
+          setIsBnbDistributed(savedState.isBnbDistributed);
+        }
+        
+        // Restore wallet settings if they match the current wallets
+        if (savedState.wallets && savedState.wallets.length > 0) {
+          // Map saved wallet data to current wallets by matching public keys
+          const updatedWallets = subWallets.map(wallet => {
+            const savedWallet = savedState.wallets.find((w: WalletInfo) => w.publicKey === wallet.publicKey);
+            if (savedWallet) {
+              return {
+                ...wallet,
+                bnbToSpend: savedWallet.bnbToSpend || 0,
+                tokenAmount: savedWallet.tokenAmount || 0
+              };
+            }
+            return wallet;
+          });
+          
+          setWallets(updatedWallets);
+        } else {
+          setWallets(subWallets);
+        }
+      } else {
+        setWallets(subWallets);
+      }
+      
       setWalletCount(subWallets.length || 5);
 
       if (project?.tokenAddress) {
@@ -494,6 +556,16 @@ export function SimulateAndExecuteDialog({
           title: "Success",
           description: "BNB distributed successfully",
         });
+        
+        // Save state after successful distribution
+        localStorage.setItem(`modalState_${depositWallet.publicKey}`, JSON.stringify({
+          wallets: wallets.filter(w => w.role !== 'botmain'),
+          snipePercentage,
+          isBnbDistributed: true,
+          liquidityBnbAmount,
+          liquidityTokenAmount,
+          doAddLiquidity
+        }));
       } else {
         toast({
           title: "Error",
@@ -648,6 +720,17 @@ export function SimulateAndExecuteDialog({
         title: "Success",
         description: "Fee estimation completed successfully",
       });
+
+      
+      // Save current modal state to local storage
+      localStorage.setItem(`modalState_${depositWallet.publicKey}`, JSON.stringify({
+        wallets: wallets.filter(w => w.role !== 'botmain'),
+        snipePercentage,
+        isBnbDistributed,
+        liquidityBnbAmount,
+        liquidityTokenAmount,
+        doAddLiquidity
+      }));
     } catch (error) {
       toast({
         title: "Error",
@@ -1240,6 +1323,18 @@ export function SimulateAndExecuteDialog({
                             variant: "destructive",
                           });
                         });
+                        // here save current modal state to local storage
+                        const depositWalletAddress = project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey;
+                        if (depositWalletAddress) {
+                          localStorage.setItem(`modalState_${depositWalletAddress}`, JSON.stringify({
+                            wallets: wallets.filter(w => w.role !== 'botmain'),
+                            snipePercentage,
+                            isBnbDistributed,
+                            liquidityBnbAmount,
+                            liquidityTokenAmount,
+                            doAddLiquidity
+                          }));
+                        }
                       }}
                       disabled={!wallets.length || isProjectLoading}
                       className="h-8 whitespace-nowrap"
