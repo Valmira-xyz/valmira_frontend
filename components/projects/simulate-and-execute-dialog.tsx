@@ -215,7 +215,7 @@ export function SimulateAndExecuteDialog({
             }
           }
 
-          // Update sub-wallets with their balances
+          // Update Snipnig wallets with their balances
           return updatedWallets.map(wallet => {
             if (wallet.role === 'botmain') return wallet;
             const balance = response.find((b: any) => b.address === wallet.publicKey);
@@ -826,7 +826,7 @@ export function SimulateAndExecuteDialog({
       // Filter out wallets without _id
       const subWallets = wallets.filter(w => w.role !== 'botmain' && w._id);
       if (subWallets.length === 0) {
-        throw new Error("No valid sub-wallets found");
+        throw new Error("No valid Snipnig wallets found");
       }
 
       // Get the private keys (or IDs in this case)
@@ -891,7 +891,7 @@ export function SimulateAndExecuteDialog({
       // Filter out wallets without _id
       const subWallets = wallets.filter(w => w.role !== 'botmain' && w._id);
       if (subWallets.length === 0) {
-        throw new Error("No valid sub-wallets found");
+        throw new Error("No valid Snipnig wallets found");
       }
 
       // Get the private keys (or IDs in this case)
@@ -1385,7 +1385,7 @@ export function SimulateAndExecuteDialog({
                     </div>
                   </div>
                   <p className="text-sm text-blue-600 mt-2">
-                    💡 Please ensure your Deposit Wallet has enough BNB to cover distributing BNB to sub-wallets for sniping.
+                    💡 Please ensure your Deposit Wallet has enough BNB to cover distributing BNB to Snipnig wallets for sniping.
                   </p>
 
                 </div>
