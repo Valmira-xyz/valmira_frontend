@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -22,13 +22,11 @@ import { useDispatch } from "react-redux"
 import { deleteProject } from "@/store/slices/projectSlice"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
+import { ProjectWithAddons } from "@/types"
+import { useSelector } from "react-redux"
+import { RootState } from "@/store/store"
 
-interface ProjectDangerZoneProps {
-  projectName: string
-  projectId: string
-}
-
-export function ProjectDangerZone({ projectName, projectId }: ProjectDangerZoneProps) {
+export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
   const [tokenNameInput, setTokenNameInput] = useState("")
   const [confirmationPhrase, setConfirmationPhrase] = useState("")
   const [isValid, setIsValid] = useState(false)
@@ -36,13 +34,24 @@ export function ProjectDangerZone({ projectName, projectId }: ProjectDangerZoneP
   const dispatch = useDispatch()
   const router = useRouter()
   const { toast } = useToast()
+  const { user } = useSelector((state: RootState) => state.auth)
+
+  const isProjectOwner = useMemo(() => {
+    if (!user || !project || !project.owner) return false;
+    
+    const ownerWalletAddress = typeof project.owner === 'string' 
+      ? project.owner 
+      : project.owner.walletAddress;
+    
+    return user.walletAddress?.toLowerCase() === ownerWalletAddress?.toLowerCase();
+  }, [user, project]);
 
   // Use useEffect to validate inputs whenever they change
   useEffect(() => {
-    const isTokenNameValid = tokenNameInput === projectName
+    const isTokenNameValid = tokenNameInput === project?.name
     const isPhraseValid = confirmationPhrase === "I understand the consequences"
     setIsValid(isTokenNameValid && isPhraseValid)
-  }, [tokenNameInput, confirmationPhrase, projectName])
+  }, [tokenNameInput, confirmationPhrase, project?.name])
 
   const handleTokenNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTokenNameInput(e.target.value)
@@ -53,9 +62,10 @@ export function ProjectDangerZone({ projectName, projectId }: ProjectDangerZoneP
   }
 
   const handleDestroyProject = async () => {
+    if (!isProjectOwner) return
     try {
       setIsDeleting(true)
-      await dispatch(deleteProject(projectId) as any)
+      await dispatch(deleteProject(project?._id) as any)
       toast({
         title: "Project Deleted",
         description: "Project has been successfully deleted."
@@ -110,7 +120,7 @@ export function ProjectDangerZone({ projectName, projectId }: ProjectDangerZoneP
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <p className="text-sm font-medium">
-                  To confirm, please type the project name: <span className="font-bold">{projectName}</span>
+                  To confirm, please type the project name: <span className="font-bold">{project?.name}</span>
                 </p>
                 <Input
                   value={tokenNameInput}
@@ -132,7 +142,7 @@ export function ProjectDangerZone({ projectName, projectId }: ProjectDangerZoneP
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDestroyProject}
+                onClick={() => isProjectOwner && handleDestroyProject()}
                 disabled={!isValid || isDeleting}
                 className="bg-destructive hover:bg-destructive/90"
               >

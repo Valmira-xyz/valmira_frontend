@@ -97,7 +97,7 @@ export default function ProjectDetailPage() {
       <ProjectMetrics project={metricsProject} />
       <ProjectAnalytics project={project} />
       <ProjectAddOns project={projectWithAddons} />
-      <ProjectDangerZone projectName={project?.name || ''} projectId={projectId} />
+      {projectWithAddons && <ProjectDangerZone project={projectWithAddons} />}     
     </div>
   )
 }
