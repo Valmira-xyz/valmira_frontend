@@ -662,7 +662,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     <Switch
                       id={`${addon.botType}-toggle`}
                       checked={configs[addon.botType].enabled}
-                      onCheckedChange={() => handleToggle(addon.botType)}
+                      onCheckedChange={() => isProjectOwner && handleToggle(addon.botType)}
                     />
                   </div>
                   {addon.depositWallet && (
@@ -779,7 +779,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     <div className="flex flex-col w-full gap-2">
                       <div className="flex justify-between items-center">
                         <h3 className="text-lg font-semibold">Sniped Wallets</h3>
-                        <Button variant="outline" size="sm" onClick={() => handleMigrateToAutoSell()}>
+                        <Button variant="outline" size="sm" onClick={() => isProjectOwner && handleMigrateToAutoSell()}>
                           Migrate to Auto Sell
                         </Button>
                       </div>
@@ -813,7 +813,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     </p>
                     <Button
                       className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                      onClick={() => setIsSimulateDialogOpen(true)}
+                      onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
                     >
                       Configure & Execute
                     </Button>
@@ -826,7 +826,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       </p>
                       <Button
                         className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                        onClick={() => handleSave(addon.botType)}
+                        onClick={() => isProjectOwner && handleSave(addon.botType)}
                       >
                         <Save className="h-4 w-4 mr-1" />
                         Execute
@@ -838,7 +838,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEdit(addon.botType)}
+                          onClick={() => isProjectOwner && handleEdit(addon.botType)}
                           className="hover:bg-primary/10 transition-colors"
                         >
                           <Edit className="h-4 w-4 mr-1" /> Edit
@@ -847,7 +847,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       {configs[addon.botType].status === "ready_to_simulation" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => setIsSimulateDialogOpen(true)}
+                          onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
                         >
                           Simulate & Execute
                         </Button>
@@ -855,7 +855,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       {configs[addon.botType].status === "simulation_failed" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => setIsSimulateDialogOpen(true)}
+                          onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
                         >
                           Retry Simulation
                         </Button>
@@ -863,7 +863,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       {configs[addon.botType].status === "simulation_succeeded" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => setIsSimulateDialogOpen(true)}
+                          onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
                         >
                           Go on for sniping
                         </Button>
@@ -871,7 +871,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       {configs[addon.botType].status === "snipe_succeeded" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={handleMigrateToAutoSell}
+                          onClick={() => isProjectOwner && handleMigrateToAutoSell()}
                         >
                           Migrate to Auto Sell Bot
                         </Button>
@@ -879,7 +879,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       {configs[addon.botType].status === "snipe_failed" && (
                         <Button
                           className="w-full mt-2 hover:bg-destructive/90 transition-colors"
-                          onClick={() => setIsSimulateDialogOpen(true)}
+                          onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
                         >
                           Retry Sniping
                         </Button>
@@ -887,7 +887,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       {configs[addon.botType].status === "auto_selling" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => handleEdit(addon.botType)}
+                          onClick={() => isProjectOwner && handleEdit(addon.botType)}
                         >
                           Manage Auto Sell
                         </Button>
@@ -895,7 +895,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       {configs[addon.botType].status === "sell_succeeded" && (
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => handleReset(addon.botType)}
+                          onClick={() => isProjectOwner && handleReset(addon.botType)}
                         >
                           Reset Bot
                         </Button>
@@ -908,10 +908,10 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     </p>
                       <Button
                         className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                        onClick={() => handleSave(addon.botType)}
+                        onClick={() => isProjectOwner && handleSave(addon.botType)}
                       >
                         <Save className="h-4 w-4 mr-1" />
-                        Save & Execute
+                        Execute
                       </Button>
                     </>
                   )}
