@@ -7,7 +7,8 @@ const ERC20_ABI = MemeTemplateJson.abi;
 const ROUTER_ABI = [
   "function factory() external pure returns (address)",
   "function WETH() external pure returns (address)",
-  "function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity)"
+  "function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity)",
+  "function removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH)"
 ];
 
 // PancakeSwap V2 Factory ABI (minimal)
@@ -19,7 +20,12 @@ const FACTORY_ABI = [
 const PAIR_ABI = [
   "function token0() external view returns (address)",
   "function token1() external view returns (address)",
-  "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)"
+  "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
+  "function balanceOf(address owner) external view returns (uint)",
+  "function totalSupply() external view returns (uint)",
+  "function allowance(address owner, address spender) external view returns (uint)",
+  "function approve(address spender, uint value) external returns (bool)",
+  "function transfer(address to, uint value) external returns (bool)"
 ];
 
 // PancakeSwap V2 addresses
@@ -368,6 +374,110 @@ export async function addLiquidity(
   } catch (error) {
     console.error('Failed to add liquidity:', error);
     throw error;
+  }
+}
+
+/**
+ * Gets the LP token balance for a wallet
+ * @param walletAddress The wallet address to check
+ * @param tokenAddress The token contract address
+ * @returns LP token balance as a number
+ */
+export async function getLPTokenBalance(
+  walletAddress: string,
+  tokenAddress: string
+): Promise<number> {
+  try {
+    // Get the factory address
+    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
+    const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+    const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
+    
+    // Get WBNB address
+    const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
+    const wbnbAddress = await router.WETH();
+    
+    // Get the pair address
+    const pairAddress = await factory.getPair(tokenAddress, wbnbAddress);
+    
+    // If pair doesn't exist, return 0
+    if (pairAddress === ethers.ZeroAddress) {
+      return 0;
+    }
+    
+    // Get LP token balance
+    const pairContract = new ethers.Contract(pairAddress, PAIR_ABI, provider);
+    const balance = await pairContract.balanceOf(walletAddress);
+    const decimals = 18; // LP tokens typically have 18 decimals
+    
+    // Convert to number
+    return parseFloat(ethers.formatUnits(balance, decimals));
+  } catch (error) {
+    console.error('Failed to get LP token balance:', error);
+    return 0;
+  }
+}
+
+/**
+ * Burns liquidity by removing it from PancakeSwap
+ * @param signer The ethers signer
+ * @param tokenAddress The token contract address
+ * @returns Object with success status and optional error message
+ */
+export async function burnLiquidity(
+  signer: ethers.Signer,
+  tokenAddress: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const walletAddress = await signer.getAddress();
+    
+    // Get the factory and router addresses
+    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
+    const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+    const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, signer);
+    const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
+    
+    // Get WBNB address
+    const wbnbAddress = await router.WETH();
+    
+    // Get the pair address
+    const pairAddress = await factory.getPair(tokenAddress, wbnbAddress);
+    
+    // If pair doesn't exist, return error
+    if (pairAddress === ethers.ZeroAddress) {
+      return { success: false, error: "Liquidity pool does not exist" };
+    }
+    
+    // Get LP token balance
+    const pairContract = new ethers.Contract(pairAddress, PAIR_ABI, signer);
+    const lpBalance = await pairContract.balanceOf(walletAddress);
+    
+    // If no LP tokens, return error
+    if (lpBalance === BigInt(0)) {
+      return { success: false, error: "No LP tokens to burn" };
+    }
+    
+    // Dead address to send LP tokens to (effectively burning them)
+    const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
+    
+    // Transfer LP tokens to dead address
+    const transferTx = await pairContract.transfer(DEAD_ADDRESS, lpBalance);
+    const receipt = await transferTx.wait();
+    
+    if (!receipt.status) {
+      return { success: false, error: "LP token transfer failed" };
+    }
+    
+    return { 
+      success: true,
+      error: undefined
+    };
+  } catch (error) {
+    console.error('Failed to burn liquidity:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Unknown error occurred" 
+    };
   }
 }
 
