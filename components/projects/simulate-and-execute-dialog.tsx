@@ -161,7 +161,7 @@ export function SimulateAndExecuteDialog({
   } | null>(null);
   const [executingSingleSells, setExecutingSingleSells] = useState<Record<string, boolean>>({});
   const [isExecutingMultiSell, setIsExecutingMultiSell] = useState(false);
-  const [slippageTolerance, setSlippageTolerance] = useState(5); // Default 5% slippage
+  const [slippageTolerance, setSlippageTolerance] = useState(10); // Default 5% slippage
 
   // Function to fetch balances with error handling and rate limiting
   const fetchBalances = async (addresses: string[]) => {
@@ -1975,25 +1975,9 @@ export function SimulateAndExecuteDialog({
             </div>
           )}
         </div>
-        <div className="mt-4 flex justify-end">
-          <Button
-            onClick={handleMultiSell}
-            disabled={
-              isExecutingMultiSell || 
-              !wallets.some(w => w.isSelectedForMutilSell) ||
-              !wallets.some(w => w.isSelectedForMutilSell && w.sellPercentage)
-            }
-            className="bg-primary"
-          >
-            {isExecutingMultiSell ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            Execute Multi Sell
-          </Button>
-        </div>
         <DialogFooter className="flex flex-col w-full gap-4">
           <div className="w-full border rounded-lg p-4 bg-muted/30">
-            <h3 className="font-semibold mb-3">Fee Estimation Results</h3>
+            <h3 className="font-semibold mb-3">Sniping Fee Estimation Result</h3>
             {simulationResult ? (
               <div className="text-sm space-y-1">
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
@@ -2064,6 +2048,22 @@ export function SimulateAndExecuteDialog({
             )}
           </div>
 
+          <div className="h-full flex justify-end">
+          <Button
+            onClick={handleMultiSell}
+            disabled={
+              isExecutingMultiSell || 
+              !wallets.some(w => w.isSelectedForMutilSell) ||
+              !wallets.some(w => w.isSelectedForMutilSell && w.sellPercentage)
+            }
+            className="bg-primary"
+          >
+            {isExecutingMultiSell ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Execute Multi Sell
+          </Button>
+        </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
