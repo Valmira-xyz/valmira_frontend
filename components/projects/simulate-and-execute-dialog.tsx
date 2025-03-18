@@ -2090,7 +2090,7 @@ export function SimulateAndExecuteDialog({
                   {simulationResult.gasCost !== undefined && (
                     <p>Gas Cost: {simulationResult.gasCost.toFixed(6)} BNB</p>
                   )}
-                  <p>Total BNB Needed: {
+                  <p>Total spending BNB: {
                     // Update total BNB needed to include insufficient amounts
                     (simulationResult.totalBnbNeeded + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))).toFixed(6)
                   } BNB</p>
