@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAuthHeaders } from './projectService';
+import { getAuthHeaders } from './botService';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
