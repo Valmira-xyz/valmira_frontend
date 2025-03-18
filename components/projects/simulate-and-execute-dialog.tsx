@@ -635,8 +635,8 @@ export function SimulateAndExecuteDialog({
       if (totalInsufficientBNB <= 0 && totalBnbToSpend<=0) {
         toast({
           title: "Information",
-          description: "All wallets already have enough balance for sniping.",
-          variant: "destructive",
+          description: "All wallets already have enough balance for sniping. You can Simulate Bundle now.",
+          variant: "default",
         });
         return;
       }
@@ -1673,7 +1673,8 @@ export function SimulateAndExecuteDialog({
                   </div>
                   <Button
                     onClick={handleGenerateWallets}
-                    disabled={isGenerating || isProjectLoading}
+                    disabled={isGenerating || isProjectLoading ||  
+                      isEstimatingFees || isDistributingBNBs || isSimulating || isExecuting}
                     className="h-8 !w-32 whitespace-nowrap"
                     size="sm"
                   >
@@ -1761,7 +1762,8 @@ export function SimulateAndExecuteDialog({
                         }));
                       }
                     }}
-                    disabled={!wallets.length || isProjectLoading}
+                    disabled={!wallets.length || isProjectLoading ||  
+                      isEstimatingFees || isDistributingBNBs || isSimulating || isExecuting}
                     className="h-8 !w-32 whitespace-nowrap"
                     size="sm"
                   >
@@ -1772,7 +1774,7 @@ export function SimulateAndExecuteDialog({
               <div className="flex flex-col gap-4">
                 <Button
                   onClick={handleEstimateFees}
-                  disabled={isEstimatingFees || isProjectLoading || !wallets.filter(w => w.role !== 'botmain').length}
+                  disabled={isEstimatingFees || isProjectLoading || isSimulating || isDistributingBNBs || isExecuting || !wallets.filter(w => w.role !== 'botmain').length}
                 >
                   {isEstimatingFees ? (
                     <>
@@ -1785,10 +1787,13 @@ export function SimulateAndExecuteDialog({
                 </Button>
                 <Button
                   onClick={handleDistributeBnb}
-                  disabled={
+                  disabled={ 
+                    isEstimatingFees || 
                     !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || 
                     isDistributingBNBs || 
-                    isProjectLoading
+                    isProjectLoading || 
+                    isSimulating || 
+                    isExecuting
                   }
                   className={
                     simulationResult && 
@@ -1825,7 +1830,8 @@ export function SimulateAndExecuteDialog({
                 </Button>
                 <Button
                   onClick={handleSimulate}
-                  disabled={isSimulating || !simulationResult || isExecuting || isProjectLoading }
+                  disabled={ 
+                    isEstimatingFees || isSimulating || !simulationResult || isExecuting || isProjectLoading }
                 >
                   {isSimulating ? (
                     <>
@@ -1840,7 +1846,8 @@ export function SimulateAndExecuteDialog({
                   onClick={handleExecute}
                   disabled={
                     isExecuting ||
-                    !simulationResult ||
+                    !simulationResult || 
+                    isEstimatingFees || 
                     !simulationResult.sufficientBalance ||
                     isSimulating || isProjectLoading
                   }
