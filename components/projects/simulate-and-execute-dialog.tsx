@@ -690,8 +690,6 @@ export function SimulateAndExecuteDialog({
       });
     }
 
-    // Reset insufficient funds details when starting a new fee estimation
-    setInsufficientFundsDetails(null);
 
     if (!project?.addons?.LiquidationSnipeBot) return;
 
@@ -752,6 +750,12 @@ export function SimulateAndExecuteDialog({
       setIsEstimatingFees(true);
 
       setInsufficientFundsDetails(null);
+      //iterate through wallets and make zero to bnbToSpend and insufficientBnb
+      setWallets(prevWallets => prevWallets.map(wallet => ({
+        ...wallet,
+        bnbToSpend: 0,
+        insufficientBnb: 0
+      })));
 
       // Call the estimateFees endpoint
       const result = await BotService.estimateSnipeFees({
@@ -848,8 +852,6 @@ export function SimulateAndExecuteDialog({
   const handleSimulate = async () => {
     if (!project?.addons?.LiquidationSnipeBot) return;
 
-    // Reset insufficient funds details when starting a new simulation
-    setInsufficientFundsDetails(null);
 
     const depositWallet = project?.addons.LiquidationSnipeBot.depositWalletId;
     if (!depositWallet) {
@@ -880,11 +882,13 @@ export function SimulateAndExecuteDialog({
         throw new Error("No valid Snipnig wallets found");
       }
 
-      // Get the private keys (or IDs in this case)
-      const subWalletAddresses = project?.addons.LiquidationSnipeBot.subWalletIds
-        .map((w: SubWallet) => w.publicKey)
-
       setInsufficientFundsDetails(null);
+      //iterate through wallets and make zero to bnbToSpend and insufficientBnb
+      setWallets(prevWallets => prevWallets.map(wallet => ({
+        ...wallet,
+        bnbToSpend: 0,
+        insufficientBnb: 0
+      })));
 
       // Simulate the snipe operation
       const result = await BotService.simulateSnipe({
@@ -996,6 +1000,12 @@ export function SimulateAndExecuteDialog({
 
     // Reset insufficient funds details when starting execution
     setInsufficientFundsDetails(null);
+    //iterate through wallets and make zero to bnbToSpend and insufficientBnb
+    setWallets(prevWallets => prevWallets.map(wallet => ({
+      ...wallet,
+      bnbToSpend: 0,
+      insufficientBnb: 0
+    })));
 
     const depositWallet = project?.addons.LiquidationSnipeBot.depositWalletId;
     if (!depositWallet) {
