@@ -1002,10 +1002,21 @@ export function SimulateAndExecuteDialog({
   };
 
   const handleExecute = async () => {
-    if (!simulationResult || !simulationResult.sufficientBalance || !project?.addons?.LiquidationSnipeBot) {
+    // Change this check to not strictly require simulation results
+    if (!project?.addons?.LiquidationSnipeBot) {
       toast({
         title: "Error",
-        description: "Cannot execute: insufficient balance or invalid state",
+        description: "Cannot execute: Invalid state or missing bot configuration",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // If we have simulation results and they show insufficient balance, don't proceed
+    if (simulationResult && !simulationResult.sufficientBalance) {
+      toast({
+        title: "Error",
+        description: "Cannot execute: insufficient balance",
         variant: "destructive",
       });
       return;
@@ -1843,10 +1854,8 @@ export function SimulateAndExecuteDialog({
                   onClick={handleExecute}
                   disabled={
                     isExecuting ||
-                    !simulationResult || 
                     isEstimatingFees || 
-                    !simulationResult.sufficientBalance ||
-                    isSimulating || isProjectLoading
+                    isSimulating || isProjectLoading 
                   }
                 >
                   {isExecuting ? (
@@ -2109,8 +2118,8 @@ export function SimulateAndExecuteDialog({
                 <div className="mt-3 p-2 rounded border bg-background">
                   <p className={simulationResult.sufficientBalance ? "text-green-500 font-medium" : "text-red-500 font-medium"}>
                     {simulationResult.sufficientBalance
-                      ? "✓ Fee estimation successful."
-                      : `⚠ Insufficient balance. Check the wallet table for details on required BNB.`}
+                      ? "✓ Fee estimation successful. You can proceed with execution."
+                      : `⚠ Insufficient balance. Distribute more BNB before execution.`}
                   </p>
                 </div>
 
@@ -2126,13 +2135,13 @@ export function SimulateAndExecuteDialog({
                       <li>Missing: <span className="font-medium">{insufficientFundsDetails.missingBnb.toFixed(6)} BNB</span></li>
                     </ul>
                     <p className="text-xs mt-2">
-                      Please add more BNB to this wallet before proceeding with the simulation.
+                      Please distribute more BNB to this wallet before execution.
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-muted-foreground text-center">Run simulation to see results</p>
+              <p className="text-muted-foreground text-center">Estimate fees to see results</p>
             )}
           </div>
 
