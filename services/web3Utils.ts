@@ -114,9 +114,9 @@ export async function getWalletBalances(
     const tokenDecimals = await getTokenDecimals(tokenAddress);
     let results: WalletBalance[] = [];
 
-    // Process wallets in batches of 3 to avoid RPC rate limits
-    for (let i = 0; i < walletAddresses.length; i += 3) {
-      const walletBatch = walletAddresses.slice(i, i + 3);
+    // Process wallets in smaller batches to avoid RPC rate limits (reduced from 3 to 2)
+    for (let i = 0; i < walletAddresses.length; i += 2) {
+      const walletBatch = walletAddresses.slice(i, i + 2);
       const balancePromises = [];
 
       // Create promises for both BNB and token balances
@@ -142,9 +142,9 @@ export async function getWalletBalances(
         });
       }
 
-      // Add a small delay between batches to avoid rate limits
-      if (i + 3 < walletAddresses.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+      // Increased delay between batches to avoid rate limits
+      if (i + 2 < walletAddresses.length) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Increased from 100ms to 500ms
       }
     }
 

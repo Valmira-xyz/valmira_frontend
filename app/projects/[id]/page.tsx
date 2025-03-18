@@ -44,22 +44,18 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to view project details.",
-        variant: "destructive"
-      })
-      router.push('/login')
       return
     }
 
     setIsAuthenticated(true)
     if (projectId) {
-      dispatch(fetchProject(projectId) as any)
       // Fetch project stats for the last 24 hours
       const end = new Date()
       const start = new Date(Date.now() - 24 * 60 * 60 * 1000)
       dispatch(fetchProjectStats({ projectId, timeRange: { start, end } }) as any)
+      setTimeout(() => {
+        dispatch(fetchProject(projectId) as any)
+      }, 2000)
     }
 
     // Cleanup on unmount
@@ -92,17 +88,14 @@ export default function ProjectDetailPage() {
   // Safely cast project to ProjectWithAddons or use default values
   const projectWithAddons = project as unknown as ProjectWithAddons | undefined
 
-  const metricsProject = projectStats?.metrics || {
-    cumulativeProfit: projectWithAddons?.metrics?.cumulativeProfit || 0,
-    volume24h: projectWithAddons?.metrics?.volume24h || 0,
-    activeBots: projectWithAddons?.metrics?.activeBots || 0,
-    liquidity: 0,
-    lastUpdate: new Date()
-  }
-
   const handleRefresh = async () => {
     if (projectId) {
+      // Fetch project first
       await dispatch(fetchProject(projectId) as any)
+      
+      // Add a delay before fetching project stats to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
       const end = new Date()
       const start = new Date(Date.now() - 24 * 60 * 60 * 1000)
       await dispatch(fetchProjectStats({ projectId, timeRange: { start, end } }) as any)

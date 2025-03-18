@@ -1,20 +1,64 @@
 import axios from 'axios'
-import type { Project } from "@/types"
+import type { Project, ApiResponse } from "@/types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-interface ApiResponse<T> {
-  status: string;
-  data: T;
-}
+// Rate limiting configuration
+const RATE_LIMIT_DELAY = 500; // 500ms between requests
+const BATCH_DELAY = 2000; // 2 seconds between batches of requests
+let lastRequestTime = 0;
+
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 seconds before retry
+
+// Helper function for rate limiting
+const waitForRateLimit = async () => {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
+    console.log(`Rate limit active. Waiting for ${RATE_LIMIT_DELAY - timeSinceLastRequest}ms`);
+    await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY - timeSinceLastRequest));
+  }
+  lastRequestTime = Date.now();
+};
+
+// Helper function for retrying failed requests
+const retryWithBackoff = async <T>(
+  operation: () => Promise<T>,
+  retries = MAX_RETRIES
+): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error: any) {
+    // Don't retry if it's a 429 error - just wait longer and let the caller retry
+    if (error?.response?.status === 429) {
+      console.warn("Rate limit (429) reached. Consider slowing down your requests.");
+      // Wait longer for 429 errors
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+      throw error;
+    }
+    
+    if (retries === 0) {
+      console.error("Max retries reached. Throwing error:", error);
+      throw error;
+    }
+    
+    console.warn(`Operation failed. Retrying in ${RETRY_DELAY}ms... Retries left: ${retries - 1}`);
+    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+    return retryWithBackoff(operation, retries - 1);
+  }
+};
 
 // Helper function to get auth headers
-export const getAuthHeaders = () => ({
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
-  },
-  withCredentials: true,
-})
+const getAuthHeaders = () => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  }
+}
 
 export type ActivityAction = 
   | 'Add LP' 
@@ -70,14 +114,46 @@ export interface ProjectStatistics {
   };
 }
 
+export interface GlobalMetrics {
+  totalProjects: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  totalFundsManaged: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  aggregateTradingVolume: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  activeBotsRunning: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  aggregateProfits: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  lastUpdated: string;
+}
+
 export const projectService = {
   getProjects: async (): Promise<Project[]> => {
     try {
-      const response = await axios.get<ApiResponse<{ projects: Project[] }>>(
-        `${BACKEND_URL}/projects`,
-        getAuthHeaders()
-      )
-      return response.data.data.projects
+      await waitForRateLimit();
+      return await retryWithBackoff(async () => {
+        const response = await axios.get<ApiResponse<{ projects: Project[] }>>(
+          `${BACKEND_URL}/projects`,
+          getAuthHeaders()
+        )
+        return response.data.data.projects
+      });
     } catch (error) {
       console.error('Error fetching projects:', error)
       throw error
@@ -86,10 +162,13 @@ export const projectService = {
 
   getPublicProjects: async (pageIndex: number = 0, maxPageCount: number = 10): Promise<Project[]> => {
     try {
-      const response = await axios.get<ApiResponse<{ projects: Project[] }>>(
-        `${BACKEND_URL}/projects/public?pageIndex=${pageIndex}&maxPageCount=${maxPageCount}`
-      )
-      return response.data.data.projects
+      await waitForRateLimit();
+      return await retryWithBackoff(async () => {
+        const response = await axios.get<ApiResponse<{ projects: Project[] }>>(
+          `${BACKEND_URL}/projects/public?pageIndex=${pageIndex}&maxPageCount=${maxPageCount}`
+        )
+        return response.data.data.projects
+      });
     } catch (error) {
       console.error('Error fetching public projects:', error)
       throw error
@@ -98,10 +177,13 @@ export const projectService = {
 
   getProject: async (projectId: string): Promise<Project> => {
     try {
-      const response = await axios.get<ApiResponse<{ project: Project }>>(
-        `${BACKEND_URL}/projects/${projectId}`
-      )
-      return response.data.data.project
+      await waitForRateLimit();
+      return await retryWithBackoff(async () => {
+        const response = await axios.get<ApiResponse<{ project: Project }>>(
+          `${BACKEND_URL}/projects/${projectId}`
+        )
+        return response.data.data.project
+      });
     } catch (error) {
       console.error('Error fetching project:', error)
       throw error
@@ -110,12 +192,15 @@ export const projectService = {
 
   createProject: async (projectData: Partial<Project>): Promise<Project> => {
     try {
-      const response = await axios.post<ApiResponse<{ project: Project }>>(
-        `${BACKEND_URL}/projects`,
-        projectData,
-        getAuthHeaders()
-      )
-      return response.data.data.project
+      await waitForRateLimit();
+      return await retryWithBackoff(async () => {
+        const response = await axios.post<ApiResponse<{ project: Project }>>(
+          `${BACKEND_URL}/projects`,
+          projectData,
+          getAuthHeaders()
+        )
+        return response.data.data.project
+      });
     } catch (error) {
       console.error('Error creating project:', error)
       throw error
@@ -124,12 +209,15 @@ export const projectService = {
 
   updateProjectStatus: async (projectId: string, status: 'active' | 'inactive'): Promise<Project> => {
     try {
-      const response = await axios.patch<ApiResponse<{ project: Project }>>(
-        `${BACKEND_URL}/projects/${projectId}/status`,
-        { status },
-        getAuthHeaders()
-      )
-      return response.data.data.project
+      await waitForRateLimit();
+      return await retryWithBackoff(async () => {
+        const response = await axios.patch<ApiResponse<{ project: Project }>>(
+          `${BACKEND_URL}/projects/${projectId}/status`,
+          { status },
+          getAuthHeaders()
+        )
+        return response.data.data.project
+      });
     } catch (error) {
       console.error('Error updating project status:', error)
       throw error
@@ -138,10 +226,13 @@ export const projectService = {
 
   deleteProject: async (projectId: string): Promise<void> => {
     try {
-      await axios.delete(
-        `${BACKEND_URL}/projects/${projectId}`,
-        getAuthHeaders()
-      )
+      await waitForRateLimit();
+      await retryWithBackoff(async () => {
+        await axios.delete(
+          `${BACKEND_URL}/projects/${projectId}`,
+          getAuthHeaders()
+        )
+      });
     } catch (error) {
       console.error('Error deleting project:', error)
       throw error
@@ -150,11 +241,14 @@ export const projectService = {
 
   getVolumeData: async (projectId: string): Promise<any> => {
     try {
-      const response = await axios.get<ApiResponse<{ volumeData: any }>>(
-        `${BACKEND_URL}/projects/${projectId}/volume`,
-        getAuthHeaders()
-      )
-      return response.data.data.volumeData
+      await waitForRateLimit();
+      return await retryWithBackoff(async () => {
+        const response = await axios.get<ApiResponse<{ volumeData: any }>>(
+          `${BACKEND_URL}/projects/${projectId}/volume`,
+          getAuthHeaders()
+        )
+        return response.data.data.volumeData
+      });
     } catch (error) {
       console.error('Error fetching volume data:', error)
       throw error
@@ -163,11 +257,14 @@ export const projectService = {
 
   getRecentActivity: async (projectId: string, limit: number = 50): Promise<ActivityLog[]> => {
     try {
-      const response = await axios.get<ApiResponse<ActivityLog[]>>(
-        `${BACKEND_URL}/project-stats/${projectId}/activity?limit=${limit}`,
-        getAuthHeaders()
-      );
-      return response.data.data;
+      await waitForRateLimit();
+      return await retryWithBackoff(async () => {
+        const response = await axios.get<ApiResponse<ActivityLog[]>>(
+          `${BACKEND_URL}/project-stats/${projectId}/activity?limit=${limit}`,
+          getAuthHeaders()
+        );
+        return response.data.data;
+      });
     } catch (error) {
       console.error('Error fetching recent activity:', error);
       throw error;
@@ -180,17 +277,20 @@ export const projectService = {
     endDate: Date
   ): Promise<BotPerformanceHistory[]> => {
     try {
-      const response = await axios.get<ApiResponse<BotPerformanceHistory[]>>(
-        `${BACKEND_URL}/project-stats/${projectId}/bot-performance`,
-        {
-          ...getAuthHeaders(),
-          params: {
-            startDate: startDate.toISOString().split('T')[0],
-            endDate: endDate.toISOString().split('T')[0]
+      await waitForRateLimit();
+      return await retryWithBackoff(async () => {
+        const response = await axios.get<ApiResponse<BotPerformanceHistory[]>>(
+          `${BACKEND_URL}/project-stats/${projectId}/bot-performance`,
+          {
+            ...getAuthHeaders(),
+            params: {
+              startDate: startDate.toISOString().split('T')[0],
+              endDate: endDate.toISOString().split('T')[0]
+            }
           }
-        }
-      );
-      return response.data.data;
+        );
+        return response.data.data;
+      });
     } catch (error) {
       console.error('Error fetching bot performance history:', error);
       throw error;
@@ -203,18 +303,28 @@ export const projectService = {
       const queryParams = timeRange ? 
         `?startDate=${timeRange.start.toISOString()}&endDate=${timeRange.end.toISOString()}` : '';
       
-      const [statsResponse, activityResponse, performanceResponse] = await Promise.all([
-        axios.get<ApiResponse<ProjectStatistics>>(
+      // Add rate limiting and sequential requests instead of Promise.all to avoid rate limits
+      await waitForRateLimit();
+      const statsResponse = await retryWithBackoff(async () => {
+        return await axios.get<ApiResponse<ProjectStatistics>>(
           `${BACKEND_URL}/project-stats/${projectId}/stats${queryParams}`,
           getAuthHeaders()
-        ),
-        projectService.getRecentActivity(projectId),
-        projectService.getBotPerformanceHistory(
-          projectId,
-          timeRange?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-          timeRange?.end || new Date()
-        )
-      ]);
+        );
+      });
+
+      // Wait a bit before the next request
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+      await waitForRateLimit();
+      const activityResponse = await projectService.getRecentActivity(projectId);
+      
+      // Wait again before the final request
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+      await waitForRateLimit();
+      const performanceResponse = await projectService.getBotPerformanceHistory(
+        projectId,
+        timeRange?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        timeRange?.end || new Date()
+      );
       
       return {
         ...statsResponse.data.data,
@@ -273,5 +383,24 @@ export const projectService = {
       tokenAmount,
       bnbAmount
     });
+  },
+
+  /**
+   * Get global metrics for the platform from the dedicated endpoint
+   * @returns GlobalMetrics object with platform-wide metrics
+   */
+  getGlobalMetrics: async (): Promise<GlobalMetrics> => {
+    try {
+      await waitForRateLimit();
+      return await retryWithBackoff(async () => {
+        const response = await axios.get<GlobalMetrics>(
+          `${BACKEND_URL}/metrics/global`
+        );
+        return response.data;
+      });
+    } catch (error) {
+      console.error('Error fetching global metrics:', error);
+      throw error;
+    }
   }
 } 

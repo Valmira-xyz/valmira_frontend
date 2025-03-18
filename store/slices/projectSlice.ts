@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import type { Project, ProjectState, ProjectStatistics } from '@/types'
 import { projectService } from '@/services/projectService'
-import type { BotPerformanceHistory, ActivityLog } from '@/services/projectService'
+import type { BotPerformanceHistory, ActivityLog, GlobalMetrics } from '@/services/projectService'
 import axios from 'axios'
 
 const initialState: ProjectState = {
@@ -12,7 +12,8 @@ const initialState: ProjectState = {
   volumeData: null,
   projectStats: null,
   bnbPrice: null,
-  bnbPriceLoading: false
+  bnbPriceLoading: false,
+  globalMetrics: null
 }
 
 // Async thunks
@@ -147,6 +148,21 @@ export const fetchBnbPrice = createAsyncThunk(
     } catch (error: any) {
       console.error('Failed to fetch BNB price:', error);
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch BNB price');
+    }
+  }
+)
+
+export const fetchGlobalMetrics = createAsyncThunk(
+  'projects/fetchGlobalMetrics',
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log('Fetching global metrics...');
+      const result = await projectService.getGlobalMetrics();
+      console.log('Global metrics fetched successfully:', result);
+      return result;
+    } catch (error: any) {
+      console.error('Failed to fetch global metrics:', error);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 )
@@ -344,8 +360,32 @@ const projectSlice = createSlice({
         state.bnbPriceLoading = false;
         state.error = action.payload as string;
       })
+
+      // Fetch global metrics
+      .addCase(fetchGlobalMetrics.pending, (state) => {
+        console.log('Global metrics fetch pending...');
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchGlobalMetrics.fulfilled, (state, action) => {
+        console.log('Global metrics fetch fulfilled, saving to state:', action.payload);
+        state.loading = false;
+        state.globalMetrics = action.payload;
+      })
+      .addCase(fetchGlobalMetrics.rejected, (state, action) => {
+        console.error('Global metrics fetch rejected:', action.payload);
+        state.loading = false;
+        state.error = action.payload as string;
+      })
   }
 })
 
 export const { clearCurrentProject, clearError, updateProjects, updateCurrentProject } = projectSlice.actions
 export default projectSlice.reducer 
+
+// Utility function to check global metrics state (for debugging)
+export const checkGlobalMetricsState = (state: any) => {
+  const globalMetrics = state.projects.globalMetrics;
+  console.log('Current Global Metrics State:', globalMetrics);
+  return globalMetrics;
+} 

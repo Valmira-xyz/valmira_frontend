@@ -1,6 +1,10 @@
+"use client"
+
 import type React from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
+import { useSelector } from 'react-redux'
+import { RootState } from '@/store/store'
 
 export default function DashboardLayout({
   children,

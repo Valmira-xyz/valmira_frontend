@@ -6,105 +6,99 @@ import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { cn, formatNumber } from "@/lib/utils"
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store/store'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { AppDispatch } from '@/store/store'
-import { fetchProjects, fetchVolumeData } from '@/store/slices/projectSlice'
-import { SparklineChart } from "../ui/sparkline-chart"
-
-const useMetrics = () => {
-  const dispatch = useDispatch<AppDispatch>()
-  const { projects, volumeData } = useSelector((state: RootState) => state.projects)
-
-  useEffect(() => {
-    dispatch(fetchProjects())
-  }, [dispatch])
-
-  const calculateMetrics = () => {
-    const totalProjects = projects.length
-    const activeBots = projects.reduce((sum, project) => sum + (project.metrics?.activeBots || 0), 0)
-    const volume24h = projects.reduce((sum, project) => sum + (project.metrics?.volume24h || 0), 0)
-    const cumulativeProfit = projects.reduce((sum, project) => sum + (project.metrics?.cumulativeProfit || 0), 0)
-
-    // For now, we'll use static chart data structure but with real current values
-    return [
-      {
-        title: "Total Projects",
-        value: totalProjects,
-        icon: Briefcase,
-        chart: [
-          { name: "Jan", value: Math.floor(totalProjects * 0.8) },
-          { name: "Feb", value: Math.floor(totalProjects * 0.85) },
-          { name: "Mar", value: Math.floor(totalProjects * 0.95) },
-          { name: "Apr", value: totalProjects },
-        ],
-      },
-      {
-        title: "Total Funds Managed",
-        value: volume24h * 30, // Estimate of total funds based on 24h volume
-        icon: DollarSign,
-        chart: [
-          { name: "Jan", value: Math.floor(volume24h * 30 * 0.8) },
-          { name: "Feb", value: Math.floor(volume24h * 30 * 0.85) },
-          { name: "Mar", value: Math.floor(volume24h * 30 * 0.95) },
-          { name: "Apr", value: volume24h * 30 },
-        ],
-      },
-      {
-        title: "Aggregate Trading Volume",
-        value: volume24h,
-        icon: BarChart2,
-        chart: [
-          { name: "Jan", value: Math.floor(volume24h * 0.8) },
-          { name: "Feb", value: Math.floor(volume24h * 0.85) },
-          { name: "Mar", value: Math.floor(volume24h * 0.95) },
-          { name: "Apr", value: volume24h },
-        ],
-      },
-      {
-        title: "Active Bots Running",
-        value: activeBots,
-        icon: Bot,
-        chart: [
-          { name: "Jan", value: Math.floor(activeBots * 0.8) },
-          { name: "Feb", value: Math.floor(activeBots * 0.85) },
-          { name: "Mar", value: Math.floor(activeBots * 0.95) },
-          { name: "Apr", value: activeBots },
-        ],
-      },
-      {
-        title: "Aggregate Profits",
-        value: cumulativeProfit,
-        icon: TrendingUp,
-        chart: [
-          { name: "Jan", value: Math.floor(cumulativeProfit * 0.8) },
-          { name: "Feb", value: Math.floor(cumulativeProfit * 0.85) },
-          { name: "Mar", value: Math.floor(cumulativeProfit * 0.95) },
-          { name: "Apr", value: cumulativeProfit },
-        ],
-      },
-    ]
-  }
-
-  return calculateMetrics()
-}
+import { fetchGlobalMetrics, fetchBnbPrice } from '@/store/slices/projectSlice'
 
 export function DashboardMetrics() {
-  const metrics = useMetrics()
+  const dispatch = useDispatch<AppDispatch>()
+  const { globalMetrics, loading } = useSelector((state: RootState) => state.projects)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      try {
+        // Fetch global metrics data - available without authentication
+        await dispatch(fetchGlobalMetrics())
+        await dispatch(fetchBnbPrice())
+      } catch (error) {
+        console.error("Error fetching global metrics:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [dispatch])
+
+  console.log("globalMetrics : ", globalMetrics);
+
+  // Define metrics based on globalMetrics data
+  const metrics = [
+    {
+      title: "Total Projects",
+      value: globalMetrics?.totalProjects?.value || 0,
+      trend: globalMetrics?.totalProjects?.trend,
+      changePercent: globalMetrics?.totalProjects?.changePercent || 0,
+      icon: Briefcase
+    },
+    {
+      title: "Total Funds Managed",
+      value: globalMetrics?.totalFundsManaged?.value || 0,
+      trend: globalMetrics?.totalFundsManaged?.trend,
+      changePercent: globalMetrics?.totalFundsManaged?.changePercent || 0,
+      icon: DollarSign
+    },
+    {
+      title: "Trading Volume",
+      value: globalMetrics?.aggregateTradingVolume?.value || 0,
+      trend: globalMetrics?.aggregateTradingVolume?.trend,
+      changePercent: globalMetrics?.aggregateTradingVolume?.changePercent || 0,
+      icon: BarChart2
+    },
+    {
+      title: "Active Bots",
+      value: globalMetrics?.activeBotsRunning?.value || 0,
+      trend: globalMetrics?.activeBotsRunning?.trend,
+      changePercent: globalMetrics?.activeBotsRunning?.changePercent || 0,
+      icon: Bot
+    },
+    {
+      title: "Aggregate Profits",
+      value: globalMetrics?.aggregateProfits?.value || 0,
+      trend: globalMetrics?.aggregateProfits?.trend,
+      changePercent: globalMetrics?.aggregateProfits?.changePercent || 0,
+      icon: TrendingUp
+    }
+  ]
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {metrics.map((metric, index) => (
-        <Card key={metric.title} className="relative overflow-hidden">
+        <Card key={metric.title} className={`relative overflow-hidden ${loading || isLoading ? 'opacity-60' : ''}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base font-bold">{metric.title}</CardTitle>
             <metric.icon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(metric.value)}</div>
-            {/* <div className="h-10">
-              <SparklineChart data={metric.chart.map(item => item.value)} color={`hsl(var(--chart-${index+1}))`} />
-            </div> */}
-            <p>+10% from last month</p>
+            {loading || isLoading ? (
+              <div className="animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-24 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-20"></div>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{formatNumber(metric.value)}</div>
+                {/* {metric.trend && (
+                  <div className={`text-xs mt-1 ${metric.trend === 'increasing' ? 'text-green-500' : metric.trend === 'decreasing' ? 'text-red-500' : 'text-gray-500'}`}>
+                    {metric.trend === 'increasing' ? '↑' : metric.trend === 'decreasing' ? '↓' : '→'} {metric.changePercent}%
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-2">Public metrics for all platform projects</p> */}
+              </>
+            )}
           </CardContent>
         </Card>
       ))}

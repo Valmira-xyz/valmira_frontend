@@ -1,3 +1,32 @@
+export interface GlobalMetrics {
+  totalProjects: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  totalFundsManaged: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  aggregateTradingVolume: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  activeBotsRunning: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  aggregateProfits: {
+    value: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    changePercent: number;
+  };
+  lastUpdated: string;
+}
+
 export interface ProjectState {
   projects: Project[];
   currentProject: Project | ProjectWithAddons | null;
@@ -7,6 +36,7 @@ export interface ProjectState {
   projectStats: ProjectStatistics | null;
   bnbPrice: number | null;
   bnbPriceLoading: boolean;
+  globalMetrics: GlobalMetrics | null;
 }
 
 export interface ProjectMetrics {

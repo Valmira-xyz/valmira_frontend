@@ -35,14 +35,14 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
   }, [dispatch, isPublic, currentPage, pageSize])
 
   useEffect(() => {
-    if (error) {
+    if (error && !isPublic) {
       toast({
         title: "Error",
         description: error,
         variant: "destructive"
       })
     }
-  }, [error, toast])
+  }, [error, toast, isPublic])
 
 
   const handleStatusChange = async (projectId: string, currentStatus: string) => {
