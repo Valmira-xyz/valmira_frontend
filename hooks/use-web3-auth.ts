@@ -48,7 +48,6 @@ export const useWeb3Auth = () => {
       const token = localStorage.getItem('token');
       
       if (!token) {
-        console.log('No token found in localStorage');
         return false;
       }
       
@@ -58,17 +57,14 @@ export const useWeb3Auth = () => {
       // Check if token is expired
       const currentTime = Math.floor(Date.now() / 1000);
       if (decodedToken.exp <= currentTime) {
-        console.log('Token is expired, needs re-authentication. Expired at:', new Date(decodedToken.exp * 1000).toLocaleString());
         return false;
       }
       
       // Check if walletAddress in token matches connected wallet
       if (decodedToken.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
-        console.log('Wallet address mismatch - connected:', walletAddress.toLowerCase(), 'token:', decodedToken.walletAddress.toLowerCase());
         return false;
       }
       
-      console.log('Valid token found for wallet', walletAddress, 'expires:', new Date(decodedToken.exp * 1000).toLocaleString());
       return true;
     } catch (error) {
       console.error('Error validating token:', error);
@@ -83,10 +79,8 @@ export const useWeb3Auth = () => {
     try {
       isAuthenticatingRef.current = true;
       dispatch(setLoading(true));
-      console.log('Loading user profile with existing token');
       const userProfile = await authService.getProfile();
       dispatch(setUser(userProfile));
-      console.log('User profile loaded successfully from token');
       return true;
     } catch (error) {
       console.error('Failed to load user profile with existing token:', error);
@@ -101,7 +95,6 @@ export const useWeb3Auth = () => {
 
   const handleAuthentication = useCallback(async () => {
     if (isAuthenticatingRef.current) {
-      console.log('Authentication already in progress');
       return;
     }
 
@@ -110,13 +103,11 @@ export const useWeb3Auth = () => {
     const currentUser = userRef.current;
 
     if (!currentAddress || !currentIsConnected) {
-      console.log('No address or not connected, skipping authentication');
       return;
     }
 
     // If user is already authenticated with the current address, skip
     if (currentUser && currentUser.walletAddress.toLowerCase() === currentAddress.toLowerCase()) {
-      console.log('User already authenticated with current address');
       return;
     }
 
@@ -134,36 +125,22 @@ export const useWeb3Auth = () => {
         // If profile loading failed, proceed with full authentication
       }
       
-      // Standard authentication flow with signature
-      console.log('Starting authentication for address:', currentAddress);
-      
       // Get nonce from backend
       const nonceResponse = await authService.getNonce(currentAddress);
       const messageToSign = `Sign this message to verify your wallet ownership & login to Valmira. Nonce: ${nonceResponse.nonce}`;
-      console.log('Preparing to sign message:', messageToSign);
 
       try {
-        // Sign message - FIXED: simplified parameters to match wagmi expectations
-        console.log('Requesting signature from wallet...');
-        
-        // The simpler approach - just pass the message
+        // Sign message
         const signature = await signMessageAsync({ 
           message: messageToSign 
         });
         
-        console.log('Raw signature response:', signature);
-        
         if (!signature) {
-          console.error('No signature received after signing');
           throw new Error('Failed to get signature');
         }
-        
-        console.log('Signature received:', signature);
 
         // Verify signature with backend
         const response = await authService.verifySignature(currentAddress, signature, nonceResponse.nonce);
-        console.log('Signature verified, user authenticated');
-        
         dispatch(setUser(response.user));
       } catch (signError: any) {
         console.error('Signing error:', signError);
@@ -187,15 +164,6 @@ export const useWeb3Auth = () => {
 
   // Handle initial connection and address changes
   useEffect(() => {
-    const connectionState = {
-      isConnected,
-      isDisconnected,
-      address,
-      hasUser: !!user,
-      isAuthenticating: isAuthenticatingRef.current
-    };
-    console.log('Connection state changed:', connectionState);
-
     if (isConnected && address && !isAuthenticatingRef.current) {
       // Add a small delay to ensure wallet is fully connected
       const timer = setTimeout(() => {
@@ -208,7 +176,6 @@ export const useWeb3Auth = () => {
   // Handle disconnection
   useEffect(() => {
     if (isDisconnected && !isAuthenticatingRef.current) {
-      console.log('Wallet disconnected, logging out');
       web3modal.disconnect();
       handleLogout();
     }
@@ -218,8 +185,6 @@ export const useWeb3Auth = () => {
   const manualAuthenticate = useCallback(() => {
     if (isConnected && address) {
       handleAuthentication();
-    } else {
-      console.log('Cannot authenticate: wallet not connected');
     }
   }, [isConnected, address, handleAuthentication]);
 
