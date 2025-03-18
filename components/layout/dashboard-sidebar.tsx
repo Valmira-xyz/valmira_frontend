@@ -108,11 +108,25 @@ export function DashboardSidebar() {
                     onClick={() => router.push("/projects")}
                     className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
                   >
+                    Your projects...
+                  </button>
+                  <button
+                    onClick={() => router.push("/public-projects")}
+                    className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
+                  >
                     View all projects...
                   </button>
                 </>
               ) : (
-                <div className="px-4 py-2 text-sm text-muted-foreground">No active projects</div>
+                <>
+                  <div className="px-4 py-2 text-sm text-muted-foreground">No active projects</div>
+                  <button
+                    onClick={() => router.push("/public-projects")}
+                    className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
+                  >
+                    Browse public projects...
+                  </button>
+                </>
               )}
             </div>
           </CollapsibleContent>
@@ -196,7 +210,7 @@ export function DashboardSidebar() {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-muted-foreground">Total Profit</span>
-                  <span className="font-medium">{projects?.reduce((total, project) => total + project.metrics.cumulativeProfit, 0)}</span>
+                  <span className="font-medium">{projects?.reduce((total, project) => total + (project.metrics?.cumulativeProfit || 0), 0)}</span>
                 </div>
               </div>
             </>

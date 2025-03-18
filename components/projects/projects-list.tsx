@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/components/ui/use-toast"
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchProjects, updateProjectStatus, deleteProject } from '@/store/slices/projectSlice'
+import { fetchProjects, fetchPublicProjects, updateProjectStatus, deleteProject } from '@/store/slices/projectSlice'
 import type { RootState } from '@/store/store'
 import type { ProjectWithAddons } from '@/types'
 import { useRouter } from "next/navigation"
@@ -14,18 +14,25 @@ import Link from "next/link"
 
 interface ProjectsListProps {
   limit?: number
+  isPublic?: boolean
+  pageSize?: number
 }
 
-export function ProjectsList({ limit }: ProjectsListProps) {
+export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: ProjectsListProps) {
   const router = useRouter()
   const dispatch = useDispatch()
   const { projects, loading, error } = useSelector((state: RootState) => state.projects as unknown as { projects: ProjectWithAddons[], loading: boolean, error: string | null })
   const { toast } = useToast()
+  const [currentPage, setCurrentPage] = useState(0)
 
   useEffect(() => {
     console.log('Fetching projects...')
-    dispatch(fetchProjects() as any)
-  }, [dispatch])
+    if (isPublic) {
+      dispatch(fetchPublicProjects({ pageIndex: currentPage, maxPageCount: pageSize }) as any)
+    } else {
+      dispatch(fetchProjects() as any)
+    }
+  }, [dispatch, isPublic, currentPage, pageSize])
 
   useEffect(() => {
     if (error) {
@@ -120,6 +127,26 @@ export function ProjectsList({ limit }: ProjectsListProps) {
           ))}
         </TableBody>
       </Table>
+      
+      {isPublic && !limit && (
+        <div className="flex justify-center items-center mt-4 gap-2">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+            disabled={currentPage === 0}
+            className={`px-3 py-1 rounded ${currentPage === 0 ? 'bg-gray-200 text-gray-500' : 'bg-primary text-white'}`}
+          >
+            Previous
+          </button>
+          <span className="mx-2">Page {currentPage + 1}</span>
+          <button
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            disabled={displayedProjects.length < pageSize}
+            className={`px-3 py-1 rounded ${displayedProjects.length < pageSize ? 'bg-gray-200 text-gray-500' : 'bg-primary text-white'}`}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -8,7 +8,7 @@ import { Button } from "../ui/button"
 import { Copy } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
-export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
+export function ProjectHeader({ project }: ProjectHeaderProps) {
   const { toast } = useToast()
   if (!project) {
     return (
@@ -37,7 +37,7 @@ export function ProjectHeader({ project, walletAddress }: ProjectHeaderProps) {
     navigator.clipboard.writeText(text)
     toast({
       title: "Address copied",
-      description: "Deposit wallet address has been copied to clipboard",
+      description: "Token address has been copied to clipboard",
     })
   }
   

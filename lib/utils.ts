@@ -12,6 +12,15 @@ export function formatNumber(value: number): string {
   }).format(value);
 } 
 
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: value >= 1000000 ? 'compact' : 'standard',
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
 export const generateAvatarColor = (address: string): string => {
   if (!address) return `hsl(0, 70%, 60%)`
   

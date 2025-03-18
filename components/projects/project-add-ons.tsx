@@ -8,12 +8,10 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Edit, Save, Copy, ExternalLink, HelpCircle, RefreshCw, Download } from "lucide-react"
 import { formatNumber, getBadgeVariant } from "@/lib/utils"
-import { EditBotDialog } from "@/components/projects/edit-bot-dialog"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/components/ui/use-toast"
 import Link from "next/link"
 import { SimulateAndExecuteDialog } from "@/components/projects/simulate-and-execute-dialog"
-import { AutoSellBotDialog } from "@/components/projects/auto-sell-bot-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/store/store"
@@ -203,8 +201,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   )
   const [editingBot, setEditingBot] = useState<string | null>(null)
   const [isSimulateDialogOpen, setIsSimulateDialogOpen] = useState(false)
-  const [isAutoSellDialogOpen, setIsAutoSellDialogOpen] = useState(false)
-  const [isVolumeBotDialogOpen, setIsVolumeBotDialogOpen] = useState(false)
   const { toast } = useToast()
   const dispatch = useDispatch<AppDispatch>()
   const botState = useSelector((state: RootState) => state.bots)
@@ -295,10 +291,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         });
       });
 
-      toast({
-        title: "Balances Updated",
-        description: "Wallet balances have been refreshed successfully.",
-      });
     } catch (error: any) {
       console.error('Failed to refresh wallet balances:', error);
       const isRateLimit = 
@@ -432,16 +424,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
     });
   }
 
-  const handleEdit = (id: string) => {
-    if (id === "LiquidationSnipeBot" && configs[id].status === "auto_selling") {
-      setIsAutoSellDialogOpen(true)
-    } else if (id === "VolumeBot") {
-      setIsVolumeBotDialogOpen(true)
-    } else {
-      setEditingBot(id)
-    }
-  }
-
   const handleSaveEdit = (id: string, newConfig: Partial<BotConfig>) => {
     setConfigs((prev) => ({
       ...prev,
@@ -572,17 +554,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
     }))
   }
 
-  const handleSaveVolumeBotConfig = (newConfig: { speed: Speed; maxBundleSize: number }) => {
-    setConfigs((prev) => ({
-      ...prev,
-      "VolumeBot": { ...prev["VolumeBot"], ...newConfig },
-    }))
-    setIsVolumeBotDialogOpen(false)
-    toast({
-      title: "Volume Bot Configuration Updated",
-      description: "Your changes have been saved successfully.",
-    })
-  }
 
   if (!project) {
     return (
@@ -775,54 +746,10 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                   )}
                 </CardContent>
                 <CardFooter className="flex flex-col items-start gap-4">
-                  {configs[addon.botType].status === "snipe_succeeded" && (
-                    <div className="flex flex-col w-full gap-2">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-semibold">Sniped Wallets</h3>
-                        <Button variant="outline" size="sm" onClick={() => isProjectOwner && handleMigrateToAutoSell()}>
-                          Migrate to Auto Sell
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {configs[addon.botType].status === "ready_to_simulation" && (
-                    <div className="flex flex-col w-full gap-2">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-semibold">Snipe Configuration</h3>
-                      </div>
-                    </div>
-                  )}
-                  {configs[addon.botType].status === "auto_selling" && (
-                    <div className="flex flex-col w-full gap-2">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-semibold">Auto Sell Configuration</h3>
-                      </div>
-                    </div>
-                  )}
-                  {configs[addon.botType].status === "sell_succeeded" && (
-                    <div className="flex flex-col w-full gap-2">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-semibold">All Tokens Sold</h3>
-                      </div>
-                    </div>
-                  )}
-                  {configs[addon.botType].status === "Inactive" && (
-                    <>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Please deposit enough BNB and tokens to the wallet address above in order to use this bot.
-                    </p>
-                    <Button
-                      className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                      onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
-                    >
-                      Configure & Execute
-                    </Button>
-                    </>
-                  )}
-                  {addon.botType === "HolderBot" ? (
+                  {(addon.botType === "HolderBot" || addon.botType === "VolumeBot") ? (
                     <>
                       <p className="text-sm text-muted-foreground mb-2">
-                        Please deposit BNB to the wallet address above and click Execute to start generating holders.
+                        Please deposit BNB to the wallet address above and click Execute to start generating {addon.botType === "HolderBot" ? "holders" : "volume"}.
                       </p>
                       <Button
                         className="w-full mt-2 hover:bg-primary/90 transition-colors"
@@ -832,117 +759,25 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                         Execute
                       </Button>
                     </>
-                  ) : addon.botType === "LiquidationSnipeBot" ? (
-                    <>
-                      {(configs[addon.botType].status === "snipe_succeeded" || configs[addon.botType].status === "auto_selling") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => isProjectOwner && handleEdit(addon.botType)}
-                          className="hover:bg-primary/10 transition-colors"
-                        >
-                          <Edit className="h-4 w-4 mr-1" /> Edit
-                        </Button>
-                      )}
-                      {configs[addon.botType].status === "ready_to_simulation" && (
-                        <Button
-                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
-                        >
-                          Simulate & Execute
-                        </Button>
-                      )}                      
-                      {configs[addon.botType].status === "simulation_failed" && (
-                        <Button
-                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
-                        >
-                          Retry Simulation
-                        </Button>
-                      )}                      
-                      {configs[addon.botType].status === "simulation_succeeded" && (
-                        <Button
-                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
-                        >
-                          Go on for sniping
-                        </Button>
-                      )}
-                      {configs[addon.botType].status === "snipe_succeeded" && (
-                        <Button
-                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => isProjectOwner && handleMigrateToAutoSell()}
-                        >
-                          Migrate to Auto Sell Bot
-                        </Button>
-                      )}
-                      {configs[addon.botType].status === "snipe_failed" && (
-                        <Button
-                          className="w-full mt-2 hover:bg-destructive/90 transition-colors"
-                          onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
-                        >
-                          Retry Sniping
-                        </Button>
-                      )}
-                      {configs[addon.botType].status === "auto_selling" && (
-                        <Button
-                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => isProjectOwner && handleEdit(addon.botType)}
-                        >
-                          Manage Auto Sell
-                        </Button>
-                      )}
-                      {configs[addon.botType].status === "sell_succeeded" && (
-                        <Button
-                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                          onClick={() => isProjectOwner && handleReset(addon.botType)}
-                        >
-                          Reset Bot
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Please deposit BNB to the wallet address above and click Execute to start generating volume.
-                    </p>
-                      <Button
-                        className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                        onClick={() => isProjectOwner && handleSave(addon.botType)}
-                      >
-                        <Save className="h-4 w-4 mr-1" />
-                        Execute
-                      </Button>
-                    </>
-                  )}
+                  ) : (          
+                  <Button
+                      className="w-full mt-2 hover:bg-primary/90 transition-colors"
+                      onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
+                    >
+                      Simulate & Execute
+                    </Button>
+                  ) 
+                }
                 </CardFooter>
               </Card>
             ))}
           </div>
-          {editingBot && (
-            <EditBotDialog
-              open={!!editingBot}
-              onOpenChange={(open) => !open && setEditingBot(null)}
-              botName={addOns.find((a) => a.botType === editingBot)?.name || ""}
-              config={configs[editingBot]}
-              onSave={(newConfig) => handleSaveEdit(editingBot, newConfig)}
-            />
-          )}
     
           <SimulateAndExecuteDialog
             open={isSimulateDialogOpen}
             onOpenChange={setIsSimulateDialogOpen}
             onSimulationResult={handleSimulationResult}
           />
-
-          {isAutoSellDialogOpen && (
-            <AutoSellBotDialog
-              open={isAutoSellDialogOpen}
-              onOpenChange={setIsAutoSellDialogOpen}
-              config={configs["LiquidationSnipeBot"]}
-              onSave={(newConfig) => handleSaveAutoSell(newConfig)}
-            />
-          )}
         </>
       )}
     </div>

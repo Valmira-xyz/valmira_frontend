@@ -1,57 +1,101 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, BarChart3, Bot, Droplet } from "lucide-react"
-import { formatNumber } from "@/lib/utils"
+import { Project, ProjectWithAddons } from "@/types"
+import { useSelector, useDispatch } from 'react-redux'
+import { RootState, AppDispatch } from "@/store/store"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useEffect, useState } from "react"
+import { getPoolInfo } from "@/services/web3Utils"
+import { fetchBnbPrice } from "@/store/slices/projectSlice"
+import axios from "axios"
 
-interface ProjectMetricsProps {
-  project?: {
-    cumulativeProfit?: number
-    tradingVolume24h?: number
-    activeBots?: number
-    liquidity?: number
+
+export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
+  const dispatch = useDispatch<AppDispatch>();
+  const { projectStats, loading, bnbPrice, bnbPriceLoading } = useSelector((state: RootState) => state.projects)
+  const [poolLiquidity, setPoolLiquidity] = useState<number>(0)
+  const [loadingLiquidity, setLoadingLiquidity] = useState<boolean>(false)
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value)
   }
-}
 
-export function ProjectMetrics({ project }: ProjectMetricsProps) {
-  // Define metrics with fallback values
-  const metrics = [
-    {
-      title: "Profit Generated",
-      value: project?.cumulativeProfit ?? 0,
-      icon: TrendingUp,
-      prefix: "$",
-    },
-    {
-      title: "Trading Volume (24h)",
-      value: project?.tradingVolume24h ?? 0,
-      icon: BarChart3,
-      prefix: "$",
-    },
-    {
-      title: "Active Bots",
-      value: project?.activeBots ?? 0,
-      icon: Bot,
-    },
-    {
-      title: "Liquidity",
-      value: project?.liquidity ?? 0,
-      icon: Droplet,
-      prefix: "$",
-    },
-  ]
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('en-US').format(value)
+  }
 
-  // If project is null or undefined, show loading skeletons
-  if (!project) {
+  useEffect(() => {
+    // Fetch BNB price when component mounts
+    dispatch(fetchBnbPrice());
+  }, [dispatch]);
+
+  useEffect(() => {
+    const fetchLiquidity = async () => {
+      const tokenAddress = project.tokenAddress;
+      if (!tokenAddress || !bnbPrice) return;
+      
+      try {
+        setLoadingLiquidity(true);
+        const poolInfo = await getPoolInfo(tokenAddress);
+        if (poolInfo) {
+          // Calculate liquidity in USD using the BNB price from Redux
+          const liquidityInUsd = poolInfo.bnbReserve * bnbPrice * 2; // Times 2 because liquidity is balanced
+          
+          setPoolLiquidity(liquidityInUsd);
+        } else {
+          setPoolLiquidity(0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch liquidity:', error);
+        setPoolLiquidity(0);
+      } finally {
+        setLoadingLiquidity(false);
+      }
+    };
+
+    fetchLiquidity();
+  }, [project.tokenAddress, bnbPrice]);
+
+  // Calculate active bots count similar to dashboard-metrics.tsx
+  const calculateActiveBots = (): number => {
+    let activeBots = 0;
+    
+    // Count active bots from addons
+    if (project.addons) {
+      // LiquidationSnipeBot
+      if (project.addons.LiquidationSnipeBot?.isEnabled) {
+        activeBots += 1;
+      }
+      
+      // VolumeBot
+      if (project.addons.VolumeBot?.isEnabled) {
+        activeBots += 1;
+      }
+      
+      // HolderBot
+      if (project.addons.HolderBot?.isEnabled) {
+        activeBots += 1;
+      }
+    }
+    
+    return activeBots;
+  };
+
+  if (loading || loadingLiquidity || bnbPriceLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[1, 2, 3, 4].map((index) => (
-          <Card key={index}>
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-4 rounded-full" />
+              <Skeleton className="h-4 w-[100px]" />
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-[120px] mb-2" />
+              <Skeleton className="h-3 w-[140px]" />
             </CardContent>
           </Card>
         ))}
@@ -59,22 +103,59 @@ export function ProjectMetrics({ project }: ProjectMetricsProps) {
     )
   }
 
+  const metrics = {
+    cumulativeProfit: projectStats?.metrics?.cumulativeProfit ?? project.metrics?.cumulativeProfit ?? 0,
+    volume24h: projectStats?.metrics?.volume24h ?? project.metrics?.volume24h ?? 0,
+    activeBots: calculateActiveBots(), // Use our new calculation method
+    liquidity: poolLiquidity
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {metrics.map((metric, index) => (
-        <Card key={index}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-            <metric.icon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {metric.prefix && metric.prefix}
-              {formatNumber(metric.value)}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Cumulative Profit</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{formatCurrency(metrics.cumulativeProfit)}</div>
+          <p className="text-xs text-muted-foreground">
+            Total profit since inception
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">24h Volume</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{formatCurrency(metrics.volume24h)}</div>
+          <p className="text-xs text-muted-foreground">
+            Trading volume in the last 24 hours
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Active Bots</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{formatNumber(metrics.activeBots)}</div>
+          <p className="text-xs text-muted-foreground">
+            Currently active trading bots
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Liquidity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{formatCurrency(metrics.liquidity)}</div>
+          <p className="text-xs text-muted-foreground">
+            Total available liquidity
+          </p>
+        </CardContent>
+      </Card>
     </div>
   )
 }

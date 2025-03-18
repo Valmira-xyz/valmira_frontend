@@ -285,6 +285,8 @@ export class BotService {
    * Execute single wallet sell operation
    */
   static async singleWalletSell(params: {
+    projectId: string;
+    botId: string;
     walletAddress: string;
     tokenAddress: string;
     sellPercentage: number;
@@ -303,6 +305,8 @@ export class BotService {
    * Execute multi wallet sell operation
    */
   static async multiWalletSell(params: {
+    projectId: string,
+    botId: string,
     walletAddresses: string[];
     tokenAddress: string;
     sellPercentages: number[];

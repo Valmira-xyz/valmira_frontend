@@ -9,16 +9,16 @@ import type { MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useSelector } from 'react-redux'
 import type { RootState } from '@/store/store'
-import type { Project } from '@/types'
+import type { Project, ProjectWithAddons } from '@/types'
 import { SparklineChart } from "../ui/sparkline-chart"
 
 interface ProjectSummaryCardProps {
-  project: Project
+  project: ProjectWithAddons
 }
 
 export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
   const router = useRouter()
-  const { projects } = useSelector((state: RootState) => state.projects || [])
+  const { projects, projectStats } = useSelector((state: RootState) => state.projects)
 
   const totalProfit = projects.reduce((sum: number, project: Project) => 
     sum + (project.metrics?.cumulativeProfit || 0), 0
@@ -37,7 +37,14 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
   )
 
   // Format the last updated time if available
-  const formattedLastUpdate = project.updatedAt
+  const formattedLastUpdate = projectStats?.metrics?.lastUpdate
+    ? new Date(projectStats.metrics.lastUpdate).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : project.updatedAt
     ? new Date(project.updatedAt).toLocaleString(undefined, {
         month: "short",
         day: "numeric",
@@ -46,13 +53,23 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
       })
     : null
 
-
   const handleCardClick = () => {
     router.push(`/projects/${project._id}`)
   }
 
   const handleExplorerClick = (e: MouseEvent<HTMLAnchorElement>) => {
     e.stopPropagation() // Prevent the card click from triggering
+  }
+
+  const metrics = projectStats?.metrics || project.metrics || {
+    cumulativeProfit: 0,
+    volume24h: 0,
+    activeBots: 0
+  }
+
+  const trends = projectStats?.trends || {
+    profitTrend: [],
+    volumeTrend: []
   }
 
   return (
@@ -71,8 +88,8 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
         </div>
         <div className="text-sm text-muted-foreground flex items-center space-x-1 mt-1 py-2">
           <img
-            src={`/blockchain-icons/${project.chainName?.toLowerCase()}.svg`}
-            alt={project.chainId?.toString()}
+            src={`/blockchain-icons/${project.chainName.toLowerCase()}.svg`}
+            alt={project.chainId.toString()}
             className="w-4 h-4"
             onError={(e) => {
               ;(e.target as HTMLImageElement).src = "/placeholder.svg?height=16&width=16"
@@ -98,23 +115,23 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs font-medium text-muted-foreground">Cumulative Profit</p>
-            <p className="text-2xl font-bold text-primary">${formatNumber(project.metrics.cumulativeProfit)}</p>
+            <p className="text-2xl font-bold text-primary">${formatNumber(metrics.cumulativeProfit)}</p>
             <div className="h-10">
-              <SparklineChart data={(project.profitTrend && project.profitTrend?.length > 0) ? project.profitTrend : genRandomSparklineData(4)} color="hsl(var(--chart-1))" />
+              <SparklineChart data={trends.profitTrend.map(d => d.value)} color="hsl(var(--chart-1))" />
             </div>
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground">24h Volume</p>
-            <p className="text-xl font-bold">${formatNumber(project.metrics.volume24h)}</p>
+            <p className="text-xl font-bold">${formatNumber(metrics.volume24h)}</p>
             <div className="h-10">
-              <SparklineChart data={(project.volumeTrend && project.volumeTrend?.length >0)? project.volumeTrend: genRandomSparklineData(4) } color="hsl(var(--chart-3))" />
+              <SparklineChart data={trends.volumeTrend.map(d => d.value)} color="hsl(var(--chart-3))" />
             </div>
           </div>
         </div>
         <div className="mt-3 flex justify-between items-center">
           <div>
             <p className="text-xs font-medium text-muted-foreground">Active Bots</p>
-            <p className="text-xl font-bold">{project.metrics.activeBots}</p>
+            <p className="text-xl font-bold">{metrics.activeBots}</p>
           </div>
           {formattedLastUpdate && (
             <div className="flex items-center text-xs text-muted-foreground">

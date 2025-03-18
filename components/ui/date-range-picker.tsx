@@ -21,12 +21,13 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
 
   // Ensure dateRange is valid when component mounts or dateRange prop changes
   useEffect(() => {
+    const currentDate = new Date();
     if (!dateRange) {
-      onDateRangeChange({ from: subDays(today, 30), to: today })
+      onDateRangeChange({ from: subDays(currentDate, 30), to: currentDate });
     } else if (dateRange.from && !dateRange.to) {
-      onDateRangeChange({ ...dateRange, to: today })
+      onDateRangeChange({ ...dateRange, to: currentDate });
     }
-  }, [dateRange, onDateRangeChange, today])
+  }, [dateRange]);
 
   const presets = [
     { name: "Last 7 days", range: { from: subDays(today, 7), to: today } },

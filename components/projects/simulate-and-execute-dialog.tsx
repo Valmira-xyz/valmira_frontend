@@ -13,13 +13,14 @@ import { generateWallets, getWalletBalances, deleteMultipleWallets } from "@/sto
 import type { AppDispatch, RootState } from "@/store/store"
 import type { Project } from "@/types"
 import { BotService } from "@/services/botService"
-import { walletApi } from "@/services/walletApi"
 import { ethers } from "ethers"
 import { useEthersSigner } from "@/lib/ether-adapter"
 import { useChainId, useAccount } from "wagmi"
 import { getTokenOwner, isTokenTradingEnabled, calculateSnipeAmount as calculatePoolSnipeAmount, getPoolInfo, getWalletBalances as getWeb3WalletBalances, getLPTokenBalance, burnLiquidity } from "@/services/web3Utils"
 import { ApproveAndAddLiquidityButtons } from "@/components/projects/ApproveAndAddLiquidityButtons"
 import { Checkbox } from "@/components/ui/checkbox"
+import { projectService } from "@/services/projectService"
+
 
 // Define the SubWallet type for the LiquidationSnipeBot addon
 interface SubWallet {
@@ -52,12 +53,6 @@ interface LiquidationSnipeBotAddon {
   // Add other properties if needed
 }
 
-interface WalletBalances {
-  [key: string]: {
-    bnb: number;
-    token: number;
-  }
-}
 
 type SimulationResult = {
   wallets: WalletInfo[]
@@ -112,6 +107,20 @@ interface PoolInfo {
   tokenReserve: number;
   tokenAddress: string;
   bnbAddress: string;
+}
+
+interface ProjectsState {
+  currentProject: ExtendedProject | null;
+  loading: boolean;
+  // Add other state properties as needed
+}
+
+
+interface BurnLiquidityResult {
+  success: boolean;
+  tokenAmount?: number;
+  bnbAmount?: number;
+  error?: string;
 }
 
 export function SimulateAndExecuteDialog({
@@ -337,14 +346,24 @@ export function SimulateAndExecuteDialog({
 
     try {
       setIsBurningLiquidity(true);
-      const result = await burnLiquidity(signer, project.tokenAddress);
+      const result = await burnLiquidity(signer, project.tokenAddress) as BurnLiquidityResult;
 
-      if (result.success) {
+      if (result.success && project?._id) {
+        try {
+          await projectService.logLPRemoval(
+            project._id,
+            result.tokenAmount || 0,
+            result.bnbAmount || 0,
+            lpTokenBalance
+          );
+        } catch (error) {
+          console.error('Failed to log LP removal activity:', error);
+        }
+
         toast({
           title: "Success",
           description: "Liquidity burned successfully",
         });
-        // Refresh balances after burning
         fetchLpTokenBalance();
         fetchConnectedWalletBalance();
         fetchPoolInfo();
@@ -1458,6 +1477,20 @@ export function SimulateAndExecuteDialog({
                         bnbAmount={liquidityBnbAmount.toString()}
                         signer={signer || null}
                         onSuccess={() => {
+                          if (project?._id) {
+                            try {
+                              projectService.logLPAddition(
+                                project._id,
+                                Number(liquidityTokenAmount),
+                                Number(liquidityBnbAmount)
+                              ).catch(error => {
+                                console.error('Failed to log LP addition activity:', error);
+                              });
+                            } catch (error) {
+                              console.error('Failed to log LP addition activity:', error);
+                            }
+                          }
+                          
                           setLiquidityTokenAmount(0);
                           setLiquidityBnbAmount(0);
                           fetchPoolInfo();

@@ -4,6 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { RefreshCw } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { useDispatch } from "react-redux"
+import { fetchProject, fetchProjectStats } from "@/store/slices/projectSlice"
 
 interface ProjectRefreshButtonProps {
   projectId: string
@@ -13,13 +15,19 @@ interface ProjectRefreshButtonProps {
 export function ProjectRefreshButton({ projectId, onRefresh }: ProjectRefreshButtonProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
+  const dispatch = useDispatch()
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true)
 
-    // Simulate data refresh
-    setTimeout(() => {
-      setIsRefreshing(false)
+    try {
+      // Fetch updated project data
+      await dispatch(fetchProject(projectId) as any)
+
+      // Fetch updated project stats
+      const end = new Date()
+      const start = new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+      await dispatch(fetchProjectStats({ projectId, timeRange: { start, end } }) as any)
 
       // Call the onRefresh callback if provided
       if (onRefresh) {
@@ -32,7 +40,16 @@ export function ProjectRefreshButton({ projectId, onRefresh }: ProjectRefreshBut
         description: "Project data has been updated successfully.",
         duration: 3000,
       })
-    }, 1500)
+    } catch (error) {
+      toast({
+        title: "Refresh failed",
+        description: "Failed to refresh project data. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      })
+    } finally {
+      setIsRefreshing(false)
+    }
   }
 
   return (

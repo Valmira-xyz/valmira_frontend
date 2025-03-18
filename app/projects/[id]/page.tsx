@@ -11,9 +11,22 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchProject, clearCurrentProject } from '@/store/slices/projectSlice'
+import { fetchProject, clearCurrentProject, fetchProjectStats } from '@/store/slices/projectSlice'
 import type { RootState } from '@/store/store'
-import { Project, ProjectWithAddons } from "@/types"
+import { Project, ProjectWithAddons, BotPerformance } from "@/types"
+
+// Add helper function to transform bot performance data
+const transformBotPerformance = (data: any[]): BotPerformance[] => {
+  if (!data) return [];
+  return data.map(bot => ({
+    botName: bot.botName,
+    status: bot.status,
+    trades: bot.trades,
+    profitContribution: bot.profitContribution,
+    uptime: typeof bot.uptime === 'string' ? parseFloat(bot.uptime) : bot.uptime,
+    lastUpdated: bot.lastUpdated
+  }));
+};
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -24,7 +37,7 @@ export default function ProjectDetailPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   
   const projectId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : ''
-  const { projects, loading: isLoading, error } = useSelector((state: RootState) => state.projects)
+  const { projects, loading: isLoading, error, projectStats } = useSelector((state: RootState) => state.projects)
   const project = projects.find((project) => project._id?.toString() === projectId)
 
   // Combined authentication check and data fetching
@@ -43,6 +56,10 @@ export default function ProjectDetailPage() {
     setIsAuthenticated(true)
     if (projectId) {
       dispatch(fetchProject(projectId) as any)
+      // Fetch project stats for the last 24 hours
+      const end = new Date()
+      const start = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      dispatch(fetchProjectStats({ projectId, timeRange: { start, end } }) as any)
     }
 
     // Cleanup on unmount
@@ -75,11 +92,21 @@ export default function ProjectDetailPage() {
   // Safely cast project to ProjectWithAddons or use default values
   const projectWithAddons = project as unknown as ProjectWithAddons | undefined
 
-  const metricsProject = {
+  const metricsProject = projectStats?.metrics || {
     cumulativeProfit: projectWithAddons?.metrics?.cumulativeProfit || 0,
-    tradingVolume24h: projectWithAddons?.metrics?.volume24h || 0,
+    volume24h: projectWithAddons?.metrics?.volume24h || 0,
     activeBots: projectWithAddons?.metrics?.activeBots || 0,
-    liquidity: 0
+    liquidity: 0,
+    lastUpdate: new Date()
+  }
+
+  const handleRefresh = async () => {
+    if (projectId) {
+      await dispatch(fetchProject(projectId) as any)
+      const end = new Date()
+      const start = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      await dispatch(fetchProjectStats({ projectId, timeRange: { start, end } }) as any)
+    }
   }
 
   return (
@@ -87,15 +114,20 @@ export default function ProjectDetailPage() {
       <PageHeader title={`Project ${project?.name}`}>
         <ProjectRefreshButton 
           projectId={projectId} 
-          onRefresh={() => dispatch(fetchProject(projectId) as any)} 
+          onRefresh={handleRefresh}
         />
       </PageHeader>
       <ProjectHeader 
         project={projectWithAddons} 
         walletAddress={projectWithAddons?.tokenAddress} 
       />
-      <ProjectMetrics project={metricsProject} />
-      <ProjectAnalytics project={project} />
+      {projectWithAddons && <ProjectMetrics project={projectWithAddons} /> }
+      <ProjectAnalytics 
+        project={project}
+        trends={projectStats?.trends}
+        botPerformance={projectStats?.botPerformance ? transformBotPerformance(projectStats.botPerformance) : undefined}
+        recentActivity={projectStats?.recentActivity}
+      />
       <ProjectAddOns project={projectWithAddons} />
       {projectWithAddons && <ProjectDangerZone project={projectWithAddons} />}     
     </div>

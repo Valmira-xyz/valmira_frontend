@@ -11,7 +11,7 @@ export default function ProjectsPage() {
       <PageHeader title="Projects">
         <CreateProjectButton />
       </PageHeader>
-      <ProjectsList />
+      <ProjectsList isPublic={false} />
     </div>
   )
 }

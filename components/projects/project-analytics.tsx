@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useMemo } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { formatNumber } from "@/lib/utils"
+import { formatNumber, formatCurrency } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { BotFilter } from "@/components/projects/bot-filter"
@@ -14,149 +14,21 @@ import { format, isWithinInterval, parseISO, subDays } from "date-fns"
 import { Download, ChevronDown } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { ProjectAnalyticsProps } from "@/types"
+import { useSelector, useDispatch } from "react-redux"
+import { fetchBotPerformance, fetchRecentActivity } from "@/store/slices/projectSlice"
+import { RootState } from "@/store/store"
+import type { BotPerformanceHistory, ActivityLog, ProjectStatistics } from "@/services/projectService"
 
 type TimePeriod = "24h" | "7d" | "1m" | "1y"
 
-// Mock data for charts and tables
-const profitData = {
-  "24h": [
-    { date: "00:00", profit: 1000 },
-    { date: "06:00", profit: 1200 },
-    { date: "12:00", profit: 1100 },
-    { date: "18:00", profit: 1300 },
-    { date: "23:59", profit: 1500 },
-  ],
-  "7d": [
-    { date: "Mon", profit: 5000 },
-    { date: "Tue", profit: 5500 },
-    { date: "Wed", profit: 5200 },
-    { date: "Thu", profit: 6000 },
-    { date: "Fri", profit: 6500 },
-    { date: "Sat", profit: 6300 },
-    { date: "Sun", profit: 6800 },
-  ],
-  "1m": [
-    { date: "Week 1", profit: 20000 },
-    { date: "Week 2", profit: 22000 },
-    { date: "Week 3", profit: 21500 },
-    { date: "Week 4", profit: 23000 },
-  ],
-  "1y": [
-    { date: "Jan", profit: 100000 },
-    { date: "Feb", profit: 110000 },
-    { date: "Mar", profit: 105000 },
-    { date: "Apr", profit: 115000 },
-    { date: "May", profit: 120000 },
-    { date: "Jun", profit: 118000 },
-    { date: "Jul", profit: 125000 },
-    { date: "Aug", profit: 130000 },
-    { date: "Sep", profit: 135000 },
-    { date: "Oct", profit: 140000 },
-    { date: "Nov", profit: 145000 },
-    { date: "Dec", profit: 150000 },
-  ],
-}
-
-const volumeData = {
-  "24h": [
-    { date: "00:00", volume: 5000 },
-    { date: "06:00", volume: 5500 },
-    { date: "12:00", volume: 5200 },
-    { date: "18:00", volume: 6000 },
-    { date: "23:59", volume: 6500 },
-  ],
-  "7d": [
-    { date: "Mon", volume: 25000 },
-    { date: "Tue", volume: 27500 },
-    { date: "Wed", volume: 26000 },
-    { date: "Thu", volume: 30000 },
-    { date: "Fri", volume: 32500 },
-    { date: "Sat", volume: 31500 },
-    { date: "Sun", volume: 34000 },
-  ],
-  "1m": [
-    { date: "Week 1", volume: 100000 },
-    { date: "Week 2", volume: 110000 },
-    { date: "Week 3", volume: 107500 },
-    { date: "Week 4", volume: 115000 },
-  ],
-  "1y": [
-    { date: "Jan", volume: 500000 },
-    { date: "Feb", volume: 550000 },
-    { date: "Mar", volume: 525000 },
-    { date: "Apr", volume: 575000 },
-    { date: "May", volume: 600000 },
-    { date: "Jun", volume: 590000 },
-    { date: "Jul", volume: 625000 },
-    { date: "Aug", volume: 650000 },
-    { date: "Sep", volume: 675000 },
-    { date: "Oct", volume: 700000 },
-    { date: "Nov", volume: 725000 },
-    { date: "Dec", volume: 750000 },
-  ],
-}
-
-// Extended bot performance data with dates
-const botPerformanceData = [
-  { id: "1", name: "Liquidation Bot", status: "Active", trades: 150, profit: 500, uptime: "99.9%", date: "2023-01-05" },
-  { id: "1", name: "Liquidation Bot", status: "Active", trades: 145, profit: 480, uptime: "99.8%", date: "2023-01-04" },
-  { id: "1", name: "Liquidation Bot", status: "Active", trades: 155, profit: 520, uptime: "99.9%", date: "2023-01-03" },
-  { id: "2", name: "Volume Bot", status: "Active", trades: 120, profit: 450, uptime: "99.7%", date: "2023-01-05" },
-  { id: "2", name: "Volume Bot", status: "Active", trades: 115, profit: 430, uptime: "99.6%", date: "2023-01-04" },
-  { id: "2", name: "Volume Bot", status: "Active", trades: 125, profit: 470, uptime: "99.8%", date: "2023-01-03" },
-  { id: "3", name: "Holder Bot", status: "Active", trades: 95, profit: 380, uptime: "99.5%", date: "2023-01-05" },
-  { id: "3", name: "Holder Bot", status: "Active", trades: 90, profit: 360, uptime: "99.4%", date: "2023-01-04" },
-  { id: "3", name: "Holder Bot", status: "Active", trades: 100, profit: 400, uptime: "99.6%", date: "2023-01-03" },
-]
-
-// Extended recent activity data with dates and bot IDs
-const recentActivityData = [
-  {
-    timestamp: "2023-01-05 14:30",
-    botId: "1",
-    botName: "Liquidation Bot",
-    action: "Add LP",
-    volume: 100,
-    impact: "+0.5%",
-  },
-  { timestamp: "2023-01-05 14:15", botId: "2", botName: "Volume Bot", action: "Sell", volume: 80, impact: "-0.3%" },
-  { timestamp: "2023-01-05 13:45", botId: "3", botName: "Holder Bot", action: "Hold", volume: 200, impact: "0%" },
-  {
-    timestamp: "2023-01-04 16:20",
-    botId: "1",
-    botName: "Liquidation Bot",
-    action: "Buy",
-    volume: 150,
-    impact: "+0.7%",
-  },
-  { timestamp: "2023-01-04 15:10", botId: "2", botName: "Volume Bot", action: "Sell", volume: 120, impact: "-0.5%" },
-  { timestamp: "2023-01-04 14:30", botId: "3", botName: "Holder Bot", action: "Hold", volume: 180, impact: "0%" },
-  {
-    timestamp: "2023-01-03 17:45",
-    botId: "1",
-    botName: "Liquidation Bot",
-    action: "Add LP",
-    volume: 90,
-    impact: "+0.4%",
-  },
-  { timestamp: "2023-01-03 16:30", botId: "2", botName: "Volume Bot", action: "Buy", volume: 110, impact: "+0.6%" },
-  { timestamp: "2023-01-03 15:15", botId: "3", botName: "Holder Bot", action: "Hold", volume: 170, impact: "0%" },
-]
-
-// List of available bots for filtering
-const availableBots = [
-  { id: "1", name: "Liquidation Bot" },
-  { id: "2", name: "Volume Bot" },
-  { id: "3", name: "Holder Bot" },
-]
-
-interface ProjectAnalyticsProps {
-  project?: any
-}
-
-export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
+export function ProjectAnalytics({ project, trends, botPerformance, recentActivity }: ProjectAnalyticsProps) {
   const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>("24h")
   const [volumeTimePeriod, setVolumeTimePeriod] = useState<TimePeriod>("24h")
+  const { projectStats, loading } = useSelector((state: RootState) => state.projects)
+  const dispatch = useDispatch()
 
   // Date range state for bot performance
   const [botPerformanceDateRange, setBotPerformanceDateRange] = useState<DateRange | undefined>({
@@ -180,43 +52,85 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
   const [isBotPerformanceExpanded, setBotPerformanceExpanded] = useState(false)
   const [isActivityLogExpanded, setActivityLogExpanded] = useState(false)
 
+  // Effect to fetch bot performance when date range changes
+  useEffect(() => {
+    if (project?._id && botPerformanceDateRange?.from && botPerformanceDateRange?.to) {
+      dispatch(fetchBotPerformance({
+        projectId: project._id,
+        startDate: botPerformanceDateRange.from,
+        endDate: botPerformanceDateRange.to
+      }) as any)
+    }
+  }, [project?._id, botPerformanceDateRange, dispatch])
+
+  // Effect to fetch activity log when date range changes
+  useEffect(() => {
+    if (project?._id && activityLogDateRange?.from && activityLogDateRange?.to) {
+      dispatch(fetchRecentActivity({
+        projectId: project._id,
+        limit: 50
+      }) as any)
+    }
+  }, [project?._id, activityLogDateRange, dispatch])
+
   // Filter bot performance data based on date range and selected bot
-  const filteredBotPerformanceData = botPerformanceData.filter((bot) => {
-    // Filter by date range
-    const botDate = parseISO(bot.date)
-    const matchesDateRange =
-      !botPerformanceDateRange ||
-      !botPerformanceDateRange.from ||
-      !botPerformanceDateRange.to ||
-      isWithinInterval(botDate, {
-        start: botPerformanceDateRange.from,
-        end: botPerformanceDateRange.to,
-      })
+  const filteredBotPerformanceData = useMemo(() => {
+    const botPerformance = projectStats?.botPerformance as BotPerformanceHistory[] | undefined
+    return (botPerformance || []).filter((bot) => {
+      // Filter by date range
+      const botDate = parseISO(bot.date)
+      const matchesDateRange =
+        !botPerformanceDateRange ||
+        !botPerformanceDateRange.from ||
+        !botPerformanceDateRange.to ||
+        isWithinInterval(botDate, {
+          start: botPerformanceDateRange.from,
+          end: botPerformanceDateRange.to,
+        })
 
-    // Filter by selected bot
-    const matchesBot = !selectedBotPerformance || bot.id === selectedBotPerformance
+      // Filter by selected bot
+      const matchesBot = !selectedBotPerformance || bot.botId === selectedBotPerformance
 
-    return matchesDateRange && matchesBot
-  })
+      return matchesDateRange && matchesBot
+    })
+  }, [projectStats?.botPerformance, botPerformanceDateRange, selectedBotPerformance])
 
   // Filter activity log data based on date range and selected bot
-  const filteredActivityLogData = recentActivityData.filter((activity) => {
-    // Filter by date range
-    const activityDate = parseISO(activity.timestamp.split(" ")[0])
-    const matchesDateRange =
-      !activityLogDateRange ||
-      !activityLogDateRange.from ||
-      !activityLogDateRange.to ||
-      isWithinInterval(activityDate, {
-        start: activityLogDateRange.from,
-        end: activityLogDateRange.to,
-      })
+  const filteredActivityLogData = useMemo(() => {
+    const recentActivity = projectStats?.recentActivity as ActivityLog[] | undefined
+    return (recentActivity || []).filter((activity) => {
+      // Filter by date range
+      const activityDate = parseISO(activity.timestamp.toString())
+      const matchesDateRange =
+        !activityLogDateRange ||
+        !activityLogDateRange.from ||
+        !activityLogDateRange.to ||
+        isWithinInterval(activityDate, {
+          start: activityLogDateRange.from,
+          end: activityLogDateRange.to,
+        })
 
-    // Filter by selected bot
-    const matchesBot = !selectedBot || activity.botId === selectedBot
+      // Filter by selected bot
+      const matchesBot = !selectedBot || activity.botName === selectedBot
 
-    return matchesDateRange && matchesBot
-  })
+      return matchesDateRange && matchesBot
+    })
+  }, [projectStats?.recentActivity, activityLogDateRange, selectedBot])
+
+  // Get available bots from performance data
+  const availableBots = useMemo(() => {
+    const botMap = new Map<string, { id: string; name: string }>()
+    const botPerformance = projectStats?.botPerformance as BotPerformanceHistory[] | undefined
+    botPerformance?.forEach((bot) => {
+      if (!botMap.has(bot.botId)) {
+        botMap.set(bot.botId, {
+          id: bot.botId,
+          name: bot.botName
+        })
+      }
+    })
+    return Array.from(botMap.values())
+  }, [projectStats?.botPerformance])
 
   const TimePeriodButtons = ({
     currentPeriod,
@@ -264,17 +178,27 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
     }
   }
 
-  if (!project) {
+  const formatDate = (timestamp: number) => {
+    return format(new Date(timestamp), 'MMM dd HH:mm')
+  }
+
+  if (loading) {
     return (
-      <Card className="col-span-1">
-        <CardHeader>
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-48" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[200px] w-full" />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          {[...Array(2)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-[300px] w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
     )
   }
 
@@ -284,41 +208,67 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
         <Card>
           <CardHeader>
             <CardTitle>Profit Trend</CardTitle>
+            <CardDescription>24-hour profit performance</CardDescription>
           </CardHeader>
           <CardContent>
             <TimePeriodButtons currentPeriod={profitTimePeriod} onChange={setProfitTimePeriod} />
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={profitData[profitTimePeriod]}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value) => [`$${formatNumber(Number(value))}`, "Profit"]}
-                  labelFormatter={(label) => `Date: ${label}`}
-                />
-                <Line type="monotone" dataKey="profit" stroke="#8884d8" />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={projectStats?.trends?.profitTrend || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="timestamp" 
+                    tickFormatter={formatDate}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                  <Tooltip 
+                    labelFormatter={(label) => formatDate(label as number)}
+                    formatter={(value: any) => [formatCurrency(value as number), 'Profit']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#10b981" 
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Trading Volume Trend</CardTitle>
+            <CardTitle>Volume Trend</CardTitle>
+            <CardDescription>24-hour trading volume</CardDescription>
           </CardHeader>
           <CardContent>
             <TimePeriodButtons currentPeriod={volumeTimePeriod} onChange={setVolumeTimePeriod} />
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={volumeData[volumeTimePeriod]}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value) => [`$${formatNumber(Number(value))}`, "Volume"]}
-                  labelFormatter={(label) => `Date: ${label}`}
-                />
-                <Line type="monotone" dataKey="volume" stroke="#82ca9d" />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={projectStats?.trends?.volumeTrend || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="timestamp" 
+                    tickFormatter={formatDate}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                  <Tooltip 
+                    labelFormatter={(label) => formatDate(label as number)}
+                    formatter={(value: any) => [formatCurrency(value as number), 'Volume']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#6366f1" 
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -337,7 +287,6 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
               <DateRangePicker
                 dateRange={botPerformanceDateRange}
                 onDateRangeChange={(range) => {
-                  console.log("Bot Performance date range changed:", range)
                   setBotPerformanceDateRange(range)
                 }}
                 className="min-w-[240px]"
@@ -378,16 +327,26 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
               </TableHeader>
               <TableBody>
                 {(isBotPerformanceExpanded ? filteredBotPerformanceData : filteredBotPerformanceData.slice(0, 3)).map(
-                  (bot, index) => (
-                    <TableRow key={`${bot.id}-${bot.date}-${index}`}>
-                      <TableCell>{bot.name}</TableCell>
-                      <TableCell>{bot.status}</TableCell>
+                  (bot: BotPerformanceHistory) => (
+                    <TableRow key={`${bot.botId}-${bot.date}`}>
+                      <TableCell>{bot.botName}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            bot.status === 'Active' ? 'default' :
+                            bot.status === 'Inactive' ? 'secondary' :
+                            'destructive'
+                          }
+                        >
+                          {bot.status}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{bot.trades}</TableCell>
-                      <TableCell>${formatNumber(bot.profit)}</TableCell>
+                      <TableCell>{formatCurrency(bot.profitContribution)}</TableCell>
                       <TableCell>{bot.uptime}</TableCell>
-                      <TableCell>{format(parseISO(bot.date), "MMM dd, yyyy")}</TableCell>
+                      <TableCell>{format(new Date(bot.lastUpdated), 'HH:mm:ss')}</TableCell>
                     </TableRow>
-                  ),
+                  )
                 )}
               </TableBody>
             </Table>
@@ -406,11 +365,6 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
                     <> for {availableBots.find((bot) => bot.id === selectedBotPerformance)?.name}</>
                   )}
                 </span>
-                {filteredBotPerformanceData.length > 10 && (
-                  <Button variant="outline" size="sm">
-                    Load More
-                  </Button>
-                )}
               </div>
             )}
           </CardContent>
@@ -420,7 +374,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
       <Collapsible open={isActivityLogExpanded} onOpenChange={setActivityLogExpanded} className="w-full">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Activity Log</CardTitle>
+            <CardTitle>Recent Activity</CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
               <BotFilter
                 bots={availableBots}
@@ -431,7 +385,6 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
               <DateRangePicker
                 dateRange={activityLogDateRange}
                 onDateRangeChange={(range) => {
-                  console.log("Activity Log date range changed:", range)
                   setActivityLogDateRange(range)
                 }}
                 className="min-w-[240px]"
@@ -459,30 +412,36 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Bot Name</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Volume</TableHead>
-                  <TableHead>Impact</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(isActivityLogExpanded ? filteredActivityLogData : filteredActivityLogData.slice(0, 3)).map(
-                  (activity, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{activity.timestamp}</TableCell>
-                      <TableCell>{activity.botName}</TableCell>
-                      <TableCell>{activity.action}</TableCell>
-                      <TableCell>{formatNumber(activity.volume)}</TableCell>
-                      <TableCell>{activity.impact}</TableCell>
-                    </TableRow>
-                  ),
-                )}
-              </TableBody>
-            </Table>
+            <ScrollArea className="h-[300px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Bot</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Volume</TableHead>
+                    <TableHead>Impact</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(isActivityLogExpanded ? filteredActivityLogData : filteredActivityLogData.slice(0, 3)).map(
+                    (activity: ActivityLog) => (
+                      <TableRow key={`${activity.timestamp}-${activity.botName}-${activity.action}`}>
+                        <TableCell>{format(new Date(activity.timestamp), 'HH:mm:ss')}</TableCell>
+                        <TableCell className="font-medium">{activity.botName}</TableCell>
+                        <TableCell>{activity.action}</TableCell>
+                        <TableCell>{formatCurrency(activity.volume)}</TableCell>
+                        <TableCell>
+                          <span className={Number(activity.impact) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {Number(activity.impact) >= 0 ? '+' : ''}{Number(activity.impact).toFixed(2)}%
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
             {isActivityLogExpanded && (
               <div className="mt-4 flex justify-between items-center text-sm text-muted-foreground">
                 <span>
@@ -496,11 +455,6 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
                   )}
                   {selectedBot && <> for {availableBots.find((bot) => bot.id === selectedBot)?.name}</>}
                 </span>
-                {filteredActivityLogData.length > 10 && (
-                  <Button variant="outline" size="sm">
-                    Load More
-                  </Button>
-                )}
               </div>
             )}
           </CardContent>
