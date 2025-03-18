@@ -49,7 +49,44 @@ export function DashboardSidebar() {
     }
   }, [dispatch, isAuthenticated, isConnected])
 
-  const activeProjects = projects?.filter(project => project.status === 'active') ?? [];
+  // Filter projects to show only the authenticated user's projects,
+  // sort by status (active first) then by updatedAt date (newest first),
+  // and limit to 10 projects for the sidebar
+  const filteredAndSortedProjects = projects
+    ?.filter(project => {
+      // Check if project has owner property (from ProjectWithAddons interface)
+      if ('owner' in project) {
+        const ownerObj = project.owner as { _id?: string, walletAddress?: string };
+        return ownerObj?._id === user?._id || 
+               ownerObj?.walletAddress?.toLowerCase() === user?.walletAddress?.toLowerCase();
+      }
+      // If no owner field, fall back to userId (from Project interface)
+      return project.userId === user?._id;
+    })
+    ?.sort((a, b) => {
+      // First sort by status (active first)
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      
+      // Then sort by updatedAt date (newest first)
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    })
+    ?.slice(0, 10) || []; // Limit to 10 projects for the sidebar
+
+  // Get all user projects for stats (without the 10 limit)
+  const userProjects = projects
+    ?.filter(project => {
+      // Check if project has owner property (from ProjectWithAddons interface)
+      if ('owner' in project) {
+        const ownerObj = project.owner as { _id?: string, walletAddress?: string };
+        return ownerObj?._id === user?._id || 
+               ownerObj?.walletAddress?.toLowerCase() === user?.walletAddress?.toLowerCase();
+      }
+      // If no owner field, fall back to userId (from Project interface)
+      return project.userId === user?._id;
+    }) || [];
+    
+  const activeProjects = userProjects.filter(project => project.status === 'active');
   const avatarColor = generateAvatarColor(user?.walletAddress || "")
 
 
@@ -87,16 +124,24 @@ export function DashboardSidebar() {
 
           <CollapsibleContent>
             <div className="ml-7 space-y-1">
-              { projects && projects.length > 0 ? (
+              { filteredAndSortedProjects && filteredAndSortedProjects.length > 0 ? (
                 <>
-                  {projects.map((project) => (
+                  {filteredAndSortedProjects.map((project) => (
                     <button
                       key={project._id}
                       onClick={() => router.push(`/projects/${project._id}`)}
                       className="flex items-center justify-between w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                     >
                       <div className="flex items-center">
-                        <Circle className="h-2 w-2 mr-2 text-green-500 animate-pulse" />
+                        <span className="relative" title={`Status: ${project.status}`}>
+                          <Circle 
+                            className={`h-2 w-2 mr-2 ${
+                              project.status === 'active' 
+                                ? 'text-green-500 animate-pulse' 
+                                : 'text-gray-400'
+                            }`} 
+                          />
+                        </span>
                         <span>{project.name}</span>
                       </div>
                       <Badge variant={getBadgeVariant(project.status)} className="font-medium text-sm px-3 py-1 rounded-full">
@@ -119,7 +164,11 @@ export function DashboardSidebar() {
                 </>
               ) : (
                 <>
-                  <div className="px-4 py-2 text-sm text-muted-foreground">No active projects</div>
+                  <div className="px-4 py-2 text-sm text-muted-foreground">
+                    {projects && projects.length > 0 ? 
+                      "You don't have any projects" : 
+                      "No projects found"}
+                  </div>
                   <button
                     onClick={() => router.push("/public-projects")}
                     className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
@@ -210,7 +259,7 @@ export function DashboardSidebar() {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-muted-foreground">Total Profit</span>
-                  <span className="font-medium">{projects?.reduce((total, project) => total + (project.metrics?.cumulativeProfit || 0), 0)}</span>
+                  <span className="font-medium">{userProjects?.reduce((total, project) => total + (project.metrics?.cumulativeProfit || 0), 0)}</span>
                 </div>
               </div>
             </>

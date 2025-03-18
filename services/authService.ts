@@ -120,6 +120,7 @@ class AuthService {
   }
 
   logout() {
+    this.clearToken();
   }
 
   isAuthenticated(): boolean {

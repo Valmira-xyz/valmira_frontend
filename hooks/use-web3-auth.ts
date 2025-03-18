@@ -5,6 +5,15 @@ import { setUser, setLoading, setError, logout } from '@/store/slices/authSlice'
 import { authService } from '@/services/authService';
 import type { RootState } from '@/store/store';
 import { web3modal } from '@/components/providers';
+import { jwtDecode } from 'jwt-decode';
+
+// JWT token interface
+interface JwtPayload {
+  id: string;
+  walletAddress: string;
+  exp: number;
+  iat: number;
+}
 
 export const useWeb3Auth = () => {
   const dispatch = useDispatch();
@@ -32,6 +41,64 @@ export const useWeb3Auth = () => {
     authService.logout();   
   }, [dispatch]);
 
+  // Validate existing token from localStorage
+  const validateExistingToken = useCallback((walletAddress: string): boolean => {
+    try {
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        console.log('No token found in localStorage');
+        return false;
+      }
+      
+      // Decode the token to get payload
+      const decodedToken = jwtDecode<JwtPayload>(token);
+      
+      // Check if token is expired
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (decodedToken.exp <= currentTime) {
+        console.log('Token is expired, needs re-authentication. Expired at:', new Date(decodedToken.exp * 1000).toLocaleString());
+        return false;
+      }
+      
+      // Check if walletAddress in token matches connected wallet
+      if (decodedToken.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+        console.log('Wallet address mismatch - connected:', walletAddress.toLowerCase(), 'token:', decodedToken.walletAddress.toLowerCase());
+        return false;
+      }
+      
+      console.log('Valid token found for wallet', walletAddress, 'expires:', new Date(decodedToken.exp * 1000).toLocaleString());
+      return true;
+    } catch (error) {
+      console.error('Error validating token:', error);
+      // If there's an error decoding, the token is likely invalid
+      localStorage.removeItem('token');
+      return false;
+    }
+  }, []);
+
+  // Load user profile using existing token
+  const loadUserProfile = useCallback(async () => {
+    try {
+      isAuthenticatingRef.current = true;
+      dispatch(setLoading(true));
+      console.log('Loading user profile with existing token');
+      const userProfile = await authService.getProfile();
+      dispatch(setUser(userProfile));
+      console.log('User profile loaded successfully from token');
+      return true;
+    } catch (error) {
+      console.error('Failed to load user profile with existing token:', error);
+      // If profile loading fails, clear the token as it may be invalid
+      localStorage.removeItem('token');
+      return false;
+    } finally {
+      dispatch(setLoading(false));
+      isAuthenticatingRef.current = false;
+    }
+  }, [dispatch]);
+
   const handleAuthentication = useCallback(async () => {
     if (isAuthenticatingRef.current) {
       console.log('Authentication already in progress');
@@ -55,7 +122,19 @@ export const useWeb3Auth = () => {
 
     try {
       isAuthenticatingRef.current = true;
-      // dispatch(setLoading(true));
+      dispatch(setLoading(true));
+      
+      // Check if we have a valid token in localStorage
+      if (validateExistingToken(currentAddress)) {
+        // If token is valid, load user profile and return
+        const profileLoaded = await loadUserProfile();
+        if (profileLoaded) {
+          return;
+        }
+        // If profile loading failed, proceed with full authentication
+      }
+      
+      // Standard authentication flow with signature
       console.log('Starting authentication for address:', currentAddress);
       
       // Get nonce from backend
@@ -101,10 +180,10 @@ export const useWeb3Auth = () => {
         handleLogout();
       }
     } finally {
-      // dispatch(setLoading(false));
+      dispatch(setLoading(false));
       isAuthenticatingRef.current = false;
     }
-  }, [dispatch, handleLogout, signMessageAsync]);
+  }, [dispatch, handleLogout, signMessageAsync, validateExistingToken, loadUserProfile]);
 
   // Handle initial connection and address changes
   useEffect(() => {
