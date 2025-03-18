@@ -197,37 +197,29 @@ export function DashboardSidebar() {
           <CollapsibleContent>
             <div className="ml-7 space-y-1">
               <button
-                onClick={() => router.push("/docs/getting-started")}
-                className="flex items-center w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
-              >
-                Getting Started
-              </button>
-              <button
-                onClick={() => router.push("/docs/tutorials")}
+                onClick={() => router.push("/tutorials")}
                 className="flex items-center w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
               >
                 Tutorials
               </button>
               <button
-                onClick={() => router.push("/docs/api")}
+                onClick={() => router.push("/faqs")}
                 className="flex items-center w-full px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
               >
-                API Reference
+                FAQs
               </button>
             </div>
           </CollapsibleContent>
         </Collapsible>
 
         {/* Help & Support */}
-
-          <SidebarMenuButton onClick={() => router.push("/support")} className="flex items-center pl-5">
+          <SidebarMenuButton onClick={() => router.push("/faqs")} className="flex items-center pl-5">
             <HelpCircle className="mr-2 h-4 w-4" />
             <span>Help & Support</span>
           </SidebarMenuButton>
 
 
         {/* Settings */}
-
           <SidebarMenuButton onClick={() => router.push("/settings")} className="flex items-center pl-5">
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
