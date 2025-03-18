@@ -59,17 +59,17 @@ export default function TutorialsPage() {
           <CardContent>
             <ul className="space-y-2">
               <li>
-                <Link href="/tutorials/add-ons/LiquidationSnipeBot" className="text-blue-600 hover:underline">
+                <Link href="/tutorials/add-ons/bundle-snipe" className="text-blue-600 hover:underline">
                   Liquidation Snipe Bot
                 </Link>
               </li>
               <li>
-                <Link href="/tutorials/add-ons/VolumeBot" className="text-blue-600 hover:underline">
+                <Link href="/tutorials/add-ons/volume-bot" className="text-blue-600 hover:underline">
                   Volume Bot
                 </Link>
               </li>
               <li>
-                <Link href="/tutorials/add-ons/HolderBot" className="text-blue-600 hover:underline">
+                <Link href="/tutorials/add-ons/holder-bot" className="text-blue-600 hover:underline">
                   Holder Bot
                 </Link>
               </li>
