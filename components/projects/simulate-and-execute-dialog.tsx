@@ -617,15 +617,22 @@ export function SimulateAndExecuteDialog({
       const subWalletAddresses = project?.addons.LiquidationSnipeBot.subWalletIds
         .map((w: SubWallet) => w.publicKey)
 
-        console.log("wallets => ", wallets);
-        console.log("insufficientBnb => ", wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0));
-
       // Use the wallet's bnbToSpend value or a default if not set
       const amounts = wallets
         .filter(w => w.role !== 'botmain')
         .map(w => w.bnbToSpend || 0);
 
-      if (amounts.some(amount => amount <= 0) === false) {
+        console.log("wallets => ", wallets);
+
+        const totalInsufficientBNB = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)
+        
+        console.log("totalInsufficientBNB => ", totalInsufficientBNB);
+
+        const totalBnbToSpend = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
+
+        console.log("totalBnbToSpend => ", totalBnbToSpend);
+
+      if (totalInsufficientBNB <= 0 && totalBnbToSpend<=0) {
         toast({
           title: "Information",
           description: "All wallets already have enough balance for sniping.",
@@ -637,6 +644,12 @@ export function SimulateAndExecuteDialog({
       setIsDistributingBNBs(true);
       
       setInsufficientFundsDetails(null);
+      //iterate through wallets and make zero to bnbToSpend and insufficientBnb
+      setWallets(prevWallets => prevWallets.map(wallet => ({
+        ...wallet,
+        bnbToSpend: 0,
+        insufficientBnb: 0
+      })));
 
       const result = await BotService.distributeBnb({
         depositWallet: depositWallet.publicKey,
@@ -1603,7 +1616,7 @@ export function SimulateAndExecuteDialog({
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">BNB for Sniping wallets:</span>
+                      <span className="text-muted-foreground">BNB for distribution:</span>
                       <span className="font-medium ">
                         {simulationResult ? (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))).toFixed(6) : '0.000000'}
                       </span>
