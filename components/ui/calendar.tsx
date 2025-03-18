@@ -13,7 +13,6 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      hideWeekdays
       className={cn("p-3", className)}
       classNames={{
         root: "w-full",
