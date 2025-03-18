@@ -1052,8 +1052,6 @@ export function SimulateAndExecuteDialog({
       });
 
       if (result.success) {
-        onSimulationResult(true);
-        onOpenChange(false);
         toast({
           title: "Success",
           description: "Snipe executed successfully",
@@ -1067,7 +1065,6 @@ export function SimulateAndExecuteDialog({
         description: error instanceof Error ? error.message : "Failed to execute snipe",
         variant: "destructive",
       });
-      onSimulationResult(false);
     } finally {
       setIsExecuting(false);
     }

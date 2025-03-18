@@ -463,9 +463,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       description: "Deposit wallet address has been copied to clipboard",
     })
   }
-  const handleSimulateAndExecute = () => {
-    setIsSimulateDialogOpen(true)
-  }
+
 
   const handleSimulationResult = (success: boolean) => {
     setConfigs((prev) => ({
@@ -482,43 +480,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         ? "The sniping operation was successful. You can now migrate to Auto Sell Bot."
         : "The sniping operation failed. You can retry or adjust your parameters.",
       variant: success ? "default" : "destructive",
-    })
-  }
-
-  const handleMigrateToAutoSell = () => {
-    // Use real wallet data if available, otherwise use placeholder data
-    const wallets = project?.addons?.LiquidationSnipeBot?.subWalletIds || [];
-    
-    const snipedWallets = wallets.length > 0 
-      ? wallets.map((wallet: any) => ({
-          address: wallet.publicKey || "",
-          bnbBalance: wallet.bnbBalance || 0,
-          tokenBalance: wallet.tokenBalance || 0,
-          sellPrice: 0,
-          enabled: true,
-        }))
-      : [
-          {
-            address: "0x1234567890abcdef1234567890abcdef12345678",
-            bnbBalance: 0.15,
-            tokenBalance: 50000,
-            sellPrice: 0,
-            enabled: true,
-          },
-        ];
-
-    setConfigs((prev) => ({
-      ...prev,
-      "LiquidationSnipeBot": {
-        ...prev["LiquidationSnipeBot"],
-        status: "auto_selling" as LiquidationSnipeBotStatus,
-        wallets: snipedWallets,
-      },
-    }))
-
-    toast({
-      title: "Migrated to Auto Sell Bot",
-      description: "Your Liquidation & Snipe Bot has been migrated to Auto Sell Bot.",
     })
   }
 
