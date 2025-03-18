@@ -56,8 +56,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [newTokenTotalSupply, setNewTokenTotalSupply] = useState("")
   const [newTokenBuyTax, setNewTokenBuyTax] = useState("")
   const [newTokenSellTax, setNewTokenSellTax] = useState("")
-  const [newTokenMaxHoldingRate, setNewTokenMaxHoldingRate] = useState("")
-  const [newTokenMaxBuySellRate, setNewTokenMaxBuySellRate] = useState("")
+  const [newTokenMaxHoldingRate, setNewTokenMaxHoldingRate] = useState("10")
+  const [newTokenMaxBuySellRate, setNewTokenMaxBuySellRate] = useState("10")
   const [tokenTemplate, setTokenTemplate] = useState("0")
   const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null)
   const [pairAddress, setPairAddress] = useState<string | null>(null)
@@ -109,14 +109,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     }
 
     // Validate limits
-    const maxHolding = parseFloat(newTokenMaxHoldingRate);
-    const maxBuySell = parseFloat(newTokenMaxBuySellRate);
-    if (isNaN(maxHolding) || maxHolding <= 0 || maxHolding > 100) {
-      errors.push("Max holding rate must be between 0 and 100");
-    }
-    if (isNaN(maxBuySell) || maxBuySell <= 0 || maxBuySell > 100) {
-      errors.push("Max buy/sell rate must be between 0 and 100");
-    }
+    // const maxHolding = parseFloat(newTokenMaxHoldingRate);
+    // const maxBuySell = parseFloat(newTokenMaxBuySellRate);
+    // if (isNaN(maxHolding) || maxHolding <= 0 || maxHolding > 100) {
+    //   errors.push("Max holding rate must be between 0 and 100");
+    // }
+    // if (isNaN(maxBuySell) || maxBuySell <= 0 || maxBuySell > 100) {
+    //   errors.push("Max buy/sell rate must be between 0 and 100");
+    // }
 
     // Validate social links
     if (website && !isValidUrl(website)) {
@@ -194,10 +194,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         maxBuyLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
         maxSellLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
         socialLinks: {
-          website: website || "",
-          telegram: telegram || "",
-          discord: discord || "",
-          twitter: twitter || ""
+          websiteLink: website || "",
+          telegramLink: telegram || "",
+          discordLink: discord || "",
+          twitterLink: twitter || ""
         },
         templateNumber: parseInt(tokenTemplate)
       });
@@ -469,7 +469,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       />
                     </div>
                   </div>
-                  <div className=" flex gap-2 justify-between">
+                  {/* <div className=" flex gap-2 justify-between">
                     <div className="space-y-2 flex flex-col justify-start">
                       <Label htmlFor="newTokenMaxHoldingRate">Max Holding (% of Total Supply)</Label>
                       <Input
@@ -498,7 +498,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                     </div>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="col-span-2">
                   <Collapsible open={showSocialLinks} onOpenChange={setShowSocialLinks}>
