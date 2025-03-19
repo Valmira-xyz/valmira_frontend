@@ -295,7 +295,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
           profit: (bot as any).profit || bot.profitContribution || 0,
           uptime: formatUptime(typeof bot.uptime === 'number' ? bot.uptime : parseInt(String(bot.uptime || '0')) || 0),
           // Always ensure we have valid date strings - use current time as fallback
-          date: now,
+          date: new Date(bot?.lastUpdated || now).toISOString(),
           profitContribution: bot.profitContribution || (bot as any).profit || 0,
           lastUpdated: now
         };
@@ -315,7 +315,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
           profit: bot.profit || 0,
           uptime: formatUptime(typeof bot.uptime === 'number' ? bot.uptime : parseInt(String(bot.uptime || '0')) || 0),
           // Format date properly or use current time as fallback
-          date: bot.date ? new Date(bot.date).toISOString() : now,
+          date: new Date(bot?.lastUpdated || now).toISOString(),
           profitContribution: bot.profit || 0,
           lastUpdated: now
         };
