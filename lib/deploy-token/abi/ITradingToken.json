@@ -277,7 +277,7 @@
                 "type": "bytes32"
             }
         ],
-        "name": "enableTradingWithPermit",
+        "name": "allowTradingWithPermit",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
