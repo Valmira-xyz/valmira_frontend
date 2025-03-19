@@ -332,7 +332,6 @@ const projectSlice = createSlice({
       .addCase(fetchRecentActivity.fulfilled, (state, action) => {
         state.loading = false
         // Add debugging logs
-        console.log("fetchRecentActivity.fulfilled payload:", action.payload)
         
         if (!state.projectStats) {
           // Initialize projectStats if it doesn't exist
@@ -355,12 +354,8 @@ const projectSlice = createSlice({
               volumeTrend: []
             }
           }
-          console.log("Initialized projectStats with recentActivity data")
         } else {
           state.projectStats.recentActivity = action.payload as ActivityLog[]
-          console.log("Updated projectStats.recentActivity with:", 
-            state.projectStats.recentActivity ? state.projectStats.recentActivity.length : 0, 
-            "items")
         }
       })
       .addCase(fetchRecentActivity.rejected, (state, action) => {
@@ -378,7 +373,6 @@ const projectSlice = createSlice({
       .addCase(fetchBotPerformance.fulfilled, (state, action) => {
         state.loading = false
         // Add debugging logs
-        console.log("fetchBotPerformance.fulfilled payload:", action.payload)
         
         if (!state.projectStats) {
           // Initialize projectStats if it doesn't exist
@@ -412,7 +406,6 @@ const projectSlice = createSlice({
             state.projectStats.botPerformance = action.payload as unknown as BotPerformanceHistory[]
           }
           
-          console.log("Initialized projectStats with botPerformance data")
         } else {
           // The API returns data.data format, so we need to extract it
           // Check if the payload has data.data structure
@@ -423,9 +416,6 @@ const projectSlice = createSlice({
             // Direct array response
             state.projectStats.botPerformance = action.payload as unknown as BotPerformanceHistory[]
           }
-          console.log("Updated projectStats.botPerformance with:", 
-            state.projectStats.botPerformance ? state.projectStats.botPerformance.length : 0, 
-            "items")
         }
       })
       .addCase(fetchBotPerformance.rejected, (state, action) => {
