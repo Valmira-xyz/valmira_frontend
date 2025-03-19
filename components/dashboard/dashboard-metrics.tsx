@@ -6,7 +6,7 @@ import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { cn, formatNumber } from "@/lib/utils"
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store/store'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useDispatch } from 'react-redux'
 import { AppDispatch } from '@/store/store'
 import { fetchGlobalMetrics, fetchBnbPrice } from '@/store/slices/projectSlice'
@@ -15,23 +15,34 @@ export function DashboardMetrics() {
   const dispatch = useDispatch<AppDispatch>()
   const { globalMetrics, loading } = useSelector((state: RootState) => state.projects)
   const [isLoading, setIsLoading] = useState(true)
+  const fetchInProgress = useRef(false)
+  const hasInitialFetch = useRef(false)
+
+  const fetchData = useCallback(async () => {
+    // Skip if fetch is already in progress or if we've already fetched
+    if (fetchInProgress.current || hasInitialFetch.current) return
+    
+    setIsLoading(true)
+    fetchInProgress.current = true
+    
+    try {
+      // Fetch global metrics data - available without authentication
+      await Promise.all([
+        dispatch(fetchGlobalMetrics()),
+        dispatch(fetchBnbPrice())
+      ])
+      hasInitialFetch.current = true
+    } catch (error) {
+      console.error("Error fetching global metrics:", error)
+    } finally {
+      setIsLoading(false)
+      fetchInProgress.current = false
+    }
+  }, [dispatch])
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true)
-      try {
-        // Fetch global metrics data - available without authentication
-        await dispatch(fetchGlobalMetrics())
-        await dispatch(fetchBnbPrice())
-      } catch (error) {
-        console.error("Error fetching global metrics:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     fetchData()
-  }, [dispatch])
+  }, [fetchData])
 
   // Define metrics based on globalMetrics data
   const metrics = [

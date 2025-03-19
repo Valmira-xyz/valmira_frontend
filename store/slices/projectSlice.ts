@@ -181,6 +181,17 @@ const projectSlice = createSlice({
     },
     updateCurrentProject: (state, action: PayloadAction<Project>) => {
       state.currentProject = action.payload
+    },
+    // Force re-render action (used for performance optimization)
+    FORCE_ANALYTICS_UPDATE: (state) => {
+      // Just update a timestamp to force re-render without changing data
+      if (state.projectStats) {
+        // Add a timestamp to force a reference change without modifying actual data
+        state.projectStats = {
+          ...state.projectStats,
+          _lastUpdateTimestamp: Date.now()
+        }
+      }
     }
   },
   extraReducers: (builder) => {
@@ -320,13 +331,43 @@ const projectSlice = createSlice({
       })
       .addCase(fetchRecentActivity.fulfilled, (state, action) => {
         state.loading = false
-        if (state.projectStats) {
-          state.projectStats.recentActivity = action.payload
+        // Add debugging logs
+        console.log("fetchRecentActivity.fulfilled payload:", action.payload)
+        
+        if (!state.projectStats) {
+          // Initialize projectStats if it doesn't exist
+          state.projectStats = {
+            metrics: {
+              cumulativeProfit: 0,
+              volume24h: 0,
+              activeBots: 0,
+              liquidity: 0,
+              lastUpdate: new Date()
+            },
+            timeRange: {
+              start: new Date(Date.now() - 24 * 60 * 60 * 1000),
+              end: new Date()
+            },
+            recentActivity: action.payload as ActivityLog[],
+            botPerformance: [],
+            trends: {
+              profitTrend: [],
+              volumeTrend: []
+            }
+          }
+          console.log("Initialized projectStats with recentActivity data")
+        } else {
+          state.projectStats.recentActivity = action.payload as ActivityLog[]
+          console.log("Updated projectStats.recentActivity with:", 
+            state.projectStats.recentActivity ? state.projectStats.recentActivity.length : 0, 
+            "items")
         }
       })
       .addCase(fetchRecentActivity.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
+        // Add debugging logs
+        console.error("fetchRecentActivity rejected with error:", action.payload)
       })
 
       // Fetch bot performance
@@ -336,13 +377,62 @@ const projectSlice = createSlice({
       })
       .addCase(fetchBotPerformance.fulfilled, (state, action) => {
         state.loading = false
-        if (state.projectStats) {
-          state.projectStats.botPerformance = action.payload
+        // Add debugging logs
+        console.log("fetchBotPerformance.fulfilled payload:", action.payload)
+        
+        if (!state.projectStats) {
+          // Initialize projectStats if it doesn't exist
+          state.projectStats = {
+            metrics: {
+              cumulativeProfit: 0,
+              volume24h: 0,
+              activeBots: 0,
+              liquidity: 0,
+              lastUpdate: new Date()
+            },
+            timeRange: {
+              start: new Date(Date.now() - 24 * 60 * 60 * 1000),
+              end: new Date()
+            },
+            recentActivity: [],
+            trends: {
+              profitTrend: [],
+              volumeTrend: []
+            },
+            botPerformance: []
+          }
+          
+          // The API returns data.data format, so we need to extract it
+          // Check if the payload has data.data structure
+          if (action.payload && 'data' in action.payload) {
+            // Handle the ApiResponse<BotPerformanceHistory[]> case
+            state.projectStats.botPerformance = action.payload.data as unknown as BotPerformanceHistory[]
+          } else {
+            // Direct array response
+            state.projectStats.botPerformance = action.payload as unknown as BotPerformanceHistory[]
+          }
+          
+          console.log("Initialized projectStats with botPerformance data")
+        } else {
+          // The API returns data.data format, so we need to extract it
+          // Check if the payload has data.data structure
+          if (action.payload && 'data' in action.payload) {
+            // Handle the ApiResponse<BotPerformanceHistory[]> case
+            state.projectStats.botPerformance = action.payload.data as unknown as BotPerformanceHistory[]
+          } else {
+            // Direct array response
+            state.projectStats.botPerformance = action.payload as unknown as BotPerformanceHistory[]
+          }
+          console.log("Updated projectStats.botPerformance with:", 
+            state.projectStats.botPerformance ? state.projectStats.botPerformance.length : 0, 
+            "items")
         }
       })
       .addCase(fetchBotPerformance.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
+        // Add debugging logs
+        console.error("fetchBotPerformance rejected with error:", action.payload)
       })
 
       // Fetch BNB price

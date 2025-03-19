@@ -3,7 +3,7 @@ import { BotService, BotResponse } from '@/services/botService';
 import { fetchProject, fetchProjects } from './projectSlice';
 
 // Define types
-export type BotType = 'LiquidationSnipeBot' | 'VolumeBot' | 'HolderBot';
+export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot';
 export type LiquidationSnipeBotStatus = 'ready_to_simulation' 
   | "simulating" | "simulation_failed" | "simulation_succeeded" 
   | "sniping" |  'snipe_succeeded' | 'snipe_failed' 

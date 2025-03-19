@@ -93,6 +93,7 @@ export interface ProjectStatistics {
     start: Date;
     end: Date;
   };
+  _lastUpdateTimestamp?: number;
 }
 
 export interface ProjectAnalyticsProps {
@@ -327,7 +328,7 @@ export interface User {
   }
   
   // Bot related types
-  export type BotType = 'LiquidationSnipeBot' | 'VolumeBot' | 'HolderBot';
+  export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot';
   export type BotStatus = 'ready_to_simulation' 
     | "simulating" | "simulation_failed" | "simulation_succeeded" 
     | "sniping" |  'snipe_succeeded' | 'snipe_failed' 

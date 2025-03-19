@@ -19,6 +19,7 @@ import { toggleBot, updateBotConfig, BotType } from "@/store/slices/botSlice"
 import { getWalletBalances } from "@/store/slices/walletSlice"
 import { ProjectWithAddons, WalletBalance } from "@/types"
 import { walletApi } from "@/services/walletApi"
+import { useParams } from "next/navigation"
 
 // Define the Speed type here to avoid conflicts
 type Speed = "slow" | "medium" | "fast"
@@ -176,6 +177,7 @@ interface VolumeBotDialogProps {
 }
 
 export function ProjectAddOns({ project }: ProjectAddOnsProps) {
+  const { id: projectId } = useParams() as { id: string }  
   const [addOns, setAddOns] = useState<AddonType[]>(initialAddOns)
   const [configs, setConfigs] = useState<ConfigsType>(
     initialAddOns.reduce(
@@ -205,6 +207,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const dispatch = useDispatch<AppDispatch>()
   const botState = useSelector((state: RootState) => state.bots)
   const [isRefreshingBalances, setIsRefreshingBalances] = useState(false)
+  const initialBalancesFetched = useRef(false)
   // Get current user from auth state
   const { user } = useSelector((state: RootState) => state.auth)
 
@@ -219,104 +222,56 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
     return user.walletAddress?.toLowerCase() === ownerWalletAddress?.toLowerCase();
   }, [user, project]);
 
-  // Function to refresh wallet balances
-  const refreshWalletBalances = useCallback(async () => {
-    if (!project?.tokenAddress || isRefreshingBalances) return;
-
+  // Create a memoized version of refreshWalletBalances to avoid dependency issues
+  const memoizedRefreshWalletBalances = useCallback(async () => {
+    if (!project?.tokenAddress || !project?.addons) return;
+    
     try {
       setIsRefreshingBalances(true);
-
-      // Collect all deposit wallet addresses
-      const depositWallets = [];
+      
+      // Get all deposit wallet addresses from all add-ons
+      const depositWalletAddresses: string[] = [];
+      
       if (project.addons.LiquidationSnipeBot?.depositWalletId?.publicKey) {
-        depositWallets.push(project.addons.LiquidationSnipeBot.depositWalletId.publicKey);
+        depositWalletAddresses.push(project.addons.LiquidationSnipeBot.depositWalletId.publicKey);
       }
+      
       if (project.addons.VolumeBot?.depositWalletId?.publicKey) {
-        depositWallets.push(project.addons.VolumeBot.depositWalletId.publicKey);
+        depositWalletAddresses.push(project.addons.VolumeBot.depositWalletId.publicKey);
       }
+      
       if (project.addons.HolderBot?.depositWalletId?.publicKey) {
-        depositWallets.push(project.addons.HolderBot.depositWalletId.publicKey);
+        depositWalletAddresses.push(project.addons.HolderBot.depositWalletId.publicKey);
       }
-
-      if (depositWallets.length === 0) return;
-
-      const balances = await dispatch(getWalletBalances({ 
-        tokenAddress: project.tokenAddress, 
-        walletAddresses: depositWallets 
-      })).unwrap();
-
-      console.debug("balances", balances)
-
-      // Create a mapping of wallet addresses to their balances for easier lookup
-      const balanceMap = balances.reduce((map, balance) => {
-        map[balance.address.toLowerCase()] = balance;
-        return map;
-      }, {} as Record<string, WalletBalance>);
-
-      setAddOns(prevAddOns => {
-        return prevAddOns.map(addon => {
-          // Get the current deposit wallet address from project data to ensure it's up-to-date
-          let currentDepositWallet = "";
-          
-          if (addon.botType === "LiquidationSnipeBot" && project.addons.LiquidationSnipeBot?.depositWalletId?.publicKey) {
-            currentDepositWallet = project.addons.LiquidationSnipeBot.depositWalletId.publicKey;
-          } else if (addon.botType === "VolumeBot" && project.addons.VolumeBot?.depositWalletId?.publicKey) {
-            currentDepositWallet = project.addons.VolumeBot.depositWalletId.publicKey;
-          } else if (addon.botType === "HolderBot" && project.addons.HolderBot?.depositWalletId?.publicKey) {
-            currentDepositWallet = project.addons.HolderBot.depositWalletId.publicKey;
-          }
-          
-          // Update the addon's depositWallet to ensure it's current
-          const updatedAddon = {
-            ...addon,
-            depositWallet: currentDepositWallet
-          };
-          
-          // Look up the balance using the current deposit wallet address
-          if (currentDepositWallet) {
-            const balance = balanceMap[currentDepositWallet.toLowerCase()];
-            if (balance) {
-              return {
-                ...updatedAddon,
-                balances: {
-                  ...updatedAddon.balances,
-                  native: balance.bnbBalance,
-                  token: balance.tokenAmount
-                }
-              };
-            }
-          }
-          
-          return updatedAddon;
-        });
-      });
-
-    } catch (error: any) {
-      console.error('Failed to refresh wallet balances:', error);
-      const isRateLimit = 
-        error?.response?.status === 429 || 
-        error?.status === 429 || 
-        error?.message?.includes('429') ||
-        error?.message?.toLowerCase().includes('rate limit');
-        
-      if (!isRateLimit) {
-        toast({
-          title: "Error Refreshing Balances",
-          description: "Failed to fetch wallet balances. Please try again.",
-          variant: "destructive",
-        });
+      
+      // Fetch balances for all wallets
+      if (depositWalletAddresses.length > 0) {
+        await dispatch(getWalletBalances({
+          walletAddresses: depositWalletAddresses,
+          tokenAddress: project.tokenAddress
+        }) as any);
       }
+    } catch (error) {
+      console.error('Error refreshing wallet balances:', error);
     } finally {
       setIsRefreshingBalances(false);
     }
   }, [project?.tokenAddress, project?.addons, dispatch]);
-
+  
   // Initial fetch of balances when component mounts or project changes
   useEffect(() => {
-    if (project?.tokenAddress) {
-      refreshWalletBalances();
-    }
-  }, [project?.tokenAddress]);
+    if (!project?.tokenAddress) return;
+    
+    // Use timeout to debounce the API call
+    const timer = setTimeout(() => {
+      if (!initialBalancesFetched.current) {
+        memoizedRefreshWalletBalances();
+        initialBalancesFetched.current = true;
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [project?.tokenAddress, memoizedRefreshWalletBalances]);
 
   // Update addOns and configs with project data if available
   useEffect(() => {
@@ -378,7 +333,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   }, [project]);
 
   const handleToggle = (id: string) => {
-    if (!project?._id) {
+    if (!project?._id || !projectId) {
       toast({
         title: "Error",
         description: "Project ID is missing. Cannot toggle bot.",
@@ -398,7 +353,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
 
     // Dispatch the toggle action to the Redux store
     dispatch(toggleBot({
-      projectId: project._id,
+      projectId: project?._id || projectId,
       botType: id as BotType,
       enabled: !currentEnabled
     }))
@@ -430,9 +385,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       [id]: { ...prev[id], ...newConfig },
     }))
     
-    if (project?._id) {
+    if (project?._id || projectId) {
       dispatch(updateBotConfig({
-        projectId: project._id,
+        projectId: project?._id || projectId,
         botType: id as BotType,
         config: newConfig
       }));
@@ -541,7 +496,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={refreshWalletBalances}
+              onClick={memoizedRefreshWalletBalances}
               disabled={isRefreshingBalances}
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshingBalances ? "animate-spin" : ""}`} />

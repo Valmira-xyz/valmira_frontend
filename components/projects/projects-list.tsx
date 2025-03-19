@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/components/ui/use-toast"
@@ -24,15 +24,49 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
   const { projects, loading, error } = useSelector((state: RootState) => state.projects as unknown as { projects: ProjectWithAddons[], loading: boolean, error: string | null })
   const { toast } = useToast()
   const [currentPage, setCurrentPage] = useState(0)
+  const isFirstRender = useRef(true)
+  const fetchInProgress = useRef(false)
+  const lastFetchParams = useRef({ isPublic, currentPage, pageSize })
 
-  useEffect(() => {
-    console.log('Fetching projects...')
-    if (isPublic) {
-      dispatch(fetchPublicProjects({ pageIndex: currentPage, maxPageCount: pageSize }) as any)
-    } else {
-      dispatch(fetchProjects() as any)
+  // Debounced fetch function to prevent multiple API calls
+  const fetchProjects = useCallback(async () => {
+    // Skip if a fetch is already in progress or if parameters haven't changed
+    if (fetchInProgress.current) return
+    
+    const paramsChanged = 
+      lastFetchParams.current.isPublic !== isPublic || 
+      lastFetchParams.current.currentPage !== currentPage ||
+      lastFetchParams.current.pageSize !== pageSize
+      
+    if (!isFirstRender.current && !paramsChanged) return
+    
+    try {
+      fetchInProgress.current = true
+      console.log('Fetching projects...')
+      
+      // Update last fetch parameters
+      lastFetchParams.current = { isPublic, currentPage, pageSize }
+      
+      if (isPublic) {
+        await dispatch(fetchPublicProjects({ pageIndex: currentPage, maxPageCount: pageSize }) as any)
+      } else {
+        await dispatch(fetchProjects() as any)
+      }
+      
+      isFirstRender.current = false
+    } finally {
+      fetchInProgress.current = false
     }
   }, [dispatch, isPublic, currentPage, pageSize])
+
+  useEffect(() => {
+    // Small delay to prevent rapid consecutive API calls
+    const timer = setTimeout(() => {
+      fetchProjects()
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [fetchProjects])
 
   useEffect(() => {
     if (error && !isPublic) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
@@ -21,14 +21,76 @@ import { useSelector, useDispatch } from "react-redux"
 import { fetchBotPerformance, fetchRecentActivity } from "@/store/slices/projectSlice"
 import { RootState } from "@/store/store"
 import type { BotPerformanceHistory, ActivityLog, ProjectStatistics } from "@/services/projectService"
+import { useParams } from "next/navigation"
 
 type TimePeriod = "24h" | "7d" | "1m" | "1y"
+
+// Utility function to safely check if a value is a valid date
+const isValidDate = (value: any): boolean => {
+  if (!value) return false;
+  
+  try {
+    // For Date objects
+    if (value instanceof Date) {
+      return !isNaN(value.getTime());
+    }
+    
+    // For timestamps (numbers) and ISO date strings
+    const date = new Date(value);
+    return !isNaN(date.getTime());
+  } catch (error) {
+    return false;
+  }
+};
+
+// Utility function to safely convert a value to a Date object
+const toSafeDate = (value: any): Date | null => {
+  if (!value) return null;
+  
+  try {
+    // For Date objects
+    if (value instanceof Date) {
+      return !isNaN(value.getTime()) ? value : null;
+    }
+    
+    // For timestamps (numbers) and ISO date strings
+    const date = new Date(value);
+    return !isNaN(date.getTime()) ? date : null;
+  } catch (error) {
+    return null;
+  }
+};
 
 export function ProjectAnalytics({ project, trends, botPerformance, recentActivity }: ProjectAnalyticsProps) {
   const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>("24h")
   const [volumeTimePeriod, setVolumeTimePeriod] = useState<TimePeriod>("24h")
   const { projectStats, loading } = useSelector((state: RootState) => state.projects)
   const dispatch = useDispatch()
+  //let's fetch project id from url e.g http://localhost:3008/projects/67d27b2b68b4a081df1ba11b
+  const { id: projectId } = useParams() as { id: string }  
+
+
+
+  // Refs to prevent duplicate API calls
+  const botPerformanceFetchInProgress = useRef(false)
+  const recentActivityFetchInProgress = useRef(false)
+  const initialRenderComplete = useRef(false)
+  const lastBotPerformanceFetchParams = useRef<{
+    projectId: string | undefined,
+    startDate: Date | undefined,
+    endDate: Date | undefined
+  }>({
+    projectId: undefined,
+    startDate: undefined,
+    endDate: undefined
+  })
+  const lastActivityFetchParams = useRef<{
+    projectId: string | undefined,
+    limit: number | undefined
+  }>({
+    projectId: undefined,
+    limit: undefined
+  })
 
   // Date range state for bot performance
   const [botPerformanceDateRange, setBotPerformanceDateRange] = useState<DateRange | undefined>({
@@ -52,85 +114,518 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
   const [isBotPerformanceExpanded, setBotPerformanceExpanded] = useState(false)
   const [isActivityLogExpanded, setActivityLogExpanded] = useState(false)
 
-  // Effect to fetch bot performance when date range changes
-  useEffect(() => {
-    if (project?._id && botPerformanceDateRange?.from && botPerformanceDateRange?.to) {
-      dispatch(fetchBotPerformance({
-        projectId: project._id,
+  // Create memoized fetch functions to prevent duplicate calls
+  const fetchBotPerformanceData = useCallback(async () => {
+    if (!project?._id && !projectId || !botPerformanceDateRange?.from || !botPerformanceDateRange?.to) {
+      console.log("⚠️ Skipping fetchBotPerformanceData - missing required data:", {
+        projectId: project?._id || projectId,
+        from: botPerformanceDateRange?.from,
+        to: botPerformanceDateRange?.to
+      });
+      return;
+    }
+    
+    const newParams = {
+      projectId: project?._id || projectId,
+      startDate: botPerformanceDateRange.from,
+      endDate: botPerformanceDateRange.to
+    }
+    
+    // Skip if fetch is already in progress or if params haven't changed
+    if (botPerformanceFetchInProgress.current) {
+      console.log("⚠️ Skipping fetchBotPerformanceData - fetch already in progress");
+      return;
+    }
+    
+    const paramsUnchanged = 
+      lastBotPerformanceFetchParams.current.projectId === newParams.projectId &&
+      lastBotPerformanceFetchParams.current.startDate?.getTime() === newParams.startDate?.getTime() &&
+      lastBotPerformanceFetchParams.current.endDate?.getTime() === newParams.endDate?.getTime()
+      
+    if (paramsUnchanged) {
+      console.log("⚠️ Skipping fetchBotPerformanceData - params unchanged");
+      return;
+    }
+    
+    try {
+      console.log("🔄 Starting fetchBotPerformanceData with params:", newParams);
+      botPerformanceFetchInProgress.current = true
+      lastBotPerformanceFetchParams.current = newParams
+      
+      await dispatch(fetchBotPerformance({
+        projectId: project?._id || projectId,
         startDate: botPerformanceDateRange.from,
         endDate: botPerformanceDateRange.to
-      }) as any)
+      }) as any);
+      
+      console.log("✅ fetchBotPerformanceData completed");
+    } catch (error) {
+      console.error("❌ fetchBotPerformanceData failed:", error);
+    } finally {
+      botPerformanceFetchInProgress.current = false
     }
-  }, [project?._id, botPerformanceDateRange, dispatch])
+  }, [project?._id, projectId, botPerformanceDateRange, dispatch])
+
+  // Fetch activity log data with debounce
+  const fetchActivityLogData = useCallback(async () => {
+    if (!project?._id && !projectId) {
+      console.log("⚠️ Skipping fetchActivityLogData - missing project ID");
+      return;
+    }
+    
+    const newParams = {
+      projectId: project?._id || projectId,
+      limit: 50
+    }
+    
+    // Skip if fetch is already in progress or if params haven't changed
+    if (recentActivityFetchInProgress.current) {
+      console.log("⚠️ Skipping fetchActivityLogData - fetch already in progress");
+      return;
+    }
+    
+    const paramsUnchanged = 
+      lastActivityFetchParams.current.projectId === newParams.projectId &&
+      lastActivityFetchParams.current.limit === newParams.limit
+      
+    if (paramsUnchanged) {
+      console.log("⚠️ Skipping fetchActivityLogData - params unchanged");
+      return;
+    }
+    
+    try {
+      console.log("🔄 Starting fetchActivityLogData with params:", newParams);
+      recentActivityFetchInProgress.current = true
+      lastActivityFetchParams.current = newParams
+      
+      await dispatch(fetchRecentActivity({
+        projectId: project?._id || projectId,
+        limit: 50
+      }) as any);
+      
+      console.log("✅ fetchActivityLogData completed");
+    } catch (error) {
+      console.error("❌ fetchActivityLogData failed:", error);
+    } finally {
+      recentActivityFetchInProgress.current = false
+    }
+  }, [project?._id, projectId, dispatch])
+
+  // Effect to fetch bot performance when date range changes
+  useEffect(() => {
+    // If we already have data from props, don't fetch immediately
+    const shouldDelayFetch = botPerformance && botPerformance.length > 0;
+    
+    const timer = setTimeout(() => {
+      fetchBotPerformanceData();
+    }, shouldDelayFetch ? 1000 : 100); // Longer delay if we already have data
+    
+    return () => clearTimeout(timer);
+  }, [fetchBotPerformanceData, botPerformance]);
+
+  // Add debugging for bot performance data
+  useEffect(() => {
+    if (projectStats?.botPerformance && projectStats.botPerformance.length > 0) {
+      console.log("Bot performance data from Redux store:", {
+        count: projectStats.botPerformance.length,
+        sampleBot: projectStats.botPerformance[0],
+        dateField: projectStats.botPerformance[0].date,
+        dateType: typeof projectStats.botPerformance[0].date
+      });
+    }
+    
+    if (botPerformance && botPerformance.length > 0) {
+      console.log("Bot performance data from props:", {
+        count: botPerformance.length,
+        sampleBot: botPerformance[0],
+        dateField: botPerformance[0].lastUpdated || "Not available",
+        dateType: typeof (botPerformance[0].lastUpdated || "")
+      });
+    }
+  }, [projectStats?.botPerformance, botPerformance]);
 
   // Effect to fetch activity log when date range changes
   useEffect(() => {
-    if (project?._id && activityLogDateRange?.from && activityLogDateRange?.to) {
-      dispatch(fetchRecentActivity({
-        projectId: project._id,
-        limit: 50
-      }) as any)
+    // If we already have data from props, don't fetch immediately
+    const shouldDelayFetch = recentActivity && recentActivity.length > 0;
+    
+    const timer = setTimeout(() => {
+      fetchActivityLogData();
+    }, shouldDelayFetch ? 1000 : 100); // Longer delay if we already have data
+    
+    return () => clearTimeout(timer);
+  }, [fetchActivityLogData, recentActivity]);
+
+  // Initial render optimization - use a lightweight synchronous render first, then update asynchronously
+  useEffect(() => {
+    if (!initialRenderComplete.current) {
+      // Mark initial render as complete
+      initialRenderComplete.current = true;
+      
+      // Defer any expensive operations until after initial render
+      setTimeout(() => {
+        // Force a re-render to get the complete data view
+        // This is more efficient than doing expensive operations during the initial render
+        dispatch({ type: 'FORCE_ANALYTICS_UPDATE' });
+      }, 10);
     }
-  }, [project?._id, activityLogDateRange, dispatch])
+  }, [dispatch]);
 
   // Filter bot performance data based on date range and selected bot
   const filteredBotPerformanceData = useMemo(() => {
-    const botPerformance = projectStats?.botPerformance as BotPerformanceHistory[] | undefined
-    return (botPerformance || []).filter((bot) => {
-      // Filter by date range
-      const botDate = parseISO(bot.date)
-      const matchesDateRange =
-        !botPerformanceDateRange ||
-        !botPerformanceDateRange.from ||
-        !botPerformanceDateRange.to ||
-        isWithinInterval(botDate, {
-          start: botPerformanceDateRange.from,
-          end: botPerformanceDateRange.to,
-        })
-
-      // Filter by selected bot
-      const matchesBot = !selectedBotPerformance || bot.botId === selectedBotPerformance
-
-      return matchesDateRange && matchesBot
-    })
-  }, [projectStats?.botPerformance, botPerformanceDateRange, selectedBotPerformance])
+    // Define a type for the standardized bot performance data
+    type StandardizedBotPerformance = {
+      botId: string;
+      botName: string;
+      status: string;
+      trades: number;
+      profit: number;
+      uptime: string;
+      date: string;
+      profitContribution: number;
+      lastUpdated: string;
+    };
+    
+    // First use the props data if available, then fall back to redux store data
+    let performanceData: StandardizedBotPerformance[] = [];
+    
+    // Log the original data to help with debugging
+    console.log("Original botPerformance data:", botPerformance);
+    console.log("Original Redux data:", projectStats?.botPerformance);
+    
+    if (botPerformance && botPerformance.length > 0) {
+      // Props data (BotPerformance type)
+      performanceData = botPerformance.map(bot => {
+        // Safely handle date values - use current time as a fallback
+        const now = new Date().toISOString();
+        
+        return {
+          // Use bot ID if available, otherwise use botName
+          botId: (bot as any).botId || bot.botName || `bot-${Math.random().toString(36).substring(2, 9)}`,
+          botName: bot.botName,
+          status: bot.status,
+          trades: bot.trades || 0,
+          profit: (bot as any).profit || bot.profitContribution || 0,
+          uptime: typeof bot.uptime === 'number' ? `${bot.uptime}%` : bot.uptime,
+          // Always ensure we have valid date strings - use current time as fallback
+          date: now,
+          profitContribution: bot.profitContribution || (bot as any).profit || 0,
+          lastUpdated: now
+        };
+      });
+    } else if (projectStats?.botPerformance && projectStats.botPerformance.length > 0) {
+      // Redux data (BotPerformanceHistory type)
+      performanceData = projectStats.botPerformance.map(bot => {
+        // Handle differently structured data from Redux
+        // Ensure all fields are present and valid
+        const now = new Date().toISOString();
+        
+        return {
+          botId: bot.botId || bot.botName || `bot-${Math.random().toString(36).substring(2, 9)}`,
+          botName: bot.botName,
+          status: bot.status,
+          trades: bot.trades || 0,
+          profit: bot.profit || 0,
+          uptime: bot.uptime || "0%",
+          // Format date properly or use current time as fallback
+          date: bot.date ? new Date(bot.date).toISOString() : now,
+          profitContribution: bot.profit || 0,
+          lastUpdated: now
+        };
+      });
+    }
+    
+    // Add debug logging for date ranges
+    if (performanceData.length > 0 && botPerformanceDateRange?.from && botPerformanceDateRange?.to) {
+      try {
+        // Safely check date format for debugging
+        let isoFormatValue = 'not a string';
+        if (typeof performanceData[0].date === 'string') {
+          const testDate = new Date(performanceData[0].date);
+          // Check if date is valid before calling toISOString
+          if (!isNaN(testDate.getTime())) {
+            isoFormatValue = testDate.toISOString();
+          } else {
+            isoFormatValue = 'invalid date string';
+          }
+        }
+        
+        console.log("Bot Performance Data after mapping:", performanceData);
+        console.log("Filtering bot performance with date range:", {
+          from: botPerformanceDateRange.from,
+          to: botPerformanceDateRange.to,
+          sampleBotDate: performanceData[0].date,
+          dateType: typeof performanceData[0].date,
+          isoFormat: isoFormatValue
+        });
+      } catch (error) {
+        console.error("Error in debug logging:", error);
+      }
+    }
+    
+    // TEMPORARY: Return all performance data without filtering to debug display issues
+    return performanceData;
+    
+  }, [botPerformance, projectStats?.botPerformance, botPerformanceDateRange, selectedBotPerformance]);
 
   // Filter activity log data based on date range and selected bot
   const filteredActivityLogData = useMemo(() => {
-    const recentActivity = projectStats?.recentActivity as ActivityLog[] | undefined
-    return (recentActivity || []).filter((activity) => {
-      // Filter by date range
-      const activityDate = parseISO(activity.timestamp.toString())
-      const matchesDateRange =
-        !activityLogDateRange ||
-        !activityLogDateRange.from ||
-        !activityLogDateRange.to ||
-        isWithinInterval(activityDate, {
-          start: activityLogDateRange.from,
-          end: activityLogDateRange.to,
-        })
+    // Define a type for the standardized activity log data
+    type StandardizedActivityLog = {
+      botName: string;
+      timestamp: string;
+      action: string;
+      volume: number;
+      impact: number;
+      [key: string]: any; // Allow for additional properties
+    };
+    
+    // First use the props data if available, then fall back to redux store data
+    let activityData: StandardizedActivityLog[] = [];
+    
+    // Log the original data to help with debugging
+    console.log("Original recentActivity data:", recentActivity);
+    console.log("Original Redux activity data:", projectStats?.recentActivity);
+    
+    if (recentActivity && recentActivity.length > 0) {
+      // Props data - make sure to standardize the format
+      activityData = recentActivity.map(activity => {
+        // Ensure all required fields exist with sensible defaults
+        const now = new Date().toISOString();
+        
+        return {
+          ...activity,
+          // Ensure botName is always present
+          botName: activity.botName || "Unknown Bot",
+          // Ensure timestamp is always a valid date string
+          timestamp: isValidDate(activity.timestamp) 
+            ? toSafeDate(activity.timestamp)!.toISOString() 
+            : now,
+          // Ensure numeric fields have valid defaults
+          volume: activity.volume || 0,
+          impact: activity.impact || 0,
+          // Ensure action is present
+          action: activity.action || "Unknown Action"
+        };
+      });
+    } else if (projectStats?.recentActivity && projectStats.recentActivity.length > 0) {
+      // Redux data - make sure to standardize the format
+      activityData = projectStats.recentActivity.map(activity => {
+        // Ensure all required fields exist with sensible defaults
+        const now = new Date().toISOString();
+        
+        return {
+          ...activity,
+          // Ensure botName is always present
+          botName: activity.botName || "Unknown Bot",
+          // Ensure timestamp is always a valid date string
+          timestamp: isValidDate(activity.timestamp) 
+            ? toSafeDate(activity.timestamp)!.toISOString() 
+            : now,
+          // Ensure numeric fields have valid defaults
+          volume: activity.volume || 0,
+          impact: activity.impact || 0,
+          // Ensure action is present
+          action: activity.action || "Unknown Action"
+        };
+      });
+    }
+    
+    // Add debug logging for date ranges
+    if (activityData.length > 0 && activityLogDateRange?.from && activityLogDateRange?.to) {
+      try {
+        // Safely format timestamp for debugging
+        const timestamp = activityData[0].timestamp;
+        const timestampType = typeof timestamp;
+        
+        // Simplified timestamp validation to avoid type errors
+        let formattedTimestamp = 'unavailable';
+        try {
+          // Try to create a date object and convert to ISO string
+          const testDate = new Date(timestamp as any);
+          formattedTimestamp = !isNaN(testDate.getTime()) 
+            ? testDate.toISOString() 
+            : 'invalid timestamp';
+        } catch (error) {
+          formattedTimestamp = 'error parsing timestamp';
+        }
+        
+        console.log("Activity Data after mapping:", activityData);
+        console.log("Filtering activity log with date range:", {
+          from: activityLogDateRange.from,
+          to: activityLogDateRange.to,
+          sampleTimestamp: timestamp,
+          type: timestampType,
+          formatted: formattedTimestamp
+        });
+      } catch (error) {
+        console.error("Error in activity log debug logging:", error);
+      }
+    }
+    
+    // TEMPORARY: Return all activity data without filtering to debug display issues
+    return activityData;
 
-      // Filter by selected bot
-      const matchesBot = !selectedBot || activity.botName === selectedBot
+  }, [recentActivity, projectStats?.recentActivity, activityLogDateRange, selectedBot]);
 
-      return matchesDateRange && matchesBot
-    })
-  }, [projectStats?.recentActivity, activityLogDateRange, selectedBot])
-
-  // Get available bots from performance data
+  // Get available bots from performance data - optimized for rendering speed
+  const initialAvailableBots = useMemo(() => {
+    // For initial render, just use the props data without waiting for Redux
+    if (botPerformance && botPerformance.length > 0) {
+      const botMap = new Map<string, { id: string; name: string }>();
+      
+      botPerformance.forEach((bot) => {
+        if (!botMap.has(bot.botName)) {
+          botMap.set(bot.botName, {
+            id: bot.botName,
+            name: bot.botName
+          });
+        }
+      });
+      
+      return Array.from(botMap.values());
+    }
+    
+    return [];
+  }, [botPerformance]); // Only depends on props
+  
+  // Full available bots calculation that includes Redux data
   const availableBots = useMemo(() => {
-    const botMap = new Map<string, { id: string; name: string }>()
-    const botPerformance = projectStats?.botPerformance as BotPerformanceHistory[] | undefined
-    botPerformance?.forEach((bot) => {
+    // Start with the initial bots from props
+    const botMap = new Map<string, { id: string; name: string }>();
+    
+    // Add initial bots from props first
+    initialAvailableBots.forEach(bot => {
+      if (!botMap.has(bot.id)) {
+        botMap.set(bot.id, bot);
+      }
+    });
+    
+    // Then add any additional bots from Redux store
+    const storePerformance = projectStats?.botPerformance as BotPerformanceHistory[] | undefined;
+    storePerformance?.forEach((bot) => {
       if (!botMap.has(bot.botId)) {
         botMap.set(bot.botId, {
           id: bot.botId,
           name: bot.botName
-        })
+        });
       }
-    })
-    return Array.from(botMap.values())
-  }, [projectStats?.botPerformance])
+    });
+    
+    // If we still have no bots and there's recentActivity data, extract bot names from there
+    if (botMap.size === 0 && recentActivity && recentActivity.length > 0) {
+      recentActivity.forEach(activity => {
+        if (activity.botName && !botMap.has(activity.botName)) {
+          botMap.set(activity.botName, {
+            id: activity.botName,
+            name: activity.botName
+          });
+        }
+      });
+    }
+    
+    return Array.from(botMap.values());
+  }, [initialAvailableBots, projectStats?.botPerformance, recentActivity]);
+
+  // Add detailed logging to help with debugging
+  // useEffect(() => {
+  //   console.log("==== PROJECT ANALYTICS DEBUG ====");
+  //   console.log("Props data:", {
+  //     project: project?._id || projectId,
+  //     hasTrends: trends && Object.keys(trends).length > 0,
+  //     hasBotPerformance: botPerformance && botPerformance.length > 0,
+  //     hasRecentActivity: recentActivity && recentActivity.length > 0
+  //   });
+  //   console.log("Redux state:", {
+  //     loading,
+  //     hasProjectStats: !!projectStats,
+  //     botPerformanceCount: projectStats?.botPerformance?.length || 0,
+  //     recentActivityCount: projectStats?.recentActivity?.length || 0,
+  //     trendsAvailable: projectStats?.trends && Object.keys(projectStats.trends).length > 0
+  //   });
+  //   console.log("Filtered data:", {
+  //     filteredBotPerformanceCount: filteredBotPerformanceData.length,
+  //     filteredActivityLogDataCount: filteredActivityLogData.length
+  //   });
+  //   console.log("Date ranges:", {
+  //     botPerformance: botPerformanceDateRange,
+  //     activityLog: activityLogDateRange
+  //   });
+  //   console.log("Available bots:", availableBots);
+  //   console.log("==============================");
+  // }, [
+  //   project, trends, botPerformance, recentActivity, 
+  //   projectStats, loading, filteredBotPerformanceData, 
+  //   filteredActivityLogData, botPerformanceDateRange, 
+  //   activityLogDateRange, availableBots
+  // ]);
+
+  // Add more debug logging with safe data output
+  // useEffect(() => {
+  //   try {
+  //     if (filteredBotPerformanceData.length === 0 && 
+  //         ((botPerformance && botPerformance.length > 0) || 
+  //          (projectStats?.botPerformance && projectStats.botPerformance.length > 0))) {
+        
+  //       // Helper function to safely stringify objects for debug logging
+  //       const safeStringify = (obj: any) => {
+  //         try {
+  //           // Create a simpler copy of the object to avoid circular references
+  //           const simpleCopy = (o: any): any => {
+  //             if (o === null || o === undefined) return o;
+  //             if (o instanceof Date) return `Date(${o.toISOString()})`;
+  //             if (typeof o !== 'object') return o;
+              
+  //             const result: any = Array.isArray(o) ? [] : {};
+  //             for (const key in o) {
+  //               if (Object.prototype.hasOwnProperty.call(o, key)) {
+  //                 // Only include primitive values and Date objects
+  //                 if (o[key] === null || o[key] === undefined) {
+  //                   result[key] = o[key];
+  //                 } else if (o[key] instanceof Date) {
+  //                   result[key] = `Date(${o[key].toISOString()})`;
+  //                 } else if (typeof o[key] !== 'object') {
+  //                   result[key] = o[key];
+  //                 } else {
+  //                   // For nested objects, just show type
+  //                   result[key] = `[${Array.isArray(o[key]) ? 'Array' : 'Object'}]`;
+  //                 }
+  //               }
+  //             }
+  //             return result;
+  //           };
+            
+  //           return JSON.stringify(simpleCopy(obj), null, 2);
+  //         } catch (error) {
+  //           return `[Error stringifying object: ${error}]`;
+  //         }
+  //       };
+        
+  //       console.log("=========== DEBUG: BOT PERFORMANCE DATA ===========");
+  //       console.log("filteredBotPerformanceData length:", filteredBotPerformanceData.length);
+        
+  //       if (botPerformance && botPerformance.length > 0) {
+  //         console.log("botPerformance from props:", botPerformance.length, "items");
+  //         console.log("First bot from props:", safeStringify(botPerformance[0]));
+  //       } else {
+  //         console.log("No botPerformance from props");
+  //       }
+        
+  //       if (projectStats?.botPerformance && projectStats.botPerformance.length > 0) {
+  //         console.log("botPerformance from Redux:", projectStats.botPerformance.length, "items");
+  //         console.log("First bot from Redux:", safeStringify(projectStats.botPerformance[0]));
+  //       } else {
+  //         console.log("No botPerformance from Redux");
+  //       }
+        
+  //       console.log("Date range:", safeStringify(botPerformanceDateRange));
+  //       console.log("Selected bot:", selectedBotPerformance);
+  //       console.log("======================================================");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error in debug logging:", error);
+  //   }
+  // }, [filteredBotPerformanceData.length, botPerformance, projectStats?.botPerformance, botPerformanceDateRange, selectedBotPerformance]);
 
   const TimePeriodButtons = ({
     currentPeriod,
@@ -182,7 +677,90 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
     return format(new Date(timestamp), 'MMM dd HH:mm')
   }
 
-  if (loading) {
+  // Memoized chart data to prioritize props data over redux data
+  const chartData = useMemo(() => {
+    return {
+      profitTrend: (trends?.profitTrend && trends.profitTrend.length > 0) 
+        ? trends.profitTrend 
+        : (projectStats?.trends?.profitTrend || []),
+      volumeTrend: (trends?.volumeTrend && trends.volumeTrend.length > 0)
+        ? trends.volumeTrend
+        : (projectStats?.trends?.volumeTrend || [])
+    };
+  }, [trends, projectStats?.trends]);
+
+  // Modified loading check that shows content if props data is available
+  const isLoading = useMemo(() => {
+    // If we have props data, don't show loading state even if Redux is loading
+    const hasPropsData = 
+      (botPerformance && botPerformance.length > 0) || 
+      (recentActivity && recentActivity.length > 0) ||
+      (trends && (trends.profitTrend?.length > 0 || trends.volumeTrend?.length > 0));
+    
+    // Or if we have Redux data
+    const hasReduxData = 
+      (projectStats?.botPerformance && projectStats.botPerformance.length > 0) ||
+      (projectStats?.recentActivity && projectStats.recentActivity.length > 0) ||
+      (projectStats?.trends && (
+        (projectStats.trends.profitTrend && projectStats.trends.profitTrend.length > 0) || 
+        (projectStats.trends.volumeTrend && projectStats.trends.volumeTrend.length > 0))
+      );
+    
+    // Check if we have filtered data
+    const hasFilteredData = 
+      filteredBotPerformanceData.length > 0 || 
+      filteredActivityLogData.length > 0;
+    
+    // Only show loading if Redux is loading AND we don't have any data to show
+    return loading && !hasPropsData && !hasReduxData && !hasFilteredData;
+  }, [
+    loading, 
+    botPerformance, recentActivity, trends, 
+    projectStats?.botPerformance, projectStats?.recentActivity, projectStats?.trends,
+    filteredBotPerformanceData, filteredActivityLogData
+  ]);
+
+  // Add explicit debugging of what's being rendered
+  // useEffect(() => {
+  //   console.log("RENDER STATE:", {
+  //     isLoading,
+  //     hasFilteredBotData: filteredBotPerformanceData.length > 0,
+  //     filteredBotCount: filteredBotPerformanceData.length,
+  //     hasFilteredActivityData: filteredActivityLogData.length > 0, 
+  //     filteredActivityCount: filteredActivityLogData.length,
+  //     showingBotPerformance: isBotPerformanceExpanded,
+  //     showingActivityLog: isActivityLogExpanded
+  //   });
+  // }, [isLoading, filteredBotPerformanceData, filteredActivityLogData, isBotPerformanceExpanded, isActivityLogExpanded]);
+
+  // Add extensive data debugging at render time
+  useEffect(() => {
+    console.log("=========== DEBUG: RENDER DATA ===========");
+    console.log("Chart data:", chartData);
+    console.log("Bot performance table data:", filteredBotPerformanceData);
+    console.log("Activity log table data:", filteredActivityLogData);
+    console.log("Bot list:", availableBots);
+    console.log("Bot performance expanded:", isBotPerformanceExpanded);
+    console.log("Activity log expanded:", isActivityLogExpanded);
+    
+    if (filteredBotPerformanceData.length === 0) {
+      console.warn("No bot performance data to display - check filters or data source");
+    }
+    
+    if (filteredActivityLogData.length === 0 && isActivityLogExpanded) {
+      console.warn("No activity log data to display - check filters or data source");
+    }
+    console.log("==========================================");
+  }, [
+    chartData, 
+    filteredBotPerformanceData, 
+    filteredActivityLogData, 
+    availableBots, 
+    isBotPerformanceExpanded, 
+    isActivityLogExpanded
+  ]);
+
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
@@ -214,7 +792,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
             <TimePeriodButtons currentPeriod={profitTimePeriod} onChange={setProfitTimePeriod} />
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={projectStats?.trends?.profitTrend || []}>
+                <LineChart data={chartData.profitTrend}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="timestamp" 
@@ -247,7 +825,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
             <TimePeriodButtons currentPeriod={volumeTimePeriod} onChange={setVolumeTimePeriod} />
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={projectStats?.trends?.volumeTrend || []}>
+                <LineChart data={chartData.volumeTrend}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="timestamp" 
@@ -327,8 +905,8 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
               </TableHeader>
               <TableBody>
                 {(isBotPerformanceExpanded ? filteredBotPerformanceData : filteredBotPerformanceData.slice(0, 3)).map(
-                  (bot: BotPerformanceHistory) => (
-                    <TableRow key={`${bot.botId}-${bot.date}`}>
+                  (bot, index) => (
+                    <TableRow key={index}>
                       <TableCell>{bot.botName}</TableCell>
                       <TableCell>
                         <Badge 
@@ -342,9 +920,9 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
                         </Badge>
                       </TableCell>
                       <TableCell>{bot.trades}</TableCell>
-                      <TableCell>{formatCurrency(bot.profitContribution)}</TableCell>
+                      <TableCell>{formatCurrency(bot.profit)}</TableCell>
                       <TableCell>{bot.uptime}</TableCell>
-                      <TableCell>{format(new Date(bot.lastUpdated), 'HH:mm:ss')}</TableCell>
+                      <TableCell>{format(new Date(bot?.lastUpdated || bot?.date), 'HH:mm:ss')}</TableCell>
                     </TableRow>
                   )
                 )}
@@ -425,7 +1003,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
                 </TableHeader>
                 <TableBody>
                   {(isActivityLogExpanded ? filteredActivityLogData : filteredActivityLogData.slice(0, 3)).map(
-                    (activity: ActivityLog) => (
+                    (activity) => (
                       <TableRow key={`${activity.timestamp}-${activity.botName}-${activity.action}`}>
                         <TableCell>{format(new Date(activity.timestamp), 'HH:mm:ss')}</TableCell>
                         <TableCell className="font-medium">{activity.botName}</TableCell>

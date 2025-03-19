@@ -6,24 +6,78 @@ import { Plus } from "lucide-react"
 import { ProjectSummaryCard } from "@/components/projects/project-summary-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreateProjectButton } from "../projects/create-project-button"
-import { useEffect } from "react"
+import { useEffect, useRef, useCallback } from "react"
 import { useDispatch, useSelector } from "@/hooks/use-redux"
 import { fetchProjects } from "@/store/slices/projectSlice"
-import type { Project } from "@/types"
+import type { Project, ProjectWithAddons, TimeSeriesDataPoint } from "@/types"
 
 export function LatestProjects() {
   const dispatch = useDispatch()
   const { projects, loading: isLoading, error } = useSelector((state) => state.projects)
+  const fetchInProgress = useRef(false)
+  const hasInitialFetch = useRef(false)
+
+  const fetchProjectsData = useCallback(async () => {
+    // Skip if fetch is already in progress or if we've already fetched
+    if (fetchInProgress.current || (hasInitialFetch.current && !error)) return
+    
+    try {
+      fetchInProgress.current = true
+      await dispatch(fetchProjects())
+      hasInitialFetch.current = true
+    } finally {
+      fetchInProgress.current = false
+    }
+  }, [dispatch, error])
 
   useEffect(() => {
-    dispatch(fetchProjects())
-  }, [dispatch])
+    fetchProjectsData()
+  }, [fetchProjectsData])
 
   // Show only active projects, sorted by last updated
   const activeProjects = projects
     ?.filter((project: Project) => project.status === 'active')
     .sort((a: Project, b: Project) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3) // Show only the 3 most recent projects
+
+  // Transform Project objects to ProjectWithAddons objects
+  const transformProjectToWithAddons = (project: Project): ProjectWithAddons => {
+    // Create empty trend arrays with the correct type
+    const emptyTrend: TimeSeriesDataPoint[] = [];
+    
+    return {
+      _id: project._id,
+      name: project.name,
+      tokenAddress: "", // Default values for missing properties
+      pairAddress: "",
+      chainId: 0,
+      chainName: "ethereum", // Default chain
+      status: project.status,
+      isImported: false,
+      owner: "",
+      metrics: project.metrics || {
+        cumulativeProfit: 0,
+        volume24h: 0,
+        activeBots: 0,
+        lastUpdate: new Date().toISOString()
+      },
+      addons: {
+        LiquidationSnipeBot: {
+          depositWalletId: { publicKey: "" },
+          subWalletIds: []
+        },
+        VolumeBot: {
+          depositWalletId: { publicKey: "" }
+        },
+        HolderBot: {
+          depositWalletId: { publicKey: "" }
+        }
+      },
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+      __v: 0
+    };
+  };
 
   if (isLoading) {
     return (
@@ -85,23 +139,7 @@ export function LatestProjects() {
           {activeProjects.map((project: Project) => (
             <div key={project._id} className="w-[320px] flex-shrink-0">
               <ProjectSummaryCard 
-                project={{
-                  _id: project._id,
-                  name: project.name,
-                  chainName: project.chainName,
-                  tokenAddress: project.tokenAddress,
-                  status: project.status,
-                  metrics: project.metrics,
-                  pairAddress: project.pairAddress,
-                  chainId: project.chainId,
-                  owner: project.owner,
-                  createdAt: project.createdAt,
-                  updatedAt: project.updatedAt,
-                  profitTrend: project.profitTrend || [], 
-                  volumeTrend: project.volumeTrend || [],
-                  logo: `/chain-logos/${project.chainId}.png`, // Assuming we have chain logos
-                  addons: project.addons // Adding the required addons property
-                }} 
+                project={transformProjectToWithAddons(project)} 
               />
             </div>
           ))}

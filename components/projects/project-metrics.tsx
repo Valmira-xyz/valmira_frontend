@@ -3,10 +3,9 @@ import { Project, ProjectWithAddons } from "@/types"
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState, AppDispatch } from "@/store/store"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { getPoolInfo } from "@/services/web3Utils"
 import { fetchBnbPrice } from "@/store/slices/projectSlice"
-import axios from "axios"
 
 
 export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
@@ -14,6 +13,9 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
   const { projectStats, loading, bnbPrice, bnbPriceLoading } = useSelector((state: RootState) => state.projects)
   const [poolLiquidity, setPoolLiquidity] = useState<number>(0)
   const [loadingLiquidity, setLoadingLiquidity] = useState<boolean>(false)
+  const isFetchingBnbPrice = useRef(false)
+  const hasInitialBnbPriceFetch = useRef(false)
+  const isCalculatingLiquidity = useRef(false)
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -28,37 +30,55 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
     return new Intl.NumberFormat('en-US').format(value)
   }
 
-  useEffect(() => {
-    // Fetch BNB price when component mounts
-    dispatch(fetchBnbPrice());
-  }, [dispatch]);
+  // Fetch BNB price with debounce mechanism
+  const fetchBnbPriceData = useCallback(async () => {
+    // Skip if fetch is already in progress or we've already fetched and have data
+    if (isFetchingBnbPrice.current || (hasInitialBnbPriceFetch.current && bnbPrice)) return
+    
+    try {
+      isFetchingBnbPrice.current = true
+      await dispatch(fetchBnbPrice());
+      hasInitialBnbPriceFetch.current = true
+    } finally {
+      isFetchingBnbPrice.current = false
+    }
+  }, [dispatch, bnbPrice]);
 
   useEffect(() => {
-    const fetchLiquidity = async () => {
-      const tokenAddress = project.tokenAddress;
-      if (!tokenAddress || !bnbPrice) return;
+    fetchBnbPriceData();
+  }, [fetchBnbPriceData]);
+
+  // Calculate liquidity with fetch tracking
+  const calculateLiquidity = useCallback(async () => {
+    const tokenAddress = project.tokenAddress;
+    if (!tokenAddress || !bnbPrice || isCalculatingLiquidity.current) return;
+    
+    try {
+      isCalculatingLiquidity.current = true;
+      setLoadingLiquidity(true);
       
-      try {
-        setLoadingLiquidity(true);
-        const poolInfo = await getPoolInfo(tokenAddress);
-        if (poolInfo) {
-          // Calculate liquidity in USD using the BNB price from Redux
-          const liquidityInUsd = poolInfo.bnbReserve * bnbPrice * 2; // Times 2 because liquidity is balanced
-          
-          setPoolLiquidity(liquidityInUsd);
-        } else {
-          setPoolLiquidity(0);
-        }
-      } catch (error) {
-        console.error('Failed to fetch liquidity:', error);
+      const poolInfo = await getPoolInfo(tokenAddress);
+      if (poolInfo) {
+        // Calculate liquidity in USD using the BNB price from Redux
+        const liquidityInUsd = poolInfo.bnbReserve * bnbPrice * 2; // Times 2 because liquidity is balanced
+        setPoolLiquidity(liquidityInUsd);
+      } else {
         setPoolLiquidity(0);
-      } finally {
-        setLoadingLiquidity(false);
       }
-    };
-
-    fetchLiquidity();
+    } catch (error) {
+      console.error('Failed to fetch liquidity:', error);
+      setPoolLiquidity(0);
+    } finally {
+      setLoadingLiquidity(false);
+      isCalculatingLiquidity.current = false;
+    }
   }, [project.tokenAddress, bnbPrice]);
+
+  useEffect(() => {
+    if (bnbPrice && project.tokenAddress) {
+      calculateLiquidity();
+    }
+  }, [bnbPrice, project.tokenAddress, calculateLiquidity]);
 
   // Calculate active bots count similar to dashboard-metrics.tsx
   const calculateActiveBots = (): number => {

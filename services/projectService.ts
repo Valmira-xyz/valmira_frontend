@@ -261,7 +261,6 @@ export const projectService = {
       return await retryWithBackoff(async () => {
         const response = await axios.get<ApiResponse<ActivityLog[]>>(
           `${BACKEND_URL}/project-stats/${projectId}/activity?limit=${limit}`,
-          getAuthHeaders()
         );
         return response.data.data;
       });
@@ -275,21 +274,20 @@ export const projectService = {
     projectId: string,
     startDate: Date,
     endDate: Date
-  ): Promise<BotPerformanceHistory[]> => {
+  ): Promise<ApiResponse<BotPerformanceHistory[]>> => {
     try {
       await waitForRateLimit();
       return await retryWithBackoff(async () => {
         const response = await axios.get<ApiResponse<BotPerformanceHistory[]>>(
           `${BACKEND_URL}/project-stats/${projectId}/bot-performance`,
           {
-            ...getAuthHeaders(),
             params: {
               startDate: startDate.toISOString().split('T')[0],
               endDate: endDate.toISOString().split('T')[0]
             }
           }
         );
-        return response.data.data;
+        return response.data;
       });
     } catch (error) {
       console.error('Error fetching bot performance history:', error);
@@ -308,28 +306,25 @@ export const projectService = {
       const statsResponse = await retryWithBackoff(async () => {
         return await axios.get<ApiResponse<ProjectStatistics>>(
           `${BACKEND_URL}/project-stats/${projectId}/stats${queryParams}`,
-          getAuthHeaders()
         );
       });
 
-      // Wait a bit before the next request
-      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
-      await waitForRateLimit();
-      const activityResponse = await projectService.getRecentActivity(projectId);
+      // // Wait a bit before the next request
+      // await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+      // await waitForRateLimit();
+      // const activityResponse = await projectService.getRecentActivity(projectId);
       
-      // Wait again before the final request
-      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
-      await waitForRateLimit();
-      const performanceResponse = await projectService.getBotPerformanceHistory(
-        projectId,
-        timeRange?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        timeRange?.end || new Date()
-      );
+      // // Wait again before the final request
+      // await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+      // await waitForRateLimit();
+      // const performanceResponse = await projectService.getBotPerformanceHistory(
+      //   projectId,
+      //   timeRange?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      //   timeRange?.end || new Date()
+      // );
       
       return {
-        ...statsResponse.data.data,
-        recentActivity: activityResponse,
-        botPerformance: performanceResponse
+        ...statsResponse.data.data
       };
     } catch (error) {
       console.error('Error fetching project stats:', error);
@@ -361,7 +356,7 @@ export const projectService = {
   logLPAddition: async (projectId: string, tokenAmount: number, bnbAmount: number): Promise<void> => {
     return projectService.addActivityLog(projectId, {
       timestamp: new Date(),
-      botName: 'LiquidationSnipeBot',
+      botName: 'SnipeBot',
       action: 'Add LP',
       volume: bnbAmount,
       impact: 0, // Calculate impact if needed
@@ -376,7 +371,7 @@ export const projectService = {
   logLPRemoval: async (projectId: string, tokenAmount: number, bnbAmount: number, lpTokenAmount: number): Promise<void> => {
     return projectService.addActivityLog(projectId, {
       timestamp: new Date(),
-      botName: 'LiquidationSnipeBot',
+      botName: 'SnipeBot',
       action: 'Remove LP',
       volume: lpTokenAmount,
       impact: 0, // Calculate impact if needed

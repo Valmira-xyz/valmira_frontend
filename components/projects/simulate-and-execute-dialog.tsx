@@ -503,11 +503,40 @@ export function SimulateAndExecuteDialog({
 
   // Fetch connected wallet balance and LP token balance when address or token changes
   useEffect(() => {
-    if (open && address && project?.tokenAddress) {
-      fetchConnectedWalletBalance();
-      fetchLpTokenBalance();
-    }
-  }, [open, address, project?.tokenAddress]);
+    if (!open || !address || !project?.tokenAddress) return;
+    
+    // Create refs to track if fetches are in progress
+    let isBalanceFetchInProgress = false;
+    let isLpTokenFetchInProgress = false;
+    
+    // Function to fetch balances with safety checks
+    const fetchBalancesWithSafety = async () => {
+      if (!isBalanceFetchInProgress) {
+        try {
+          isBalanceFetchInProgress = true;
+          await fetchConnectedWalletBalance();
+        } finally {
+          isBalanceFetchInProgress = false;
+        }
+      }
+      
+      if (!isLpTokenFetchInProgress) {
+        try {
+          isLpTokenFetchInProgress = true;
+          await fetchLpTokenBalance();
+        } finally {
+          isLpTokenFetchInProgress = false;
+        }
+      }
+    };
+
+    // Use timeout to debounce the API calls
+    const timer = setTimeout(() => {
+      fetchBalancesWithSafety();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [open, address, project?.tokenAddress, fetchConnectedWalletBalance, fetchLpTokenBalance]);
 
   const handleGenerateWallets = async () => {
     if (!project?.addons?.LiquidationSnipeBot) {
