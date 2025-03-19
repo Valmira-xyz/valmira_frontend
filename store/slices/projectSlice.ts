@@ -361,17 +361,14 @@ const projectSlice = createSlice({
 
       // Fetch global metrics
       .addCase(fetchGlobalMetrics.pending, (state) => {
-        console.log('Global metrics fetch pending...');
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchGlobalMetrics.fulfilled, (state, action) => {
-        console.log('Global metrics fetch fulfilled, saving to state:', action.payload);
         state.loading = false;
         state.globalMetrics = action.payload;
       })
       .addCase(fetchGlobalMetrics.rejected, (state, action) => {
-        console.error('Global metrics fetch rejected:', action.payload);
         state.loading = false;
         state.error = action.payload as string;
       })
@@ -384,6 +381,5 @@ export default projectSlice.reducer
 // Utility function to check global metrics state (for debugging)
 export const checkGlobalMetricsState = (state: any) => {
   const globalMetrics = state.projects.globalMetrics;
-  console.log('Current Global Metrics State:', globalMetrics);
   return globalMetrics;
 } 
