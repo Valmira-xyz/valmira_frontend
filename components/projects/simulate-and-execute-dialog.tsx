@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -172,6 +172,71 @@ export function SimulateAndExecuteDialog({
   const [isExecutingMultiSell, setIsExecutingMultiSell] = useState(false);
   const [slippageTolerance, setSlippageTolerance] = useState(10); // Default 5% slippage
 
+  // Add these refs at the top level of the component
+  const balanceFetchInProgressRef = useRef(false);
+  const lpTokenFetchInProgressRef = useRef(false);
+
+  // Memoize the fetch functions
+  const fetchConnectedWalletBalance = useCallback(async () => {
+    if (!address || !project?.tokenAddress || balanceFetchInProgressRef.current) return;
+
+    try {
+      balanceFetchInProgressRef.current = true;
+      setIsLoadingConnectedWalletBalance(true);
+      const balances = await getWeb3WalletBalances([address], project.tokenAddress);
+
+      if (balances && balances.length > 0) {
+        setConnectedWalletBalance({
+          bnb: balances[0].bnbBalance,
+          token: balances[0].tokenAmount
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch connected wallet balance:", error);
+    } finally {
+      setIsLoadingConnectedWalletBalance(false);
+      balanceFetchInProgressRef.current = false;
+    }
+  }, [address, project?.tokenAddress]);
+
+  const fetchLpTokenBalance = useCallback(async () => {
+    if (!address || !project?.tokenAddress || !signer || lpTokenFetchInProgressRef.current) return;
+
+    try {
+      lpTokenFetchInProgressRef.current = true;
+      setIsLoadingLpBalance(true);
+      const balance = await getLPTokenBalance(address, project.tokenAddress);
+      setLpTokenBalance(balance);
+    } catch (error) {
+      console.error("Failed to fetch LP token balance:", error);
+    } finally {
+      setIsLoadingLpBalance(false);
+      lpTokenFetchInProgressRef.current = false;
+    }
+  }, [address, project?.tokenAddress, signer]);
+
+  // Replace the old useEffect with the new debounced version
+  useEffect(() => {
+    if (!open || !address || !project?.tokenAddress) return;
+
+    const fetchBalances = async () => {
+      await Promise.all([
+        fetchConnectedWalletBalance(),
+        fetchLpTokenBalance()
+      ]);
+    };
+
+    // Use a longer debounce time
+    const timer = setTimeout(fetchBalances, 1000);
+    
+    return () => {
+      clearTimeout(timer);
+      // Reset the progress flags on cleanup
+      balanceFetchInProgressRef.current = false;
+      lpTokenFetchInProgressRef.current = false;
+    };
+  }, [open, address, project?.tokenAddress, fetchConnectedWalletBalance, fetchLpTokenBalance]);
+
   // Function to fetch balances with error handling and rate limiting
   const fetchBalances = async (addresses: string[]) => {
     if (!project?.tokenAddress || addresses.length === 0) return;
@@ -301,42 +366,6 @@ export function SimulateAndExecuteDialog({
       });
     } finally {
       setIsLoadingPoolInfo(false);
-    }
-  };
-
-  // Function to fetch connected wallet balance
-  const fetchConnectedWalletBalance = async () => {
-    if (!address || !project?.tokenAddress) return;
-
-    try {
-      setIsLoadingConnectedWalletBalance(true);
-      const balances = await getWeb3WalletBalances([address], project.tokenAddress);
-
-      if (balances && balances.length > 0) {
-        setConnectedWalletBalance({
-          bnb: balances[0].bnbBalance,
-          token: balances[0].tokenAmount
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch connected wallet balance:", error);
-    } finally {
-      setIsLoadingConnectedWalletBalance(false);
-    }
-  };
-
-  // Function to fetch LP token balance
-  const fetchLpTokenBalance = async () => {
-    if (!address || !project?.tokenAddress || !signer) return;
-
-    try {
-      setIsLoadingLpBalance(true);
-      const balance = await getLPTokenBalance(address, project.tokenAddress);
-      setLpTokenBalance(balance);
-    } catch (error) {
-      console.error("Failed to fetch LP token balance:", error);
-    } finally {
-      setIsLoadingLpBalance(false);
     }
   };
 
@@ -500,43 +529,6 @@ export function SimulateAndExecuteDialog({
       lastBalanceUpdateRef.current = 0;
     };
   }, [open, project]);
-
-  // Fetch connected wallet balance and LP token balance when address or token changes
-  useEffect(() => {
-    if (!open || !address || !project?.tokenAddress) return;
-    
-    // Create refs to track if fetches are in progress
-    let isBalanceFetchInProgress = false;
-    let isLpTokenFetchInProgress = false;
-    
-    // Function to fetch balances with safety checks
-    const fetchBalancesWithSafety = async () => {
-      if (!isBalanceFetchInProgress) {
-        try {
-          isBalanceFetchInProgress = true;
-          await fetchConnectedWalletBalance();
-        } finally {
-          isBalanceFetchInProgress = false;
-        }
-      }
-      
-      if (!isLpTokenFetchInProgress) {
-        try {
-          isLpTokenFetchInProgress = true;
-          await fetchLpTokenBalance();
-        } finally {
-          isLpTokenFetchInProgress = false;
-        }
-      }
-    };
-
-    // Use timeout to debounce the API calls
-    const timer = setTimeout(() => {
-      fetchBalancesWithSafety();
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [open, address, project?.tokenAddress, fetchConnectedWalletBalance, fetchLpTokenBalance]);
 
   const handleGenerateWallets = async () => {
     if (!project?.addons?.LiquidationSnipeBot) {
