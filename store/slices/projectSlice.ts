@@ -165,6 +165,28 @@ export const fetchGlobalMetrics = createAsyncThunk(
   }
 )
 
+export const fetchProfitTrending = createAsyncThunk(
+  'projects/fetchProfitTrending',
+  async ({ projectId, startDate, endDate }: { projectId: string, startDate: Date, endDate: Date }, { rejectWithValue }) => {
+    try {
+      return await projectService.getProfitTrending(projectId, { start: startDate, end: endDate })
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message)
+    }
+  }
+)
+
+export const fetchVolumeTrending = createAsyncThunk(
+  'projects/fetchVolumeTrending',
+  async ({ projectId, startDate, endDate }: { projectId: string, startDate: Date, endDate: Date }, { rejectWithValue }) => {
+    try {
+      return await projectService.getVolumeTrending(projectId, { start: startDate, end: endDate })
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message)
+    }
+  }
+)
+
 const projectSlice = createSlice({
   name: 'projects',
   initialState,
@@ -451,6 +473,78 @@ const projectSlice = createSlice({
       .addCase(fetchGlobalMetrics.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+
+      // Fetch profit trending
+      .addCase(fetchProfitTrending.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchProfitTrending.fulfilled, (state, action) => {
+        state.loading = false
+        if (!state.projectStats) {
+          state.projectStats = {
+            metrics: {
+              cumulativeProfit: 0,
+              volume24h: 0,
+              activeBots: 0,
+              liquidity: 0,
+              lastUpdate: new Date()
+            },
+            timeRange: {
+              start: new Date(Date.now() - 24 * 60 * 60 * 1000),
+              end: new Date()
+            },
+            recentActivity: [],
+            botPerformance: [],
+            trends: {
+              profitTrend: action.payload,
+              volumeTrend: []
+            }
+          }
+        } else {
+          state.projectStats.trends.profitTrend = action.payload
+        }
+      })
+      .addCase(fetchProfitTrending.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
+      })
+
+      // Fetch volume trending
+      .addCase(fetchVolumeTrending.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchVolumeTrending.fulfilled, (state, action) => {
+        state.loading = false
+        if (!state.projectStats) {
+          state.projectStats = {
+            metrics: {
+              cumulativeProfit: 0,
+              volume24h: 0,
+              activeBots: 0,
+              liquidity: 0,
+              lastUpdate: new Date()
+            },
+            timeRange: {
+              start: new Date(Date.now() - 24 * 60 * 60 * 1000),
+              end: new Date()
+            },
+            recentActivity: [],
+            botPerformance: [],
+            trends: {
+              profitTrend: [],
+              volumeTrend: action.payload
+            }
+          }
+        } else {
+          state.projectStats.trends.volumeTrend = action.payload
+        }
+      })
+      .addCase(fetchVolumeTrending.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload as string
       })
   }
 })

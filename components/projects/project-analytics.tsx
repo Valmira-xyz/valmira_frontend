@@ -10,17 +10,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { BotFilter } from "@/components/projects/bot-filter"
 import type { DateRange } from "react-day-picker"
-import { format, isWithinInterval, parseISO, subDays } from "date-fns"
+import { format, isWithinInterval, parseISO, subDays, subMonths, subYears } from "date-fns"
 import { Download, ChevronDown } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ProjectAnalyticsProps } from "@/types"
 import { useSelector, useDispatch } from "react-redux"
 import { fetchBotPerformance, fetchRecentActivity } from "@/store/slices/projectSlice"
 import { RootState } from "@/store/store"
-import type { BotPerformanceHistory, ActivityLog, ProjectStatistics } from "@/services/projectService"
+import type { BotPerformanceHistory, ActivityLog, ProjectStatistics, TimeSeriesDataPoint } from "@/services/projectService"
+import { projectService } from "@/services/projectService"
 import { useParams } from "next/navigation"
 
 type TimePeriod = "24h" | "7d" | "1m" | "1y"
@@ -81,15 +81,22 @@ const toSafeDate = (value: any): Date | null => {
   }
 };
 
-export function ProjectAnalytics({ project, trends, botPerformance, recentActivity }: ProjectAnalyticsProps) {
+interface ProjectAnalyticsProps {
+  project?: {
+    _id: string;
+    botPerformance?: BotPerformanceHistory[];
+    recentActivity?: ActivityLog[];
+  };
+}
+
+export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
+  const [volumeTrends, setVolumeTrends] = useState<TimeSeriesDataPoint[]>([])
+  const [profitTrends, setProfitTrends] = useState<TimeSeriesDataPoint[]>([])
   const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>("24h")
   const [volumeTimePeriod, setVolumeTimePeriod] = useState<TimePeriod>("24h")
   const { projectStats, loading } = useSelector((state: RootState) => state.projects)
   const dispatch = useDispatch()
-  //let's fetch project id from url e.g http://localhost:3008/projects/67d27b2b68b4a081df1ba11b
-  const { id: projectId } = useParams() as { id: string }  
-
-
+  const { id: projectId } = useParams() as { id: string }
 
   // Refs to prevent duplicate API calls
   const botPerformanceFetchInProgress = useRef(false)
@@ -133,6 +140,18 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
   // Expanded state for sections
   const [isBotPerformanceExpanded, setBotPerformanceExpanded] = useState(false)
   const [isActivityLogExpanded, setActivityLogExpanded] = useState(false)
+
+  // Add refs to prevent duplicate API calls for trending data
+  const trendingFetchInProgress = useRef(false)
+  const lastTrendingFetchParams = useRef<{
+    projectId: string | undefined,
+    profitPeriod: TimePeriod | undefined,
+    volumePeriod: TimePeriod | undefined
+  }>({
+    projectId: undefined,
+    profitPeriod: undefined,
+    volumePeriod: undefined
+  })
 
   // Create memoized fetch functions to prevent duplicate calls
   const fetchBotPerformanceData = useCallback(async () => {
@@ -225,27 +244,26 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
   // Effect to fetch bot performance when date range changes
   useEffect(() => {
     // If we already have data from props, don't fetch immediately
-    const shouldDelayFetch = botPerformance && botPerformance.length > 0;
+    const shouldDelayFetch = project?.botPerformance && project.botPerformance.length > 0;
     
     const timer = setTimeout(() => {
       fetchBotPerformanceData();
     }, shouldDelayFetch ? 1000 : 100); // Longer delay if we already have data
     
     return () => clearTimeout(timer);
-  }, [fetchBotPerformanceData, botPerformance]);
+  }, [fetchBotPerformanceData, project?.botPerformance]);
 
-  
   // Effect to fetch activity log when date range changes
   useEffect(() => {
     // If we already have data from props, don't fetch immediately
-    const shouldDelayFetch = recentActivity && recentActivity.length > 0;
+    const shouldDelayFetch = project?.recentActivity && project.recentActivity.length > 0;
     
     const timer = setTimeout(() => {
       fetchActivityLogData();
     }, shouldDelayFetch ? 1000 : 100); // Longer delay if we already have data
     
     return () => clearTimeout(timer);
-  }, [fetchActivityLogData, recentActivity]);
+  }, [fetchActivityLogData, project?.recentActivity]);
 
   // Initial render optimization - use a lightweight synchronous render first, then update asynchronously
   useEffect(() => {
@@ -280,9 +298,9 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
     // First use the props data if available, then fall back to redux store data
     let performanceData: StandardizedBotPerformance[] = [];
         
-    if (botPerformance && botPerformance.length > 0) {
+    if (project?.botPerformance && project.botPerformance.length > 0) {
       // Props data (BotPerformance type)
-      performanceData = botPerformance.map(bot => {
+      performanceData = project.botPerformance.map(bot => {
         // Safely handle date values - use current time as a fallback
         const now = new Date().toISOString();
         
@@ -322,30 +340,9 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
       });
     }
     
-    // Add debug logging for date ranges
-    if (performanceData.length > 0 && botPerformanceDateRange?.from && botPerformanceDateRange?.to) {
-      try {
-        // Safely check date format for debugging
-        let isoFormatValue = 'not a string';
-        if (typeof performanceData[0].date === 'string') {
-          const testDate = new Date(performanceData[0].date);
-          // Check if date is valid before calling toISOString
-          if (!isNaN(testDate.getTime())) {
-            isoFormatValue = testDate.toISOString();
-          } else {
-            isoFormatValue = 'invalid date string';
-          }
-        }
-        
-      } catch (error) {
-        console.error("Error in debug logging:", error);
-      }
-    }
-    
-    // TEMPORARY: Return all performance data without filtering to debug display issues
     return performanceData;
     
-  }, [botPerformance, projectStats?.botPerformance, botPerformanceDateRange, selectedBotPerformance]);
+  }, [project?.botPerformance, projectStats?.botPerformance, botPerformanceDateRange, selectedBotPerformance]);
 
   // Filter activity log data based on date range and selected bot
   const filteredActivityLogData = useMemo(() => {
@@ -362,10 +359,9 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
     // First use the props data if available, then fall back to redux store data
     let activityData: StandardizedActivityLog[] = [];
     
-    
-    if (recentActivity && recentActivity.length > 0) {
+    if (project?.recentActivity && project.recentActivity.length > 0) {
       // Props data - make sure to standardize the format
-      activityData = recentActivity.map(activity => {
+      activityData = project.recentActivity.map(activity => {
         // Ensure all required fields exist with sensible defaults
         const now = new Date().toISOString();
         
@@ -407,50 +403,17 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
       });
     }
     
-    // Add debug logging for date ranges
-    if (activityData.length > 0 && activityLogDateRange?.from && activityLogDateRange?.to) {
-      try {
-        // Safely format timestamp for debugging
-        const timestamp = activityData[0].timestamp;
-        const timestampType = typeof timestamp;
-        
-        // Simplified timestamp validation to avoid type errors
-        let formattedTimestamp = 'unavailable';
-        try {
-          // Try to create a date object and convert to ISO string
-          const testDate = new Date(timestamp as any);
-          formattedTimestamp = !isNaN(testDate.getTime()) 
-            ? testDate.toISOString() 
-            : 'invalid timestamp';
-        } catch (error) {
-          formattedTimestamp = 'error parsing timestamp';
-        }
-        
-        console.log("Activity Data after mapping:", activityData);
-        console.log("Filtering activity log with date range:", {
-          from: activityLogDateRange.from,
-          to: activityLogDateRange.to,
-          sampleTimestamp: timestamp,
-          type: timestampType,
-          formatted: formattedTimestamp
-        });
-      } catch (error) {
-        console.error("Error in activity log debug logging:", error);
-      }
-    }
-    
-    // TEMPORARY: Return all activity data without filtering to debug display issues
     return activityData;
 
-  }, [recentActivity, projectStats?.recentActivity, activityLogDateRange, selectedBot]);
+  }, [project?.recentActivity, projectStats?.recentActivity, activityLogDateRange, selectedBot]);
 
   // Get available bots from performance data - optimized for rendering speed
   const initialAvailableBots = useMemo(() => {
     // For initial render, just use the props data without waiting for Redux
-    if (botPerformance && botPerformance.length > 0) {
+    if (project?.botPerformance && project.botPerformance.length > 0) {
       const botMap = new Map<string, { id: string; name: string }>();
       
-      botPerformance.forEach((bot) => {
+      project.botPerformance.forEach((bot) => {
         if (!botMap.has(bot.botName)) {
           botMap.set(bot.botName, {
             id: bot.botName,
@@ -463,7 +426,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
     }
     
     return [];
-  }, [botPerformance]); // Only depends on props
+  }, [project?.botPerformance]); // Only depends on props
   
   // Full available bots calculation that includes Redux data
   const availableBots = useMemo(() => {
@@ -489,8 +452,8 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
     });
     
     // If we still have no bots and there's recentActivity data, extract bot names from there
-    if (botMap.size === 0 && recentActivity && recentActivity.length > 0) {
-      recentActivity.forEach(activity => {
+    if (botMap.size === 0 && project?.recentActivity && project.recentActivity.length > 0) {
+      project.recentActivity.forEach(activity => {
         if (activity.botName && !botMap.has(activity.botName)) {
           botMap.set(activity.botName, {
             id: activity.botName,
@@ -501,7 +464,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
     }
     
     return Array.from(botMap.values());
-  }, [initialAvailableBots, projectStats?.botPerformance, recentActivity]);
+  }, [initialAvailableBots, projectStats?.botPerformance, project?.recentActivity]);
    
 
   const TimePeriodButtons = ({
@@ -554,25 +517,98 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
     return format(new Date(timestamp), 'MMM dd HH:mm')
   }
 
-  // Memoized chart data to prioritize props data over redux data
+  // Function to get date range based on time period
+  const getDateRangeForPeriod = (period: TimePeriod): { start: Date; end: Date } => {
+    const end = new Date()
+    let start: Date
+    
+    switch (period) {
+      case "24h":
+        start = subDays(end, 1)
+        break
+      case "7d":
+        start = subDays(end, 7)
+        break
+      case "1m":
+        start = subMonths(end, 1)
+        break
+      case "1y":
+        start = subYears(end, 1)
+        break
+      default:
+        start = subDays(end, 1)
+    }
+    
+    return { start, end }
+  }
+
+  // Function to fetch both trending data sets
+  const fetchTrendingData = useCallback(async () => {
+    if (!projectId) return
+
+    const newParams = {
+      projectId,
+      profitPeriod: profitTimePeriod,
+      volumePeriod: volumeTimePeriod
+    }
+
+    // Skip if fetch is already in progress or if params haven't changed
+    if (trendingFetchInProgress.current) {
+      return
+    }
+
+    const paramsUnchanged = 
+      lastTrendingFetchParams.current.projectId === newParams.projectId &&
+      lastTrendingFetchParams.current.profitPeriod === newParams.profitPeriod &&
+      lastTrendingFetchParams.current.volumePeriod === newParams.volumePeriod
+
+    if (paramsUnchanged) {
+      return
+    }
+
+    try {
+      trendingFetchInProgress.current = true
+      lastTrendingFetchParams.current = newParams
+
+      // Fetch both trending datasets in parallel
+      const [profitData, volumeData] = await Promise.all([
+        projectService.getProfitTrending(projectId, getDateRangeForPeriod(profitTimePeriod)),
+        projectService.getVolumeTrending(projectId, getDateRangeForPeriod(volumeTimePeriod))
+      ])
+
+      setProfitTrends(profitData)
+      setVolumeTrends(volumeData)
+    } catch (error) {
+      console.error("Error fetching trending data:", error)
+    } finally {
+      trendingFetchInProgress.current = false
+    }
+  }, [projectId, profitTimePeriod, volumeTimePeriod])
+
+  // Single effect to handle both trending data fetches
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchTrendingData()
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [fetchTrendingData])
+
+  // Update the chartData memo to use the new state
   const chartData = useMemo(() => {
     return {
-      profitTrend: (trends?.profitTrend && trends.profitTrend.length > 0) 
-        ? trends.profitTrend 
-        : (projectStats?.trends?.profitTrend || []),
-      volumeTrend: (trends?.volumeTrend && trends.volumeTrend.length > 0)
-        ? trends.volumeTrend
-        : (projectStats?.trends?.volumeTrend || [])
-    };
-  }, [trends, projectStats?.trends]);
+      profitTrend: profitTrends,
+      volumeTrend: volumeTrends
+    }
+  }, [profitTrends, volumeTrends])
 
   // Modified loading check that shows content if props data is available
   const isLoading = useMemo(() => {
     // If we have props data, don't show loading state even if Redux is loading
     const hasPropsData = 
-      (botPerformance && botPerformance.length > 0) || 
-      (recentActivity && recentActivity.length > 0) ||
-      (trends && (trends.profitTrend?.length > 0 || trends.volumeTrend?.length > 0));
+      (project?.botPerformance && project.botPerformance.length > 0) || 
+      (project?.recentActivity && project.recentActivity.length > 0) ||
+      (profitTrends && profitTrends.length > 0 && volumeTrends && volumeTrends.length > 0);
     
     // Or if we have Redux data
     const hasReduxData = 
@@ -592,7 +628,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
     return loading && !hasPropsData && !hasReduxData && !hasFilteredData;
   }, [
     loading, 
-    botPerformance, recentActivity, trends, 
+    project?.botPerformance, project?.recentActivity, profitTrends, volumeTrends,
     projectStats?.botPerformance, projectStats?.recentActivity, projectStats?.trends,
     filteredBotPerformanceData, filteredActivityLogData
   ]);
@@ -625,7 +661,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
         <Card>
           <CardHeader>
             <CardTitle>Profit Trend</CardTitle>
-            <CardDescription>24-hour profit performance</CardDescription>
+            <CardDescription>Trading profit over time</CardDescription>
           </CardHeader>
           <CardContent>
             <TimePeriodButtons currentPeriod={profitTimePeriod} onChange={setProfitTimePeriod} />
@@ -635,12 +671,12 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="timestamp" 
-                    tickFormatter={formatDate}
+                    tickFormatter={(value) => format(value, profitTimePeriod === "24h" ? "HH:mm" : "MMM dd")}
                     interval="preserveStartEnd"
                   />
                   <YAxis tickFormatter={(value) => formatCurrency(value)} />
                   <Tooltip 
-                    labelFormatter={(label) => formatDate(label as number)}
+                    labelFormatter={(label) => format(label as number, profitTimePeriod === "24h" ? "HH:mm" : "MMM dd, yyyy HH:mm")}
                     formatter={(value: any) => [formatCurrency(value as number), 'Profit']}
                   />
                   <Line 
@@ -658,7 +694,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
         <Card>
           <CardHeader>
             <CardTitle>Volume Trend</CardTitle>
-            <CardDescription>24-hour trading volume</CardDescription>
+            <CardDescription>Trading volume over time</CardDescription>
           </CardHeader>
           <CardContent>
             <TimePeriodButtons currentPeriod={volumeTimePeriod} onChange={setVolumeTimePeriod} />
@@ -668,12 +704,12 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="timestamp" 
-                    tickFormatter={formatDate}
+                    tickFormatter={(value) => format(value, volumeTimePeriod === "24h" ? "HH:mm" : "MMM dd")}
                     interval="preserveStartEnd"
                   />
                   <YAxis tickFormatter={(value) => formatCurrency(value)} />
                   <Tooltip 
-                    labelFormatter={(label) => formatDate(label as number)}
+                    labelFormatter={(label) => format(label as number, volumeTimePeriod === "24h" ? "HH:mm" : "MMM dd, yyyy HH:mm")}
                     formatter={(value: any) => [formatCurrency(value as number), 'Volume']}
                   />
                   <Line 

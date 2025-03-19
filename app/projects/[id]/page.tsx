@@ -91,14 +91,7 @@ export default function ProjectDetailPage() {
   const handleRefresh = async () => {
     if (projectId) {
       // Fetch project first
-      await dispatch(fetchProject(projectId) as any)
-      
-      // Add a delay before fetching project stats to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      const end = new Date()
-      const start = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      await dispatch(fetchProjectStats({ projectId, timeRange: { start, end } }) as any)
+      await dispatch(fetchProject(projectId) as any)            
     }
   }
 
@@ -117,9 +110,6 @@ export default function ProjectDetailPage() {
       {projectWithAddons && <ProjectMetrics project={projectWithAddons} /> }
       <ProjectAnalytics 
         project={project}
-        trends={projectStats?.trends}
-        botPerformance={projectStats?.botPerformance ? transformBotPerformance(projectStats.botPerformance) : undefined}
-        recentActivity={projectStats?.recentActivity}
       />
       <ProjectAddOns project={projectWithAddons} />
       {projectWithAddons && <ProjectDangerZone project={projectWithAddons} />}     
