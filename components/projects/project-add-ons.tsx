@@ -16,10 +16,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/store/store"
 import { toggleBot, updateBotConfig, BotType } from "@/store/slices/botSlice"
-import { getWalletBalances } from "@/store/slices/walletSlice"
-import { ProjectWithAddons, WalletBalance } from "@/types"
+import { ProjectWithAddons } from "@/types"
 import { walletApi } from "@/services/walletApi"
 import { useParams } from "next/navigation"
+import { getWalletBalances as getWeb3WalletBalances } from "@/services/web3Utils"
 
 // Define the Speed type here to avoid conflicts
 type Speed = "slow" | "medium" | "fast"
@@ -158,22 +158,12 @@ const initialAddOns: AddonType[] = [
   },
 ]
 
-// Update the SimulateAndExecuteDialog component props
-interface SimulateAndExecuteDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSimulationResult: (success: boolean) => void
-}
-
-// Update the VolumeBotDialog component props
-interface VolumeBotDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  config: {
-    speed: Speed
-    maxBundleSize: number
+// Define types for wallet balances
+type WalletBalances = {
+  [address: string]: {
+    bnbBalance: number;
+    tokenBalance?: number;
   }
-  onSave: (config: { speed: Speed; maxBundleSize: number }) => void
 }
 
 export function ProjectAddOns({ project }: ProjectAddOnsProps) {
@@ -224,7 +214,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
 
   // Create a memoized version of refreshWalletBalances to avoid dependency issues
   const memoizedRefreshWalletBalances = useCallback(async () => {
-    if (!project?.tokenAddress || !project?.addons) return;
+    if (!project?.tokenAddress || !project?.addons) {
+      return;
+    }
     
     try {
       setIsRefreshingBalances(true);
@@ -243,34 +235,63 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       if (project.addons.HolderBot?.depositWalletId?.publicKey) {
         depositWalletAddresses.push(project.addons.HolderBot.depositWalletId.publicKey);
       }
+
       
-      // Fetch balances for all wallets
+      // Fetch balances for all wallets at once
       if (depositWalletAddresses.length > 0) {
-        await dispatch(getWalletBalances({
-          walletAddresses: depositWalletAddresses,
-          tokenAddress: project.tokenAddress
-        }) as any);
+        const balancesArray = await getWeb3WalletBalances(depositWalletAddresses, project.tokenAddress);
+        
+        // Transform array into dictionary
+        const balances: WalletBalances = balancesArray.reduce((acc, balance) => ({
+          ...acc,
+          [balance.address]: {
+            bnbBalance: balance.bnbBalance,
+            tokenBalance: balance.tokenAmount
+          }
+        }), {});
+        
+        
+        // Update addOns with the new balances
+        setAddOns(prevAddOns => {
+          const updatedAddOns = [...prevAddOns];
+          
+          updatedAddOns.forEach((addon, index) => {
+            const walletAddress = project.addons[addon.botType as keyof typeof project.addons]?.depositWalletId?.publicKey;
+            
+            if (walletAddress && balances[walletAddress]) {
+              updatedAddOns[index] = {
+                ...addon,
+                balances: {
+                  native: balances[walletAddress].bnbBalance || 0,
+                  ...(addon.botType === "LiquidationSnipeBot" ? { token: balances[walletAddress].tokenBalance || 0 } : {})
+                }
+              };
+            }
+          });
+          
+          return updatedAddOns;
+        });
       }
     } catch (error) {
       console.error('Error refreshing wallet balances:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch wallet balances. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsRefreshingBalances(false);
     }
-  }, [project?.tokenAddress, project?.addons, dispatch]);
+  }, [project?.tokenAddress, project?.addons, toast]);
   
-  // Initial fetch of balances when component mounts or project changes
+  // Add debug logging to the useEffect hook
   useEffect(() => {
-    if (!project?.tokenAddress) return;
+
     
-    // Use timeout to debounce the API call
-    const timer = setTimeout(() => {
-      if (!initialBalancesFetched.current) {
-        memoizedRefreshWalletBalances();
-        initialBalancesFetched.current = true;
-      }
-    }, 100);
+    if (!project?.tokenAddress || initialBalancesFetched.current) return;
     
-    return () => clearTimeout(timer);
+    memoizedRefreshWalletBalances();
+    initialBalancesFetched.current = true;
   }, [project?.tokenAddress, memoizedRefreshWalletBalances]);
 
   // Update addOns and configs with project data if available

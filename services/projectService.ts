@@ -308,20 +308,6 @@ export const projectService = {
           `${BACKEND_URL}/project-stats/${projectId}/stats${queryParams}`,
         );
       });
-
-      // // Wait a bit before the next request
-      // await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
-      // await waitForRateLimit();
-      // const activityResponse = await projectService.getRecentActivity(projectId);
-      
-      // // Wait again before the final request
-      // await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
-      // await waitForRateLimit();
-      // const performanceResponse = await projectService.getBotPerformanceHistory(
-      //   projectId,
-      //   timeRange?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      //   timeRange?.end || new Date()
-      // );
       
       return {
         ...statsResponse.data.data
