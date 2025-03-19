@@ -33,8 +33,6 @@ export function DashboardMetrics() {
     fetchData()
   }, [dispatch])
 
-  console.log("globalMetrics : ", globalMetrics);
-
   // Define metrics based on globalMetrics data
   const metrics = [
     {

@@ -122,7 +122,7 @@ const initialAddOns: AddonType[] = [
     botType: "LiquidationSnipeBot",
     name: "Liquidation & Snipe Bot",
     description:
-      "Automatically add liquidity for your project token and perform first sniping with multiple user wallets in the same bundle transaction.",
+      "You can perform first sniping with multiple user wallets in the same bundle transaction.",
     depositWallet: "",
     balances: {
       native: 0,
@@ -720,13 +720,16 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                         Execute
                       </Button>
                     </>
-                  ) : (          
+                  ) : (          <>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Please deposit BNB to the wallet address above and click Execute to start use sniping bot.
+                    </p> 
                   <Button
                       className="w-full mt-2 hover:bg-primary/90 transition-colors"
                       onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
                     >
                       Simulate & Execute
-                    </Button>
+                    </Button></>
                   ) 
                 }
                 </CardFooter>

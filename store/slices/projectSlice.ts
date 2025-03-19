@@ -156,9 +156,7 @@ export const fetchGlobalMetrics = createAsyncThunk(
   'projects/fetchGlobalMetrics',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('Fetching global metrics...');
       const result = await projectService.getGlobalMetrics();
-      console.log('Global metrics fetched successfully:', result);
       return result;
     } catch (error: any) {
       console.error('Failed to fetch global metrics:', error);
