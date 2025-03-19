@@ -25,6 +25,26 @@ import { useParams } from "next/navigation"
 
 type TimePeriod = "24h" | "7d" | "1m" | "1y"
 
+// Utility function to format milliseconds to a readable duration
+const formatUptime = (ms: number): string => {
+  if (isNaN(ms) || ms <= 0) return "0s";
+  
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) {
+    return `${days}d ${hours % 24}h`;
+  } else if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  } else {
+    return `${seconds}s`;
+  }
+};
+
 // Utility function to safely check if a value is a valid date
 const isValidDate = (value: any): boolean => {
   if (!value) return false;
@@ -273,7 +293,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
           status: bot.status,
           trades: bot.trades || 0,
           profit: (bot as any).profit || bot.profitContribution || 0,
-          uptime: typeof bot.uptime === 'number' ? `${bot.uptime}%` : bot.uptime,
+          uptime: formatUptime(typeof bot.uptime === 'number' ? bot.uptime : parseInt(String(bot.uptime || '0')) || 0),
           // Always ensure we have valid date strings - use current time as fallback
           date: now,
           profitContribution: bot.profitContribution || (bot as any).profit || 0,
@@ -293,7 +313,7 @@ export function ProjectAnalytics({ project, trends, botPerformance, recentActivi
           status: bot.status,
           trades: bot.trades || 0,
           profit: bot.profit || 0,
-          uptime: bot.uptime || "0%",
+          uptime: formatUptime(typeof bot.uptime === 'number' ? bot.uptime : parseInt(String(bot.uptime || '0')) || 0),
           // Format date properly or use current time as fallback
           date: bot.date ? new Date(bot.date).toISOString() : now,
           profitContribution: bot.profit || 0,
