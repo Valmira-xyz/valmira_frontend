@@ -98,6 +98,30 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
   const dispatch = useDispatch()
   const { id: projectId } = useParams() as { id: string }
 
+  // Bot performance and activity data state
+  const [botPerformanceData, setBotPerformanceData] = useState<BotPerformanceHistory[]>([])
+  const [activityLogData, setActivityLogData] = useState<ActivityLog[]>([])
+  const [isLoadingBotPerformance, setIsLoadingBotPerformance] = useState(false)
+  const [isLoadingActivity, setIsLoadingActivity] = useState(false)
+
+  // Date range states
+  const [botPerformanceDateRange, setBotPerformanceDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  })
+  const [activityLogDateRange, setActivityLogDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  })
+
+  // Bot filter states
+  const [selectedBotPerformance, setSelectedBotPerformance] = useState<string | null>(null)
+  const [selectedBot, setSelectedBot] = useState<string | null>(null)
+
+  // UI expansion states
+  const [isBotPerformanceExpanded, setBotPerformanceExpanded] = useState(false)
+  const [isActivityLogExpanded, setActivityLogExpanded] = useState(false)
+
   // Refs to prevent duplicate API calls
   const botPerformanceFetchInProgress = useRef(false)
   const recentActivityFetchInProgress = useRef(false)
@@ -119,29 +143,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
     limit: undefined
   })
 
-  // Date range state for bot performance
-  const [botPerformanceDateRange, setBotPerformanceDateRange] = useState<DateRange | undefined>({
-    from: subDays(new Date(), 30),
-    to: new Date(),
-  })
-
-  // Date range state for activity log
-  const [activityLogDateRange, setActivityLogDateRange] = useState<DateRange | undefined>({
-    from: subDays(new Date(), 30),
-    to: new Date(),
-  })
-
-  // Bot filter state for bot performance
-  const [selectedBotPerformance, setSelectedBotPerformance] = useState<string | null>(null)
-
-  // Bot filter state for activity log
-  const [selectedBot, setSelectedBot] = useState<string | null>(null)
-
-  // Expanded state for sections
-  const [isBotPerformanceExpanded, setBotPerformanceExpanded] = useState(false)
-  const [isActivityLogExpanded, setActivityLogExpanded] = useState(false)
-
-  // Add refs to prevent duplicate API calls for trending data
+  // Refs to prevent duplicate API calls for trending data
   const trendingFetchInProgress = useRef(false)
   const lastTrendingFetchParams = useRef<{
     projectId: string | undefined,
@@ -153,117 +155,120 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
     volumePeriod: undefined
   })
 
-  // Create memoized fetch functions to prevent duplicate calls
-  const fetchBotPerformanceData = useCallback(async () => {
-    if (!project?._id && !projectId || !botPerformanceDateRange?.from || !botPerformanceDateRange?.to) {
-      console.log("⚠️ Skipping fetchBotPerformanceData - missing required data:", {
-        projectId: project?._id || projectId,
-        from: botPerformanceDateRange?.from,
-        to: botPerformanceDateRange?.to
-      });
-      return;
-    }
-    
+  // Filtered data memoization
+  const filteredBotPerformanceData = useMemo(() => {
+    return botPerformanceData
+      .filter(bot => {
+        const dateInRange = botPerformanceDateRange?.from && botPerformanceDateRange?.to
+          ? isWithinInterval(new Date(bot.lastUpdated || bot.date), {
+              start: botPerformanceDateRange.from,
+              end: botPerformanceDateRange.to
+            })
+          : true;
+        
+        const matchesBot = selectedBotPerformance
+          ? bot.botName === selectedBotPerformance
+          : true;
+
+        return dateInRange && matchesBot;
+      })
+      .sort((a, b) => new Date(b.lastUpdated || b.date).getTime() - new Date(a.lastUpdated || a.date).getTime());
+  }, [botPerformanceData, botPerformanceDateRange, selectedBotPerformance]);
+
+  const filteredActivityLogData = useMemo(() => {
+    return activityLogData
+      .filter(activity => {
+        const dateInRange = activityLogDateRange?.from && activityLogDateRange?.to
+          ? isWithinInterval(new Date(activity.timestamp), {
+              start: activityLogDateRange.from,
+              end: activityLogDateRange.to
+            })
+          : true;
+        
+        const matchesBot = selectedBot
+          ? activity.botName === selectedBot
+          : true;
+
+        return dateInRange && matchesBot;
+      })
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [activityLogData, activityLogDateRange, selectedBot]);
+
+  // Fetch bot performance data
+  const fetchBotPerformance = useCallback(async () => {
+    if (!projectId || isLoadingBotPerformance || !botPerformanceDateRange?.from || !botPerformanceDateRange?.to) return;
+
     const newParams = {
-      projectId: project?._id || projectId,
+      projectId,
       startDate: botPerformanceDateRange.from,
       endDate: botPerformanceDateRange.to
-    }
-    
-    // Skip if fetch is already in progress or if params haven't changed
-    if (botPerformanceFetchInProgress.current) {
-      return;
-    }
-    
+    };
+
+    // Skip if params haven't changed
     const paramsUnchanged = 
       lastBotPerformanceFetchParams.current.projectId === newParams.projectId &&
-      lastBotPerformanceFetchParams.current.startDate?.getTime() === newParams.startDate?.getTime() &&
-      lastBotPerformanceFetchParams.current.endDate?.getTime() === newParams.endDate?.getTime()
-      
-    if (paramsUnchanged) {
-      return;
-    }
-    
-    try {
-      botPerformanceFetchInProgress.current = true
-      lastBotPerformanceFetchParams.current = newParams
-      
-      await dispatch(fetchBotPerformance({
-        projectId: project?._id || projectId,
-        startDate: botPerformanceDateRange.from,
-        endDate: botPerformanceDateRange.to
-      }) as any);
-      
-    } catch (error) {
-      console.error("❌ fetchBotPerformanceData failed:", error);
-    } finally {
-      botPerformanceFetchInProgress.current = false
-    }
-  }, [project?._id, projectId, botPerformanceDateRange, dispatch])
+      lastBotPerformanceFetchParams.current.startDate?.getTime() === newParams.startDate.getTime() &&
+      lastBotPerformanceFetchParams.current.endDate?.getTime() === newParams.endDate.getTime();
 
-  // Fetch activity log data with debounce
-  const fetchActivityLogData = useCallback(async () => {
-    if (!project?._id && !projectId) {
-      return;
+    if (paramsUnchanged) return;
+
+    try {
+      setIsLoadingBotPerformance(true);
+      lastBotPerformanceFetchParams.current = newParams;
+
+      const response = await projectService.getBotPerformanceHistory(
+        projectId,
+        botPerformanceDateRange.from,
+        botPerformanceDateRange.to
+      );
+
+      setBotPerformanceData(response.data);
+    } catch (error) {
+      console.error("Error fetching bot performance:", error);
+    } finally {
+      setIsLoadingBotPerformance(false);
     }
-    
+  }, [projectId, botPerformanceDateRange]);
+
+  // Fetch activity log data
+  const fetchActivityLog = useCallback(async () => {
+    if (!projectId || isLoadingActivity) return;
+
     const newParams = {
-      projectId: project?._id || projectId,
-      limit: 50
-    }
-    
-    // Skip if fetch is already in progress or if params haven't changed
-    if (recentActivityFetchInProgress.current) {
-      return;
-    }
-    
+      projectId,
+      limit: 100 // Adjust this value based on your needs
+    };
+
+    // Skip if params haven't changed
     const paramsUnchanged = 
       lastActivityFetchParams.current.projectId === newParams.projectId &&
-      lastActivityFetchParams.current.limit === newParams.limit
-      
-    if (paramsUnchanged) {
-      return;
-    }
-    
+      lastActivityFetchParams.current.limit === newParams.limit;
+
+    if (paramsUnchanged) return;
+
     try {
-      recentActivityFetchInProgress.current = true
-      lastActivityFetchParams.current = newParams
-      
-      await dispatch(fetchRecentActivity({
-        projectId: project?._id || projectId,
-        limit: 50
-      }) as any);
-      
+      setIsLoadingActivity(true);
+      lastActivityFetchParams.current = newParams;
+
+      const activityData = await projectService.getRecentActivity(projectId, newParams.limit);
+      setActivityLogData(activityData);
     } catch (error) {
-      console.error("❌ fetchActivityLogData failed:", error);
+      console.error("Error fetching activity log:", error);
     } finally {
-      recentActivityFetchInProgress.current = false
+      setIsLoadingActivity(false);
     }
-  }, [project?._id, projectId, dispatch])
+  }, [projectId]);
 
-  // Effect to fetch bot performance when date range changes
+  // Initial data fetch
   useEffect(() => {
-    // If we already have data from props, don't fetch immediately
-    const shouldDelayFetch = project?.botPerformance && project.botPerformance.length > 0;
-    
-    const timer = setTimeout(() => {
-      fetchBotPerformanceData();
-    }, shouldDelayFetch ? 1000 : 100); // Longer delay if we already have data
-    
-    return () => clearTimeout(timer);
-  }, [fetchBotPerformanceData, project?.botPerformance]);
+    fetchBotPerformance();
+    fetchActivityLog();
+  }, [fetchBotPerformance, fetchActivityLog]);
 
-  // Effect to fetch activity log when date range changes
+  // Fetch bot performance when date range changes
   useEffect(() => {
-    // If we already have data from props, don't fetch immediately
-    const shouldDelayFetch = project?.recentActivity && project.recentActivity.length > 0;
-    
-    const timer = setTimeout(() => {
-      fetchActivityLogData();
-    }, shouldDelayFetch ? 1000 : 100); // Longer delay if we already have data
-    
-    return () => clearTimeout(timer);
-  }, [fetchActivityLogData, project?.recentActivity]);
+    fetchBotPerformance();
+  }, [botPerformanceDateRange, fetchBotPerformance]);
 
   // Initial render optimization - use a lightweight synchronous render first, then update asynchronously
   useEffect(() => {
@@ -279,133 +284,6 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
       }, 10);
     }
   }, [dispatch]);
-
-  // Filter bot performance data based on date range and selected bot
-  const filteredBotPerformanceData = useMemo(() => {
-    // Define a type for the standardized bot performance data
-    type StandardizedBotPerformance = {
-      botId: string;
-      botName: string;
-      status: string;
-      trades: number;
-      profit: number;
-      uptime: string;
-      date: string;
-      profitContribution: number;
-      lastUpdated: string;
-    };
-    
-    // First use the props data if available, then fall back to redux store data
-    let performanceData: StandardizedBotPerformance[] = [];
-        
-    if (project?.botPerformance && project.botPerformance.length > 0) {
-      // Props data (BotPerformance type)
-      performanceData = project.botPerformance.map(bot => {
-        // Safely handle date values - use current time as a fallback
-        const now = new Date().toISOString();
-        
-        return {
-          // Use bot ID if available, otherwise use botName
-          botId: (bot as any).botId || bot.botName || `bot-${Math.random().toString(36).substring(2, 9)}`,
-          botName: bot.botName,
-          status: bot.status,
-          trades: bot.trades || 0,
-          profit: (bot as any).profit || bot.profitContribution || 0,
-          uptime: formatUptime(typeof bot.uptime === 'number' ? bot.uptime : parseInt(String(bot.uptime || '0')) || 0),
-          // Always ensure we have valid date strings - use current time as fallback
-          date: new Date(bot?.lastUpdated || now).toISOString(),
-          profitContribution: bot.profitContribution || (bot as any).profit || 0,
-          lastUpdated: now
-        };
-      });
-    } else if (projectStats?.botPerformance && projectStats.botPerformance.length > 0) {
-      // Redux data (BotPerformanceHistory type)
-      performanceData = projectStats.botPerformance.map(bot => {
-        // Handle differently structured data from Redux
-        // Ensure all fields are present and valid
-        const now = new Date().toISOString();
-        
-        return {
-          botId: bot.botId || bot.botName || `bot-${Math.random().toString(36).substring(2, 9)}`,
-          botName: bot.botName,
-          status: bot.status,
-          trades: bot.trades || 0,
-          profit: bot.profit || 0,
-          uptime: formatUptime(typeof bot.uptime === 'number' ? bot.uptime : parseInt(String(bot.uptime || '0')) || 0),
-          // Format date properly or use current time as fallback
-          date: new Date(bot?.lastUpdated || now).toISOString(),
-          profitContribution: bot.profit || 0,
-          lastUpdated: now
-        };
-      });
-    }
-    
-    return performanceData;
-    
-  }, [project?.botPerformance, projectStats?.botPerformance, botPerformanceDateRange, selectedBotPerformance]);
-
-  // Filter activity log data based on date range and selected bot
-  const filteredActivityLogData = useMemo(() => {
-    // Define a type for the standardized activity log data
-    type StandardizedActivityLog = {
-      botName: string;
-      timestamp: string;
-      action: string;
-      volume: number;
-      impact: number;
-      [key: string]: any; // Allow for additional properties
-    };
-    
-    // First use the props data if available, then fall back to redux store data
-    let activityData: StandardizedActivityLog[] = [];
-    
-    if (project?.recentActivity && project.recentActivity.length > 0) {
-      // Props data - make sure to standardize the format
-      activityData = project.recentActivity.map(activity => {
-        // Ensure all required fields exist with sensible defaults
-        const now = new Date().toISOString();
-        
-        return {
-          ...activity,
-          // Ensure botName is always present
-          botName: activity.botName || "Unknown Bot",
-          // Ensure timestamp is always a valid date string
-          timestamp: isValidDate(activity.timestamp) 
-            ? toSafeDate(activity.timestamp)!.toISOString() 
-            : now,
-          // Ensure numeric fields have valid defaults
-          volume: activity.volume || 0,
-          impact: activity.impact || 0,
-          // Ensure action is present
-          action: activity.action || "Unknown Action"
-        };
-      });
-    } else if (projectStats?.recentActivity && projectStats.recentActivity.length > 0) {
-      // Redux data - make sure to standardize the format
-      activityData = projectStats.recentActivity.map(activity => {
-        // Ensure all required fields exist with sensible defaults
-        const now = new Date().toISOString();
-        
-        return {
-          ...activity,
-          // Ensure botName is always present
-          botName: activity.botName || "Unknown Bot",
-          // Ensure timestamp is always a valid date string
-          timestamp: isValidDate(activity.timestamp) 
-            ? toSafeDate(activity.timestamp)!.toISOString() 
-            : now,
-          // Ensure numeric fields have valid defaults
-          volume: activity.volume || 0,
-          impact: activity.impact || 0,
-          // Ensure action is present
-          action: activity.action || "Unknown Action"
-        };
-      });
-    }
-    
-    return activityData;
-
-  }, [project?.recentActivity, projectStats?.recentActivity, activityLogDateRange, selectedBot]);
 
   // Get available bots from performance data - optimized for rendering speed
   const initialAvailableBots = useMemo(() => {
@@ -633,8 +511,6 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
     filteredBotPerformanceData, filteredActivityLogData
   ]);
 
-
-
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -654,6 +530,102 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
       </div>
     )
   }
+
+  const renderBotPerformanceContent = () => {
+    if (isLoadingBotPerformance) {
+      return (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Bot Name</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Trades</TableHead>
+            <TableHead>Profit Contribution</TableHead>
+            <TableHead>Uptime</TableHead>
+            <TableHead>Date</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {(isBotPerformanceExpanded ? filteredBotPerformanceData : filteredBotPerformanceData.slice(0, 3)).map(
+            (bot: BotPerformanceHistory, index: number) => (
+              <TableRow key={index}>
+                <TableCell>{bot.botName}</TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={
+                      bot.status === 'Active' ? 'default' :
+                      bot.status === 'Inactive' ? 'secondary' :
+                      'destructive'
+                    }
+                  >
+                    {bot.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>{bot.trades}</TableCell>
+                <TableCell>{formatCurrency(bot.profit)}</TableCell>
+                <TableCell>{bot.uptime}</TableCell>
+                <TableCell>{format(new Date(bot?.lastUpdated || bot?.date), 'HH:mm:ss')}</TableCell>
+              </TableRow>
+            )
+          )}
+        </TableBody>
+      </Table>
+    );
+  };
+
+  const renderActivityLogContent = () => {
+    if (isLoadingActivity) {
+      return (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <ScrollArea className="h-[300px]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Time</TableHead>
+              <TableHead>Bot</TableHead>
+              <TableHead>Action</TableHead>
+              <TableHead>Volume</TableHead>
+              <TableHead>Impact</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(isActivityLogExpanded ? filteredActivityLogData : filteredActivityLogData.slice(0, 3)).map(
+              (activity: ActivityLog) => (
+                <TableRow key={`${activity.timestamp}-${activity.botName}-${activity.action}`}>
+                  <TableCell>{format(new Date(activity.timestamp), 'HH:mm:ss')}</TableCell>
+                  <TableCell className="font-medium">{activity.botName}</TableCell>
+                  <TableCell>{activity.action}</TableCell>
+                  <TableCell>{formatCurrency(activity.volume)}</TableCell>
+                  <TableCell>
+                    <span className={Number(activity.impact) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {Number(activity.impact) >= 0 ? '+' : ''}{Number(activity.impact).toFixed(2)}%
+                    </span>
+                  </TableCell>
+                </TableRow>
+              )
+            )}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -746,7 +718,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
+                  <Button variant="outline" size="icon" disabled={isLoadingBotPerformance}>
                     <Download className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -767,43 +739,8 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Bot Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Trades</TableHead>
-                  <TableHead>Profit Contribution</TableHead>
-                  <TableHead>Uptime</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(isBotPerformanceExpanded ? filteredBotPerformanceData : filteredBotPerformanceData.slice(0, 3)).map(
-                  (bot, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{bot.botName}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            bot.status === 'Active' ? 'default' :
-                            bot.status === 'Inactive' ? 'secondary' :
-                            'destructive'
-                          }
-                        >
-                          {bot.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{bot.trades}</TableCell>
-                      <TableCell>{formatCurrency(bot.profit)}</TableCell>
-                      <TableCell>{bot.uptime}</TableCell>
-                      <TableCell>{format(new Date(bot?.lastUpdated || bot?.date), 'HH:mm:ss')}</TableCell>
-                    </TableRow>
-                  )
-                )}
-              </TableBody>
-            </Table>
-            {isBotPerformanceExpanded && (
+            {renderBotPerformanceContent()}
+            {isBotPerformanceExpanded && !isLoadingBotPerformance && (
               <div className="mt-4 flex justify-between items-center text-sm text-muted-foreground">
                 <span>
                   {filteredBotPerformanceData.length} results found
@@ -844,7 +781,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
+                  <Button variant="outline" size="icon" disabled={isLoadingActivity}>
                     <Download className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -865,37 +802,8 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[300px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Bot</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Volume</TableHead>
-                    <TableHead>Impact</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(isActivityLogExpanded ? filteredActivityLogData : filteredActivityLogData.slice(0, 3)).map(
-                    (activity) => (
-                      <TableRow key={`${activity.timestamp}-${activity.botName}-${activity.action}`}>
-                        <TableCell>{format(new Date(activity.timestamp), 'HH:mm:ss')}</TableCell>
-                        <TableCell className="font-medium">{activity.botName}</TableCell>
-                        <TableCell>{activity.action}</TableCell>
-                        <TableCell>{formatCurrency(activity.volume)}</TableCell>
-                        <TableCell>
-                          <span className={Number(activity.impact) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                            {Number(activity.impact) >= 0 ? '+' : ''}{Number(activity.impact).toFixed(2)}%
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-            {isActivityLogExpanded && (
+            {renderActivityLogContent()}
+            {isActivityLogExpanded && !isLoadingActivity && (
               <div className="mt-4 flex justify-between items-center text-sm text-muted-foreground">
                 <span>
                   {filteredActivityLogData.length} results found

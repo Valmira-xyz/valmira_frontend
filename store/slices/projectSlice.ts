@@ -99,7 +99,16 @@ export const fetchProjectStats = createAsyncThunk(
   'projects/fetchStats',
   async ({ projectId, timeRange }: { projectId: string, timeRange?: { start: Date; end: Date } }, { rejectWithValue }) => {
     try {
-      return await projectService.getProjectStats(projectId, timeRange)
+      // Convert Date objects to ISO strings for serialization
+      const serializedTimeRange = timeRange ? {
+        start: timeRange.start.toISOString(),
+        end: timeRange.end.toISOString()
+      } : undefined;
+
+      const stats = await projectService.getProjectStats(projectId, timeRange);
+      
+      // Return the stats as is - the dates will be handled in the reducer
+      return stats;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message)
     }
@@ -332,14 +341,25 @@ const projectSlice = createSlice({
       })
       .addCase(fetchProjectStats.fulfilled, (state, action) => {
         state.loading = false
-        const payload = action.payload as ProjectStatistics
+        const stats = action.payload;
+        
+        // Ensure we have a valid timeRange
+        const timeRange = stats.timeRange || {
+          start: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          end: new Date()
+        };
+
         state.projectStats = {
-          ...payload,
-          timeRange: payload.timeRange || {
-            start: new Date(Date.now() - 24 * 60 * 60 * 1000),
-            end: new Date()
+          ...stats,
+          metrics: {
+            ...stats.metrics,
+            lastUpdate: stats.metrics.lastUpdate
+          },
+          timeRange: {
+            start: timeRange.start,
+            end: timeRange.end
           }
-        }
+        };
       })
       .addCase(fetchProjectStats.rejected, (state, action) => {
         state.loading = false

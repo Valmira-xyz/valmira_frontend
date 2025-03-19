@@ -205,6 +205,8 @@ export interface User {
     status: 'active' | 'inactive';
     createdAt: string;
     updatedAt: string;
+    tokenAddress: string;
+    pairAddress: string;
     userId: string;
     metrics?: {
       cumulativeProfit: number;

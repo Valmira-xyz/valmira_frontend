@@ -36,57 +36,11 @@ export function LatestProjects() {
 
   // Show only active projects, sorted by last updated
   const activeProjects = projects
-    ?.filter((project: Project) => project.status === 'active')
-    .sort((a: Project, b: Project) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    ?.filter((project: ProjectWithAddons) => project.status === 'active')
+    .sort((a: ProjectWithAddons, b: ProjectWithAddons) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3) // Show only the 3 most recent projects
 
-  // Transform Project objects to ProjectWithAddons objects
-  const transformProjectToWithAddons = (project: Project): ProjectWithAddons => {
-    // Create empty trend arrays with the correct type
-    const emptyTrend: TimeSeriesDataPoint[] = [];
-    
-    return {
-      _id: project._id,
-      name: project.name,
-      tokenAddress: "", // Default values for missing properties
-      pairAddress: "",
-      chainId: 0,
-      chainName: "ethereum", // Default chain
-      status: project.status,
-      isImported: false,
-      owner: "",
-      metrics: project.metrics || {
-        cumulativeProfit: 0,
-        volume24h: 0,
-        activeBots: 0,
-        lastUpdate: new Date().toISOString()
-      },
-      addons: {
-        LiquidationSnipeBot: {
-          depositWalletId: { publicKey: "" },
-          subWalletIds: []
-        },
-        VolumeBot: {
-          depositWalletId: { publicKey: "" }
-        },
-        HolderBot: {
-          depositWalletId: { publicKey: "" }
-        }
-      },
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt,
-      __v: 0
-    };
-  };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold">Your Latest Active Projects</h2>
-        <div className="flex justify-center items-center h-[200px]">Loading...</div>
-      </div>
-    )
-  }
 
   if (error) {
     return (
@@ -131,15 +85,15 @@ export function LatestProjects() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Your Latest Active Projects</h2>
         <Button asChild variant="outline">
-          <Link href="/projects">View All Projects</Link>
+          <Link href="/public-projects">View All Projects</Link>
         </Button>
       </div>
       <div className="overflow-x-auto pb-4 -mx-6 px-6">
         <div className="flex gap-6 min-w-max">
-          {activeProjects.map((project: Project) => (
+          {activeProjects.map((project: ProjectWithAddons) => (
             <div key={project._id} className="w-[320px] flex-shrink-0">
               <ProjectSummaryCard 
-                project={transformProjectToWithAddons(project)} 
+                project={project} 
               />
             </div>
           ))}

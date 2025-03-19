@@ -78,43 +78,6 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
     }
   }, [error, toast, isPublic])
 
-
-  const handleStatusChange = async (projectId: string, currentStatus: string) => {
-    try {
-      const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
-      console.log(`Updating project ${projectId} status from ${currentStatus} to ${newStatus}`)
-      await dispatch(updateProjectStatus({ projectId, status: newStatus }) as any)
-      console.log('Project status updated in Redux store')
-      toast({
-        title: "Status Updated",
-        description: "Project status has been updated successfully."
-      })
-    } catch (error) {
-      console.error('Error updating project status:', error)
-      toast({
-        title: "Error",
-        description: "Failed to update project status.",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const handleDelete = async (projectId: string) => {
-    try {
-      await dispatch(deleteProject(projectId) as any)
-      toast({
-        title: "Project Deleted",
-        description: "Project has been deleted successfully."
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete project.",
-        variant: "destructive"
-      })
-    }
-  }
-
   // if (loading) {
   //   return (
   //     <div className="animate-pulse space-y-4">

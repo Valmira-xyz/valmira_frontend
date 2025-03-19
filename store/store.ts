@@ -13,7 +13,40 @@ export const store = configureStore({
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: false,
+      serializableCheck: {
+        // Ignore these action types
+        ignoredActions: [
+          'projects/fetchAll/fulfilled',
+          'projects/fetchPublic/fulfilled',
+          'projects/fetchStats/pending',
+          'projects/fetchStats/fulfilled',
+          'projects/fetchBotPerformance/pending',
+          'projects/fetchBotPerformance/fulfilled',
+          'projects/fetchProfitTrending/pending',
+          'projects/fetchProfitTrending/fulfilled',
+          'projects/fetchVolumeTrending/pending',
+          'projects/fetchVolumeTrending/fulfilled'
+        ],
+        // Ignore these field paths in all actions
+        ignoredActionPaths: [
+          'payload.timestamp',
+          'meta.arg.timestamp',
+          'meta.arg.timeRange',
+          'meta.arg.startDate',
+          'meta.arg.endDate',
+          'payload.metrics.lastUpdate',
+          'payload.timeRange'
+        ],
+        // Ignore these paths in the state
+        ignoredPaths: [
+          'projects.projects.updatedAt',
+          'projects.projects.createdAt',
+          'projects.projectStats.metrics.lastUpdate',
+          'projects.projectStats.timeRange',
+          'projects.currentProject.updatedAt',
+          'projects.currentProject.createdAt'
+        ],
+      },
     }),
 });
 
