@@ -511,25 +511,25 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
     filteredBotPerformanceData, filteredActivityLogData
   ]);
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          {[...Array(2)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-4 w-48" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-[300px] w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="space-y-6">
+  //       <div className="grid gap-4 md:grid-cols-2">
+  //         {[...Array(2)].map((_, i) => (
+  //           <Card key={i}>
+  //             <CardHeader>
+  //               <Skeleton className="h-5 w-32" />
+  //               <Skeleton className="h-4 w-48" />
+  //             </CardHeader>
+  //             <CardContent>
+  //               <Skeleton className="h-[300px] w-full" />
+  //             </CardContent>
+  //           </Card>
+  //         ))}
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   const renderBotPerformanceContent = () => {
     if (isLoadingBotPerformance) {
