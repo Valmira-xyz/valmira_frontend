@@ -29,7 +29,7 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
   const lastFetchParams = useRef({ isPublic, currentPage, pageSize })
 
   // Debounced fetch function to prevent multiple API calls
-  const fetchProjects = useCallback(async () => {
+  const loadProjects = useCallback(async () => {
     // Skip if a fetch is already in progress or if parameters haven't changed
     if (fetchInProgress.current) return
     
@@ -62,11 +62,11 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
   useEffect(() => {
     // Small delay to prevent rapid consecutive API calls
     const timer = setTimeout(() => {
-      fetchProjects()
+      loadProjects()
     }, 100)
     
     return () => clearTimeout(timer)
-  }, [fetchProjects])
+  }, [loadProjects])
 
   useEffect(() => {
     if (error && !isPublic) {
