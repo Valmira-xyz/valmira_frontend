@@ -1945,7 +1945,9 @@ export function SimulateAndExecuteDialog({
                     simulationResult &&
                       (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
                       (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
-                      ? "border-red-500 hover:border-red-600"
+                      ? "border-2 border-red-500 hover:border-red-600"
+                      : simulationResult && (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))>0?
+                      "border-2 border-amber-500 hover:border-amber-600"
                       : ""
                   }
                   title={
@@ -1953,6 +1955,8 @@ export function SimulateAndExecuteDialog({
                       (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
                       (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
                       ? "Deposit wallet has insufficient BNB balance"
+                      : simulationResult && (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))>0?
+                      "Sniping wallets have insufficient BNB balance"
                       : ""
                   }
                 >
