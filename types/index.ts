@@ -287,7 +287,7 @@ export interface User {
       nonceCounter: number
     } | string,
     addons: {
-      LiquidationSnipeBot: {
+      SnipeBot: {
         _id?: string
         isEnabled?: boolean
         status?: string

@@ -90,7 +90,7 @@ type BotData = {
 }
 
 type ProjectAddons = {
-  LiquidationSnipeBot?: BotData
+  SnipeBot?: BotData
   VolumeBot?: BotData
   HolderBot?: BotData
 }
@@ -120,7 +120,7 @@ type AddonType = {
 // Initialize addOns with empty values
 const initialAddOns: AddonType[] = [
   {
-    botType: "LiquidationSnipeBot",
+    botType: "SnipeBot",
     name: "Liquidation & Snipe Bot",
     description:
       "You can perform first sniping with multiple user wallets in the same bundle transaction.",
@@ -129,7 +129,7 @@ const initialAddOns: AddonType[] = [
       native: 0,
       token: 0,
     },
-    tutorialLink: "/tutorials/add-ons/LiquidationSnipeBot",
+    tutorialLink: "/tutorials/add-ons/SnipeBot",
     walletCount: 10,
     totalBnbBalance: 0,
     totalTokenBalance: 0,
@@ -174,7 +174,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       (acc, addon) => ({
         ...acc,
         [addon.botType]: {
-          status: addon.botType === "LiquidationSnipeBot" ? ("ready_to_simulation" as LiquidationSnipeBotStatus) : undefined,
+          status: addon.botType === "SnipeBot" ? ("ready_to_simulation" as LiquidationSnipeBotStatus) : undefined,
           enabled: false,
           amount: 1000,
           nativeCurrency: 0,
@@ -224,8 +224,8 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       // Get all deposit wallet addresses from all add-ons
       const depositWalletAddresses: string[] = [];
       
-      if (project.addons.LiquidationSnipeBot?.depositWalletId?.publicKey) {
-        depositWalletAddresses.push(project.addons.LiquidationSnipeBot.depositWalletId.publicKey);
+      if (project.addons.SnipeBot?.depositWalletId?.publicKey) {
+        depositWalletAddresses.push(project.addons.SnipeBot.depositWalletId.publicKey);
       }
       
       if (project.addons.VolumeBot?.depositWalletId?.publicKey) {
@@ -263,7 +263,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                 ...addon,
                 balances: {
                   native: balances[walletAddress].bnbBalance || 0,
-                  ...(addon.botType === "LiquidationSnipeBot" ? { token: balances[walletAddress].tokenBalance || 0 } : {})
+                  ...(addon.botType === "SnipeBot" ? { token: balances[walletAddress].tokenBalance || 0 } : {})
                 }
               };
             }
@@ -301,16 +301,16 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       const updatedAddOns = [...addOns];
       const updatedConfigs = {...configs};
       
-      // Update LiquidationSnipeBot
-      if (project.addons.LiquidationSnipeBot) {
-        const bot = project.addons.LiquidationSnipeBot;
-        const index = updatedAddOns.findIndex(addon => addon.botType === "LiquidationSnipeBot");
+      // Update SnipeBot
+      if (project.addons.SnipeBot) {
+        const bot = project.addons.SnipeBot;
+        const index = updatedAddOns.findIndex(addon => addon.botType === "SnipeBot");
         if (index !== -1) {
           updatedAddOns[index].depositWallet = bot.depositWalletId?.publicKey || "";
           
           // Update config
-          updatedConfigs["LiquidationSnipeBot"] = {
-            ...updatedConfigs["LiquidationSnipeBot"],
+          updatedConfigs["SnipeBot"] = {
+            ...updatedConfigs["SnipeBot"],
             enabled: bot.isEnabled || false,
             status: (bot.status as LiquidationSnipeBotStatus) || "Inactive"
           };
@@ -402,7 +402,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
 
 
   const handleSave = (id: string) => {
-    if (id === "LiquidationSnipeBot" && configs[id].status === "auto_selling") {
+    if (id === "SnipeBot" && configs[id].status === "auto_selling") {
       handleSaveAutoSell({ wallets: configs[id].wallets || [] })
       return
     }
@@ -428,8 +428,8 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const handleSimulationResult = (success: boolean) => {
     setConfigs((prev) => ({
       ...prev,
-      "LiquidationSnipeBot": {
-        ...prev["LiquidationSnipeBot"],
+      "SnipeBot": {
+        ...prev["SnipeBot"],
         status: success ? "snipe_succeeded" : ("snipe_failed" as LiquidationSnipeBotStatus),
       },
     }))
@@ -446,7 +446,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const handleSaveAutoSell = (newConfig: { wallets: any[] }) => {
     setConfigs((prev) => ({
       ...prev,
-      "LiquidationSnipeBot": { ...prev["LiquidationSnipeBot"], wallets: newConfig.wallets },
+      "SnipeBot": { ...prev["SnipeBot"], wallets: newConfig.wallets },
     }))
   }
 
@@ -549,9 +549,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={async () => {
-                                  if (project.addons.LiquidationSnipeBot.depositWalletId) {
+                                  if (project.addons.SnipeBot.depositWalletId) {
                                     try {
-                                      const publicKey = project.addons.LiquidationSnipeBot.depositWalletId.publicKey;
+                                      const publicKey = project.addons.SnipeBot.depositWalletId.publicKey;
                                       const blob = await walletApi.downloadWalletAsCsv(publicKey);
                                       
                                       // Create a URL for the blob
@@ -600,7 +600,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                         <Label>BNB Balance</Label>
                         <p className="text-xl font-bold">{typeof addon.balances.native === 'number' ? addon.balances.native.toFixed(2) : '0'} BNB</p>
                       </div>
-                      {addon.botType === "LiquidationSnipeBot" && addon.balances.token !== undefined && (
+                      {addon.botType === "SnipeBot" && addon.balances.token !== undefined && (
                         <div>
                           <Label>Token Balance</Label>
                           <p className="text-xl font-bold">{typeof addon.balances.token === 'number' ? addon.balances.token : '0'} {project?.symbol || project.name}</p>

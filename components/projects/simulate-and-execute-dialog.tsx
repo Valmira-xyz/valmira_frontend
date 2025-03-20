@@ -21,15 +21,26 @@ import { ApproveAndAddLiquidityButtons } from "@/components/projects/ApproveAndA
 import { Checkbox } from "@/components/ui/checkbox"
 import { projectService } from "@/services/projectService"
 import { walletApi } from "@/services/walletApi"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { DistributeBnbDialog } from "@/components/projects/distribute-bnb-dialog"
 
-// Define the SubWallet type for the LiquidationSnipeBot addon
+// Define the SubWallet type for the SnipeBot addon
 interface SubWallet {
   _id: string;
   publicKey: string;
   role: string;
 }
 
-interface WalletInfo {
+export interface WalletInfo {
   _id?: string;
   publicKey: string;
   role: string;
@@ -42,7 +53,7 @@ interface WalletInfo {
   isSelectedForMutilSell?: boolean;
 }
 
-// Define the LiquidationSnipeBot addon type
+// Define the SnipeBot addon type
 interface LiquidationSnipeBotAddon {
   subWalletIds: SubWallet[];
   depositWalletId?: {
@@ -87,7 +98,7 @@ type SimulationResult = {
 
 interface ExtendedProject extends Project {
   addons: {
-    LiquidationSnipeBot: LiquidationSnipeBotAddon;
+    SnipeBot: LiquidationSnipeBotAddon;
     [key: string]: any;
   };
   totalSupply?: string;
@@ -134,7 +145,7 @@ export function SimulateAndExecuteDialog({
   const botState = useSelector((state: RootState) => state.bots)
   const [wallets, setWallets] = useState<WalletInfo[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
-  const [walletCount, setWalletCount] = useState(project?.addons?.LiquidationSnipeBot?.subWalletIds?.length || 5)
+  const [walletCount, setWalletCount] = useState(project?.addons?.SnipeBot?.subWalletIds?.length || 5)
   const [snipePercentage, setSnipePercentage] = useState(50)
   const [isBnbDistributed, setIsBnbDistributed] = useState(false)
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null)
@@ -150,6 +161,8 @@ export function SimulateAndExecuteDialog({
   const MIN_BALANCE_UPDATE_INTERVAL = 5000 // Minimum 5 seconds between balance updates
   const [isEstimatingFees, setIsEstimatingFees] = useState(false)
   const [isDistributingBNBs, setIsDistributingBNBs] = useState(false)
+  const [distributeAmount, setDistributeAmount] = useState<number>(0)
+  const [showDistributeDialog, setShowDistributeDialog] = useState<boolean>(false)
   const [isSimulating, setIsSimulating] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
   const [estimationResult, setEstimationResult] = useState<any>(null)
@@ -283,7 +296,7 @@ export function SimulateAndExecuteDialog({
           const updatedWallets = [...prev];
 
           // Add or update deposit wallet if it exists
-          const depositWalletId = project?.addons.LiquidationSnipeBot?.depositWalletId;
+          const depositWalletId = project?.addons.SnipeBot?.depositWalletId;
           if (depositWalletId?.publicKey) {
             const depositBalance = response.find(
               (b: any) => b.address === depositWalletId.publicKey
@@ -418,9 +431,9 @@ export function SimulateAndExecuteDialog({
 
   // Initialize wallets when dialog opens
   useEffect(() => {
-    if (open && project?.addons?.LiquidationSnipeBot) {
+    if (open && project?.addons?.SnipeBot) {
       // Try to load saved state from localStorage
-      const depositWalletAddress = project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey;
+      const depositWalletAddress = project?.addons?.SnipeBot?.depositWalletId?.publicKey;
       let savedState = null;
 
       if (depositWalletAddress) {
@@ -435,7 +448,7 @@ export function SimulateAndExecuteDialog({
       }
 
       // Initialize wallets from currentProject
-      const subWallets = project?.addons.LiquidationSnipeBot.subWalletIds?.map((wallet: SubWallet) => ({
+      const subWallets = project?.addons.SnipeBot.subWalletIds?.map((wallet: SubWallet) => ({
         publicKey: wallet.publicKey,
         bnbBalance: 0,
         tokenBalance: 0,
@@ -498,7 +511,7 @@ export function SimulateAndExecuteDialog({
       if (project?.tokenAddress) {
         // Collect all wallet addresses to fetch balances
         const allAddresses = [
-          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
           ...subWallets.map(w => w.publicKey)
         ];
 
@@ -532,16 +545,16 @@ export function SimulateAndExecuteDialog({
   }, [open, project]);
 
   const handleGenerateWallets = async () => {
-    if (!project?.addons?.LiquidationSnipeBot) {
+    if (!project?.addons?.SnipeBot) {
       toast({
         title: "Bot Not Found",
-        description: "LiquidationSnipeBot is not configured for this project?.",
+        description: "SnipeBot is not configured for this project?.",
         variant: "destructive",
       })
       return
     }
 
-    const existingWalletCount = project?.addons.LiquidationSnipeBot.subWalletIds?.length || 0
+    const existingWalletCount = project?.addons.SnipeBot.subWalletIds?.length || 0
     const requestedCount = walletCount - existingWalletCount
 
     if (walletCount > 50) {
@@ -556,7 +569,7 @@ export function SimulateAndExecuteDialog({
 
     // Handle wallet deletion if requested count is less than existing count
     if (requestedCount < 0) {
-      const walletsToDelete = project?.addons.LiquidationSnipeBot.subWalletIds.slice(walletCount).map(w => w._id)
+      const walletsToDelete = project?.addons.SnipeBot.subWalletIds.slice(walletCount).map(w => w._id)
       const confirmDelete = window.confirm(
         `This will delete ${Math.abs(requestedCount)} wallets from the end of your wallet list. This action cannot be undone. Do you want to proceed?`
       )
@@ -595,12 +608,12 @@ export function SimulateAndExecuteDialog({
       await dispatch(generateWallets({
         projectId: project?._id,
         count: requestedCount,
-        botId: project?.addons.LiquidationSnipeBot._id
+        botId: project?.addons.SnipeBot._id
       })).unwrap()
 
       // After generating wallets, fetch their balances with a longer delay
-      if (project?.addons.LiquidationSnipeBot.subWalletIds) {
-        const addresses = project?.addons.LiquidationSnipeBot.subWalletIds.map(
+      if (project?.addons.SnipeBot.subWalletIds) {
+        const addresses = project?.addons.SnipeBot.subWalletIds.map(
           (wallet: SubWallet) => wallet.publicKey
         );
 
@@ -623,9 +636,9 @@ export function SimulateAndExecuteDialog({
     }
   }
 
-  const handleDistributeBnb = async () => {
+  const handleDistributeExtraBnb = async () => {
     try {
-      const depositWallet = project?.addons?.LiquidationSnipeBot?.depositWalletId;
+      const depositWallet = project?.addons?.SnipeBot?.depositWalletId;
       if (!depositWallet) {
         toast({
           title: "Error",
@@ -635,35 +648,26 @@ export function SimulateAndExecuteDialog({
         return;
       }
 
-      // Calculate amounts for each wallet based on the estimation
-      const subWalletAddresses = project?.addons.LiquidationSnipeBot.subWalletIds
-        .map((w: SubWallet) => w.publicKey)
-
-      // Use the wallet's bnbToSpend value or a default if not set
-      const amounts = wallets
-        .filter(w => w.role !== 'botmain')
-        .map(w => w.bnbToSpend || 0);
-
-      console.log("wallets => ", wallets);
-
-      const totalInsufficientBNB = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)
-
-      console.log("totalInsufficientBNB => ", totalInsufficientBNB);
-
-      const totalBnbToSpend = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
-
-      console.log("totalBnbToSpend => ", totalBnbToSpend);
-
-      if (totalInsufficientBNB <= 0 && totalBnbToSpend <= 0) {
+      // Calculate amounts for each wallet based on the even distribution
+      const subWalletAddresses = project?.addons.SnipeBot.subWalletIds
+        .filter((w: SubWallet) => w.publicKey)
+        .map((w: SubWallet) => w.publicKey);
+      
+      if (!subWalletAddresses.length) {
         toast({
-          title: "Information",
-          description: "All wallets already have enough balance for sniping. You can Simulate Bundle now.",
-          variant: "default",
+          title: "Error",
+          description: "No sniping wallets found",
+          variant: "destructive",
         });
         return;
       }
 
+      // Calculate the even distribution amount for each wallet
+      const perWalletAmount = distributeAmount / subWalletAddresses.length;
+      const amounts = subWalletAddresses.map(() => perWalletAmount);
+
       setIsDistributingBNBs(true);
+      setShowDistributeDialog(false);
 
       setInsufficientFundsDetails(null);
       //iterate through wallets and make zero to bnbToSpend and insufficientBnb
@@ -678,7 +682,7 @@ export function SimulateAndExecuteDialog({
         subWallets: subWalletAddresses,
         amounts,
         projectId: project?._id || "",
-        botId: project?.addons.LiquidationSnipeBot._id || ""
+        botId: project?.addons.SnipeBot._id || ""
       });
       setIsDistributingBNBs(false);
 
@@ -686,7 +690,7 @@ export function SimulateAndExecuteDialog({
         setIsBnbDistributed(true);
         toast({
           title: "Success",
-          description: "BNB distributed successfully, now automatically estimating fees again",
+          description: "BNB distributed evenly successfully, now automatically estimating fees again",
         });
 
         // Save state after successful distribution
@@ -708,7 +712,7 @@ export function SimulateAndExecuteDialog({
         });
       }
     } catch (error) {
-      setIsEstimatingFees(false);
+      setIsDistributingBNBs(false);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to distribute BNB",
@@ -728,9 +732,9 @@ export function SimulateAndExecuteDialog({
     }
 
 
-    if (!project?.addons?.LiquidationSnipeBot) return;
+    if (!project?.addons?.SnipeBot) return;
 
-    const depositWallet = project?.addons.LiquidationSnipeBot.depositWalletId;
+    const depositWallet = project?.addons.SnipeBot.depositWalletId;
     if (!depositWallet) {
       toast({
         title: "Error",
@@ -797,7 +801,7 @@ export function SimulateAndExecuteDialog({
       // Call the estimateFees endpoint
       const result = await BotService.estimateSnipeFees({
         projectId: project?._id,
-        botId: project?.addons.LiquidationSnipeBot._id,
+        botId: project?.addons.SnipeBot._id,
         depositWallet: depositWallet.publicKey,
         subWallets: wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey),
         tokenAmounts2Buy: wallets.filter(w => w.role !== 'botmain').map(w => w.tokenAmount || 0),
@@ -887,10 +891,10 @@ export function SimulateAndExecuteDialog({
   };
 
   const handleSimulate = async () => {
-    if (!project?.addons?.LiquidationSnipeBot) return;
+    if (!project?.addons?.SnipeBot) return;
 
 
-    const depositWallet = project?.addons.LiquidationSnipeBot.depositWalletId;
+    const depositWallet = project?.addons.SnipeBot.depositWalletId;
     if (!depositWallet) {
       toast({
         title: "Error",
@@ -930,7 +934,7 @@ export function SimulateAndExecuteDialog({
       // Simulate the snipe operation
       const result = await BotService.simulateSnipe({
         projectId: project?._id,
-        botId: project?.addons.LiquidationSnipeBot._id,
+        botId: project?.addons.SnipeBot._id,
         depositWallet: depositWallet.publicKey,
         subWallets: wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey),
         tokenAmounts2Buy: wallets.filter(w => w.role !== 'botmain').map(w => w.tokenAmount || 0),
@@ -1027,7 +1031,7 @@ export function SimulateAndExecuteDialog({
 
   const handleExecute = async () => {
     // Change this check to not strictly require simulation results
-    if (!project?.addons?.LiquidationSnipeBot) {
+    if (!project?.addons?.SnipeBot) {
       toast({
         title: "Error",
         description: "Cannot execute: Invalid state or missing bot configuration",
@@ -1055,7 +1059,7 @@ export function SimulateAndExecuteDialog({
       insufficientBnb: 0
     })));
 
-    const depositWallet = project?.addons.LiquidationSnipeBot.depositWalletId;
+    const depositWallet = project?.addons.SnipeBot.depositWalletId;
     if (!depositWallet) {
       toast({
         title: "Error",
@@ -1076,7 +1080,7 @@ export function SimulateAndExecuteDialog({
 
       const result = await BotService.executeSnipe({
         projectId: project?._id,
-        botId: project?.addons.LiquidationSnipeBot._id,
+        botId: project?.addons.SnipeBot._id,
         depositWallet: depositWallet.publicKey,
         subWallets: wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey),
         tokenAmounts2Buy: wallets.filter(w => w.role !== 'botmain').map(w => w.tokenAmount || 0),
@@ -1094,7 +1098,7 @@ export function SimulateAndExecuteDialog({
         
         // Refresh balances after successful sell
         const allAddresses = [
-          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
           ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
         ];
         fetchBalances(allAddresses);
@@ -1130,7 +1134,7 @@ export function SimulateAndExecuteDialog({
   }
 
   // Check if we have existing wallets from the project addons
-  const hasExistingWallets = Boolean(project?.addons?.LiquidationSnipeBot?.subWalletIds?.length)
+  const hasExistingWallets = Boolean(project?.addons?.SnipeBot?.subWalletIds?.length)
 
   const calculateSnipeAmount = async (
     tokenAddress: string,
@@ -1151,12 +1155,12 @@ export function SimulateAndExecuteDialog({
       setExecutingSingleSells(prev => ({ ...prev, [walletAddress]: true }));
       const result = await BotService.singleWalletSell({
         projectId: project?._id,
-        botId: project?.addons.LiquidationSnipeBot._id,
+        botId: project?.addons.SnipeBot._id,
         walletAddress,
         tokenAddress: project?.tokenAddress,
         sellPercentage,
         slippageTolerance,
-        targetWalletAddress: project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey
+        targetWalletAddress: project?.addons?.SnipeBot?.depositWalletId?.publicKey
       });
 
       if (result.success) {
@@ -1166,7 +1170,7 @@ export function SimulateAndExecuteDialog({
         });
         // Refresh balances after successful sell
         const allAddresses = [
-          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
           ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
         ];
         fetchBalances(allAddresses);
@@ -1212,12 +1216,12 @@ export function SimulateAndExecuteDialog({
 
       const result = await BotService.multiWalletSell({
         projectId: project?._id,
-        botId: project?.addons.LiquidationSnipeBot._id,
+        botId: project?.addons.SnipeBot._id,
         walletAddresses: selectedWallets.map(w => w.publicKey),
         tokenAddress: project?.tokenAddress,
         sellPercentages: selectedWallets.map(w => w.sellPercentage || 100), // Default to 100% if not set
         slippageTolerance,
-        targetWalletAddress: project?.addons.LiquidationSnipeBot?.depositWalletId?.publicKey
+        targetWalletAddress: project?.addons.SnipeBot?.depositWalletId?.publicKey
       });
 
       if (result.success) {
@@ -1227,7 +1231,7 @@ export function SimulateAndExecuteDialog({
         });
         // Refresh balances after successful sell
         const allAddresses = [
-          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
           ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
         ];
         fetchBalances(allAddresses);
@@ -1262,7 +1266,7 @@ export function SimulateAndExecuteDialog({
       return;
     }
 
-    if (!project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey) {
+    if (!project?.addons?.SnipeBot?.depositWalletId?.publicKey) {
       toast({
         title: "Error",
         description: "Deposit wallet not found",
@@ -1282,9 +1286,9 @@ export function SimulateAndExecuteDialog({
       })));
 
       const result = await BotService.collectBnb({
-        botId: project?.addons.LiquidationSnipeBot._id,
+        botId: project?.addons.SnipeBot._id,
         walletAddresses: selectedWallets.map(w => w.publicKey),
-        targetWallet: project?.addons.LiquidationSnipeBot.depositWalletId.publicKey,
+        targetWallet: project?.addons.SnipeBot.depositWalletId.publicKey,
         projectId: project?._id || ""
       });
 
@@ -1295,7 +1299,7 @@ export function SimulateAndExecuteDialog({
         });
         // Refresh balances after successful collection
         const allAddresses = [
-          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
           ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
         ];
         fetchBalances(allAddresses);
@@ -1665,7 +1669,7 @@ export function SimulateAndExecuteDialog({
 
             <div className="w-full flex gap-4 mt-3 ml-auto text-sm">
 
-              {project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey && (
+              {project?.addons.SnipeBot.depositWalletId?.publicKey && (
                 <div className="flex-1 space-y-2 border-dotted border-2 rounded-lg border-muted-foreground p-3">
                   <div className="text-base font-sm w-full flex justify-between ">
                     <label>Deposit Wallet</label>
@@ -1675,7 +1679,7 @@ export function SimulateAndExecuteDialog({
                       className="h-8 w-8"
                       onClick={() => {
                         const allAddresses = [
-                          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+                          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
                           ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
                         ];
                         fetchBalances(allAddresses);
@@ -1698,21 +1702,21 @@ export function SimulateAndExecuteDialog({
                   <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                     <div className="flex gap-2 items-center">
                       <code className="text-sm font-mono">
-                        {project?.addons.LiquidationSnipeBot.depositWalletId.publicKey.slice(0, 6)}...
-                        {project?.addons.LiquidationSnipeBot.depositWalletId.publicKey.slice(-4)}
+                        {project?.addons.SnipeBot.depositWalletId.publicKey.slice(0, 6)}...
+                        {project?.addons.SnipeBot.depositWalletId.publicKey.slice(-4)}
                       </code>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => project?.addons.LiquidationSnipeBot.depositWalletId && copyToClipboard(project?.addons.LiquidationSnipeBot.depositWalletId.publicKey)}
+                        onClick={() => project?.addons.SnipeBot.depositWalletId && copyToClipboard(project?.addons.SnipeBot.depositWalletId.publicKey)}
                       >
                         <Copy className="h-4 w-4" />
                         <span className="sr-only">Copy address</span>
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                         <a
-                          href={`https://bscscan.com/address/${project?.addons.LiquidationSnipeBot.depositWalletId.publicKey}`}
+                          href={`https://bscscan.com/address/${project?.addons.SnipeBot.depositWalletId.publicKey}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -1725,9 +1729,9 @@ export function SimulateAndExecuteDialog({
                         size="icon"
                         className="h-8 w-8"
                         onClick={async () => {
-                          if (project.addons.LiquidationSnipeBot.depositWalletId) {
+                          if (project.addons.SnipeBot.depositWalletId) {
                             try {
-                              const publicKey = project.addons.LiquidationSnipeBot.depositWalletId.publicKey;
+                              const publicKey = project.addons.SnipeBot.depositWalletId.publicKey;
                               const blob = await walletApi.downloadWalletAsCsv(publicKey);
 
                               // Create a URL for the blob
@@ -1769,9 +1773,33 @@ export function SimulateAndExecuteDialog({
                   <div className="w-full flex justify-between ">
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-muted-foreground">
-                        BNB Balance: <span className="font-medium text-black"> {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}</span>
+                        BNB Balance: <span className="font-medium text-black"> {wallets.find(w => w.publicKey === project?.addons.SnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}</span>
                       </p>
                     </div>
+                    <Button
+                      variant={"outline"}
+                      size={"sm"}
+                      onClick={() => setShowDistributeDialog(true)}
+                      disabled={
+                        isEstimatingFees ||
+                        !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||
+                        isDistributingBNBs ||
+                        isProjectLoading ||
+                        isSimulating ||
+                        isExecuting
+                      }
+                    >
+                      {
+                        isDistributingBNBs ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Distributing...
+                          </>
+                        ) :  (
+                          "Distribute Extra BNB"
+                        )
+                      }
+                    </Button>
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">BNB to distribute:</span>
                       <span className="font-medium ">
@@ -1782,12 +1810,12 @@ export function SimulateAndExecuteDialog({
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-muted-foreground">
-                        {project?.symbol || project?.name} Balance: <span className="font-medium text-black"> {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.tokenBalance?.toFixed(4) || '0.0000'}</span>
+                        {project?.symbol || project?.name} Balance: <span className="font-medium text-black"> {wallets.find(w => w.publicKey === project?.addons.SnipeBot.depositWalletId?.publicKey)?.tokenBalance?.toFixed(4) || '0.0000'}</span>
                       </p>
                     </div>
                   </div>
                   <p className="text-sm text-blue-600 mt-2">
-                    💡 Please ensure your Deposit Wallet has enough BNB to cover distributing BNB to Snipnig wallets for sniping.
+                    💡 Please ensure your Deposit Wallet has enough BNB to cover distributing BNB to Snipnig wallets for sniping/sell tokens/collecting BNB.
                   </p>
 
                 </div>
@@ -1907,7 +1935,7 @@ export function SimulateAndExecuteDialog({
                         });
                       });
                       // here save current modal state to local storage
-                      const depositWalletAddress = project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey;
+                      const depositWalletAddress = project?.addons?.SnipeBot?.depositWalletId?.publicKey;
                       if (depositWalletAddress) {
                         localStorage.setItem(`modalState_${depositWalletAddress}`, JSON.stringify({
                           wallets: wallets.filter(w => w.role !== 'botmain'),
@@ -1943,7 +1971,7 @@ export function SimulateAndExecuteDialog({
                   )}
                 </Button>
                 <Button
-                  onClick={handleDistributeBnb}
+                  onClick={() => setShowDistributeDialog(true)}
                   disabled={
                     isEstimatingFees ||
                     !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||
@@ -1954,7 +1982,7 @@ export function SimulateAndExecuteDialog({
                   }
                   className={
                     simulationResult &&
-                      (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
+                      (wallets.find(w => w.publicKey === project?.addons?.SnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
                       (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
                       ? "border-2 border-red-500 hover:border-red-600"
                       : simulationResult && (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))>0?
@@ -1963,7 +1991,7 @@ export function SimulateAndExecuteDialog({
                   }
                   title={
                     simulationResult &&
-                      (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
+                      (wallets.find(w => w.publicKey === project?.addons?.SnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
                       (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
                       ? "Deposit wallet has insufficient BNB balance"
                       : simulationResult && (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))>0?
@@ -1978,7 +2006,7 @@ export function SimulateAndExecuteDialog({
                         Distributing...
                       </>
                     ) : simulationResult &&
-                      (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
+                      (wallets.find(w => w.publicKey === project?.addons?.SnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
                       (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0))) ? (
                       <>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-red-500"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -2041,7 +2069,7 @@ export function SimulateAndExecuteDialog({
                             className="h-8 w-8"
                             onClick={() => {
                               const allAddresses = [
-                                ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+                                ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
                                 ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
                               ];
                               fetchBalances(allAddresses);
@@ -2120,7 +2148,24 @@ export function SimulateAndExecuteDialog({
                         Sell amount(% of token balance)
                       </TableHead>
                       <TableHead className="bg-muted/50 font-medium w-[20%]">
-                        Select for mutil sell/collect BNB
+                        <div className="flex flex-col items-center gap-1">
+                          <div>Select for multi operation</div>
+                          <Checkbox 
+                            checked={wallets.filter(w => w.role !== 'botmain' && ((w.tokenBalance || 0) > 0 || (w.bnbBalance || 0) > 0)).length > 0 && 
+                              wallets.filter(w => w.role !== 'botmain' && ((w.tokenBalance || 0) > 0 || (w.bnbBalance || 0) > 0)).every(w => w.isSelectedForMutilSell)}
+                            onCheckedChange={(checked) => {
+                              setWallets(prev => 
+                                prev.map(w => {
+                                  // Only change wallets that have balance and aren't the main wallet
+                                  if (w.role !== 'botmain' && ((w.tokenBalance || 0) > 0 || (w.bnbBalance || 0) > 0)) {
+                                    return { ...w, isSelectedForMutilSell: checked === true };
+                                  }
+                                  return w;
+                                })
+                              );
+                            }}
+                          />
+                        </div>
                       </TableHead>
                       <TableHead className="bg-muted/50 font-medium w-[20%]">
                         Single sell
@@ -2231,7 +2276,7 @@ export function SimulateAndExecuteDialog({
             {simulationResult ? (
               <div className="text-sm space-y-1">
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                  <p>Deposit Wallet BNB Balance: {wallets.find(w => w.publicKey === project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'} BNB</p>
+                  <p>Deposit Wallet BNB Balance: {wallets.find(w => w.publicKey === project?.addons.SnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'} BNB</p>
                   <p>BNB for Adding Liquidity: {simulationResult.addLiquidityBnb.toFixed(4)} BNB</p>
                   <p>BNB for Sniping wallets: {
                     // Calculate total BNB needed for sniping including any insufficient amounts
@@ -2344,6 +2389,16 @@ export function SimulateAndExecuteDialog({
 
         </DialogFooter>
       </DialogContent>
+
+      {/* Add the distribute BNB dialog */}
+      <DistributeBnbDialog 
+        open={showDistributeDialog} 
+        onOpenChange={setShowDistributeDialog} 
+        wallets={wallets}
+        distributeAmount={distributeAmount}
+        setDistributeAmount={setDistributeAmount}
+        onConfirm={handleDistributeExtraBnb}
+      />
     </Dialog>
   );
 }

@@ -86,8 +86,8 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
     
     // Count active bots from addons
     if (project.addons) {
-      // LiquidationSnipeBot
-      if (project.addons.LiquidationSnipeBot?.isEnabled) {
+      // SnipeBot
+      if (project.addons.SnipeBot?.isEnabled) {
         activeBots += 1;
       }
       

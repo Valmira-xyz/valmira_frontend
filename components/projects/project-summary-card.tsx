@@ -123,7 +123,7 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
             <p className="text-xl font-bold">{metrics.activeBots > 0 ? metrics.activeBots : 
               (project?.addons ? 
                 Object.values(project.addons).reduce((sum: number, addon: any) => 
-                  sum + (addon.isEnabled ? 1 : 0), 0) 
+                  sum + (addon?.isEnabled ? 1 : 0), 0) 
               : 0)
             }</p>
           </div>
