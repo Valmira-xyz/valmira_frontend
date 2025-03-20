@@ -320,4 +320,42 @@ export class BotService {
     );
     return response.data;
   }
+
+  /**
+   * Collect BNB from selected wallets to a target wallet
+   */
+  static async collectBnb(params: {
+    botId: string;
+    walletAddresses: string[];
+    targetWallet: string;
+  }): Promise<{
+    success: boolean;
+    walletResults?: {
+      address: string;
+      success: boolean;
+      hash?: string;
+      error?: string;
+    }[];
+    failedWallets?: number;
+    totalSuccessful?: number;
+    error?: string;
+  }> {
+    const response = await api.post<{
+      success: boolean;
+      walletResults?: {
+        address: string;
+        success: boolean;
+        hash?: string;
+        error?: string;
+      }[];
+      failedWallets?: number;
+      totalSuccessful?: number;
+      error?: string;
+    }>(
+      `${BACKEND_URL}/snipe/bnbCollect`,
+      params,
+      getAuthHeaders()
+    );
+    return response.data;
+  }
 } 

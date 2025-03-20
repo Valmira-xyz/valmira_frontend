@@ -172,6 +172,7 @@ export function SimulateAndExecuteDialog({
   const [executingSingleSells, setExecutingSingleSells] = useState<Record<string, boolean>>({});
   const [isExecutingMultiSell, setIsExecutingMultiSell] = useState(false);
   const [slippageTolerance, setSlippageTolerance] = useState(10); // Default 5% slippage
+  const [isCollectingBnb, setIsCollectingBnb] = useState(false);
 
   // Add these refs at the top level of the component
   const balanceFetchInProgressRef = useRef(false);
@@ -1229,6 +1230,66 @@ export function SimulateAndExecuteDialog({
     }
   };
 
+  const handleCollectBnb = async () => {
+    // Filter wallets that are selected for collection and have BNB balance > 0
+    const selectedWallets = wallets.filter(w =>
+      w.isSelectedForMutilSell &&
+      w.role !== 'botmain' &&
+      (w.bnbBalance || 0) > 0
+    );
+
+    if (selectedWallets.length === 0) {
+      toast({
+        title: "Error",
+        description: "No wallets selected with sufficient BNB balance for collection",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey) {
+      toast({
+        title: "Error",
+        description: "Deposit wallet not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsCollectingBnb(true);
+
+      const result = await BotService.collectBnb({
+        botId: project?.addons.LiquidationSnipeBot._id,
+        walletAddresses: selectedWallets.map(w => w.publicKey),
+        targetWallet: project?.addons.LiquidationSnipeBot.depositWalletId.publicKey
+      });
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `BNB collected successfully. ${result.totalSuccessful} transfers succeeded, ${result.failedWallets} failed.`,
+        });
+        // Refresh balances after successful collection
+        const allAddresses = [
+          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+        ];
+        fetchBalances(allAddresses);
+      } else {
+        throw new Error(result.error || "Failed to collect BNB");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to collect BNB",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCollectingBnb(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
@@ -2032,7 +2093,7 @@ export function SimulateAndExecuteDialog({
                         Sell amount(% of token balance)
                       </TableHead>
                       <TableHead className="bg-muted/50 font-medium w-[20%]">
-                        Select for mutil sell
+                        Select for mutil sell/collect BNB
                       </TableHead>
                       <TableHead className="bg-muted/50 font-medium w-[20%]">
                         Single sell
@@ -2096,14 +2157,14 @@ export function SimulateAndExecuteDialog({
                           </TableCell>
                           <TableCell className="text-center">
                             <Checkbox
-                              checked={(wallet.tokenBalance || 0) <= 0 ? false : (wallet.isSelectedForMutilSell || false)}
+                              checked={((wallet.tokenBalance || 0) <=0 && (wallet.bnbBalance || 0) <= 0) ? false : (wallet.isSelectedForMutilSell || false)}
                               onCheckedChange={(checked) => setWallets(prev =>
                                 prev.map(w => w.publicKey === wallet.publicKey
                                   ? { ...w, isSelectedForMutilSell: checked === true }
                                   : w
                                 )
                               )}
-                              disabled={(wallet.tokenBalance || 0) <= 0}
+                              disabled={(wallet.tokenBalance || 0)<=0 && (wallet.bnbBalance || 0) <= 0}
                             />
                           </TableCell>
                           <TableCell className="text-center">
@@ -2210,11 +2271,12 @@ export function SimulateAndExecuteDialog({
             )}
           </div>
 
-          <div className="h-full flex justify-end">
+          <div className="h-full flex flex-col gap-2 justify-end">
             <Button
               onClick={handleMultiSell}
               disabled={
                 isExecutingMultiSell ||
+                isCollectingBnb || 
                 !wallets.some(w =>
                   w.isSelectedForMutilSell &&
                   w.role !== 'botmain' &&
@@ -2227,8 +2289,24 @@ export function SimulateAndExecuteDialog({
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               Execute Multi Sell
+            </Button>            
+            <Button 
+            onClick={handleCollectBnb}
+            disabled={isCollectingBnb || isExecutingMultiSell || 
+              !wallets.some(w =>
+                  w.isSelectedForMutilSell &&
+                  w.role !== 'botmain' &&
+                  (w.bnbBalance  || 0) > 0
+                )
+            }
+            >
+              {isCollectingBnb ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Collect BNB
             </Button>
           </div>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
