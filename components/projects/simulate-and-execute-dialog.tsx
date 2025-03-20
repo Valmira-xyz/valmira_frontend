@@ -1178,8 +1178,7 @@ export function SimulateAndExecuteDialog({
     const selectedWallets = wallets.filter(w => 
       w.isSelectedForMutilSell && 
       w.role !== 'botmain' && 
-      (w.tokenBalance || 0) > 0 &&
-      (w.sellPercentage || 0) > 0
+      (w.tokenBalance || 0) > 0
     );
 
     if (selectedWallets.length === 0) {
@@ -1199,7 +1198,7 @@ export function SimulateAndExecuteDialog({
         botId: project?.addons.LiquidationSnipeBot._id,
         walletAddresses: selectedWallets.map(w => w.publicKey),
         tokenAddress: project?.tokenAddress,
-        sellPercentages: selectedWallets.map(w => w.sellPercentage || 0),
+        sellPercentages: selectedWallets.map(w => w.sellPercentage || 100), // Default to 100% if not set
         slippageTolerance,
         targetWalletAddress: project?.addons.LiquidationSnipeBot?.depositWalletId?.publicKey
       });
@@ -2171,8 +2170,11 @@ export function SimulateAndExecuteDialog({
             onClick={handleMultiSell}
             disabled={
               isExecutingMultiSell || 
-              !wallets.some(w => w.isSelectedForMutilSell) ||
-              !wallets.some(w => w.isSelectedForMutilSell && w.sellPercentage)
+              !wallets.some(w => 
+                w.isSelectedForMutilSell && 
+                w.role !== 'botmain' && 
+                (w.tokenBalance || 0) > 0
+              )
             }
             className="bg-primary"
           >
