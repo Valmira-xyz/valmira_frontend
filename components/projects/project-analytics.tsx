@@ -571,7 +571,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
                 <TableCell>{bot?.action? bot?.action : bot.profit===0? "Snipe" : "Sell"}</TableCell>            
                 <TableCell>{bot.trades}</TableCell>
                 <TableCell>
-                <span className={Number(bot.profit) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                <span className={Number(bot.profit) > 0 ? 'text-green-600' : Number(bot.profit) < 0 ? 'text-red-600' : ""}>
                   {
                   formatCurrency(bot.profit)
                   }
@@ -617,8 +617,8 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
                   <TableCell>{activity.action}</TableCell>
                   <TableCell>{formatCurrency(activity.volume)}</TableCell>
                   <TableCell>
-                    <span className={Number(activity.impact) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {Number(activity.impact) >= 0 ? '+' : ''}{Number(activity.impact).toFixed(2)}%
+                    <span className={Number(activity.impact) > 0 ? 'text-green-600' : Number(activity.impact) < 0 ?'text-red-600' : ""}>
+                      {Number(activity.impact) > 0 ? '+' : ''}{Number(activity.impact).toFixed(2)}%
                     </span>
                   </TableCell>
                   <TableCell>{format(new Date(activity.timestamp), 'dd/mm/yyyy HH:mm:ss')}</TableCell>
