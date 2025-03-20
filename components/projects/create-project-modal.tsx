@@ -290,7 +290,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         chainId: chainId,
         symbol: activeTab === "deploy" ? newTokenSymbol : analyzedToken?.symbol || "",
         totalSupply: activeTab === "deploy" ? newTokenTotalSupply : (analyzedToken?.totalSupply || ""),
-        imImported: activeTab === "import" ? true : false,
+        isImported: activeTab?.toString() === "import" ? true : false,
         pairAddress: activeTab === "deploy" ? (pairAddress || "") : (analyzedToken?.pairAddress || ""),
         tokenData: {
           name: activeTab === "deploy" ? newTokenName : analyzedToken?.name || "",
