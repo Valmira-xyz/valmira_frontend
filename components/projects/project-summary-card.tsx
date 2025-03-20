@@ -110,7 +110,7 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
             </div>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground">24h Volume</p>
+            <p className="text-xs font-medium text-muted-foreground">Cumulative Volume</p>
             <p className="text-xl font-bold">${formatNumber(metrics.volume24h)}</p>
             <div className="h-10">
               <SparklineChart data={trends.volumeTrend.map(d => d.value)} color="hsl(var(--chart-3))" />
