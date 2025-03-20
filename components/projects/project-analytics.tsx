@@ -491,35 +491,35 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
   }, [profitTrends, volumeTrends])
 
   // Modified loading check that shows content if props data is available
-  const isLoading = useMemo(() => {
-    // If we have props data, don't show loading state even if Redux is loading
-    const hasPropsData = 
-      (project?.botPerformance && project.botPerformance.length > 0) || 
-      (project?.recentActivity && project.recentActivity.length > 0) ||
-      (profitTrends && profitTrends.length > 0 && volumeTrends && volumeTrends.length > 0);
+  // const isLoading = useMemo(() => {
+  //   // If we have props data, don't show loading state even if Redux is loading
+  //   const hasPropsData = 
+  //     (project?.botPerformance && project.botPerformance.length > 0) || 
+  //     (project?.recentActivity && project.recentActivity.length > 0) ||
+  //     (profitTrends && profitTrends.length > 0 && volumeTrends && volumeTrends.length > 0);
     
-    // Or if we have Redux data
-    const hasReduxData = 
-      (projectStats?.botPerformance && projectStats.botPerformance.length > 0) ||
-      (projectStats?.recentActivity && projectStats.recentActivity.length > 0) ||
-      (projectStats?.trends && (
-        (projectStats.trends.profitTrend && projectStats.trends.profitTrend.length > 0) || 
-        (projectStats.trends.volumeTrend && projectStats.trends.volumeTrend.length > 0))
-      );
+  //   // Or if we have Redux data
+  //   const hasReduxData = 
+  //     (projectStats?.botPerformance && projectStats.botPerformance.length > 0) ||
+  //     (projectStats?.recentActivity && projectStats.recentActivity.length > 0) ||
+  //     (projectStats?.trends && (
+  //       (projectStats.trends.profitTrend && projectStats.trends.profitTrend.length > 0) || 
+  //       (projectStats.trends.volumeTrend && projectStats.trends.volumeTrend.length > 0))
+  //     );
     
-    // Check if we have filtered data
-    const hasFilteredData = 
-      filteredBotPerformanceData.length > 0 || 
-      filteredActivityLogData.length > 0;
+  //   // Check if we have filtered data
+  //   const hasFilteredData = 
+  //     filteredBotPerformanceData.length > 0 || 
+  //     filteredActivityLogData.length > 0;
     
-    // Only show loading if Redux is loading AND we don't have any data to show
-    return loading && !hasPropsData && !hasReduxData && !hasFilteredData;
-  }, [
-    loading, 
-    project?.botPerformance, project?.recentActivity, profitTrends, volumeTrends,
-    projectStats?.botPerformance, projectStats?.recentActivity, projectStats?.trends,
-    filteredBotPerformanceData, filteredActivityLogData
-  ]);
+  //   // Only show loading if Redux is loading AND we don't have any data to show
+  //   return loading && !hasPropsData && !hasReduxData && !hasFilteredData;
+  // }, [
+  //   loading, 
+  //   project?.botPerformance, project?.recentActivity, profitTrends, volumeTrends,
+  //   projectStats?.botPerformance, projectStats?.recentActivity, projectStats?.trends,
+  //   filteredBotPerformanceData, filteredActivityLogData
+  // ]);
 
   // if (isLoading) {
   //   return (
@@ -629,7 +629,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
         <Card>
           <CardHeader>
             <CardTitle>Profit Trend</CardTitle>
-            <CardDescription>Trading profit over time</CardDescription>
+            <CardDescription>Trading profit over {profitTimePeriod}</CardDescription>
           </CardHeader>
           <CardContent>
             <TimePeriodButtons currentPeriod={profitTimePeriod} onChange={setProfitTimePeriod} />
@@ -662,7 +662,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
         <Card>
           <CardHeader>
             <CardTitle>Volume Trend</CardTitle>
-            <CardDescription>Trading volume over time</CardDescription>
+            <CardDescription>Trading volume over {volumeTimePeriod}</CardDescription>
           </CardHeader>
           <CardContent>
             <TimePeriodButtons currentPeriod={volumeTimePeriod} onChange={setVolumeTimePeriod} />
