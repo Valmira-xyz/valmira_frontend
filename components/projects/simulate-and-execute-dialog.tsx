@@ -657,25 +657,6 @@ export function SimulateAndExecuteDialog({
         .filter(w => w.role !== 'botmain')
         .map(w => w.bnbToSpend || 0);
 
-      console.log("wallets => ", wallets);
-
-      const totalInsufficientBNB = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)
-
-      console.log("totalInsufficientBNB => ", totalInsufficientBNB);
-
-      const totalBnbToSpend = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
-
-      console.log("totalBnbToSpend => ", totalBnbToSpend);
-
-      if (totalInsufficientBNB <= 0 && totalBnbToSpend <= 0) {
-        toast({
-          title: "Information",
-          description: "All wallets already have enough balance for sniping. You can Simulate Bundle now.",
-          variant: "default",
-        });
-        return;
-      }
-
       setIsDistributingBNBs(true);
 
       setInsufficientFundsDetails(null);
@@ -1111,7 +1092,7 @@ export function SimulateAndExecuteDialog({
 
       toast({
         title: "Success",
-        description: "Snipe simulation completed successfully",
+        description: "Snipe simulation completed successfully. Go on proceed Execution.",
       });
     } catch (error) {
       toast({
@@ -1190,7 +1171,7 @@ export function SimulateAndExecuteDialog({
       if (result.success) {
         toast({
           title: "Success",
-          description: "Snipe executed successfully, now refreshing balances.",
+          description: "Snipe executed successfully, now refreshing balances. If you only distributed BNB for sniping, then you need to distribute extra BNB for token sell",
         });
         
         // Refresh balances after successful sell
@@ -2076,7 +2057,7 @@ export function SimulateAndExecuteDialog({
                     isDistributingBNBs ||
                     isProjectLoading ||
                     isSimulating ||
-                    isExecuting
+                    isExecuting 
                   }
                   className={
                     simulationResult &&
@@ -2154,7 +2135,7 @@ export function SimulateAndExecuteDialog({
         <div>
           {(wallets.length > 0 || isProjectLoading) && (
             <div className="relative border rounded-md mt-4">
-              <div className="max-h-[200px] overflow-y-auto">
+              <div className="max-h-[300px] overflow-y-auto">
                 <Table className="w-full table-fixed">
                   <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                     <TableRow>
