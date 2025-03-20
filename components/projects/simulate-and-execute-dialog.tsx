@@ -638,7 +638,7 @@ export function SimulateAndExecuteDialog({
 
   const handleDistributeBnb = async () => {
     try {
-      const depositWallet = project?.addons?.LiquidationSnipeBot?.depositWalletId;
+      const depositWallet = project?.addons?.SnipeBot?.depositWalletId;
       if (!depositWallet) {
         toast({
           title: "Error",
@@ -649,7 +649,7 @@ export function SimulateAndExecuteDialog({
       }
 
       // Calculate amounts for each wallet based on the estimation
-      const subWalletAddresses = project?.addons.LiquidationSnipeBot.subWalletIds
+      const subWalletAddresses = project?.addons.SnipeBot.subWalletIds
         .map((w: SubWallet) => w.publicKey)
 
       // Use the wallet's bnbToSpend value or a default if not set
@@ -691,7 +691,7 @@ export function SimulateAndExecuteDialog({
         subWallets: subWalletAddresses,
         amounts,
         projectId: project?._id || "",
-        botId: project?.addons.LiquidationSnipeBot._id || ""
+        botId: project?.addons.SnipeBot._id || ""
       });
       setIsDistributingBNBs(false);
 
