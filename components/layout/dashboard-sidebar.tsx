@@ -251,7 +251,9 @@ export function DashboardSidebar() {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-muted-foreground">Total Profit</span>
-                  <span className="font-medium">{userProjects?.reduce((total, project) => total + (project.metrics?.cumulativeProfit || 0), 0)}</span>
+                  <span className="font-medium">
+                    ${ Number(userProjects?.reduce((total, project) => total + (project.metrics?.cumulativeProfit || 0), 0)).toFixed(2)}
+                  </span>
                 </div>
               </div>
             </>
