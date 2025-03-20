@@ -342,20 +342,23 @@ export class BotService {
   }> {
     const response = await api.post<{
       success: boolean;
-      walletResults?: {
-        address: string;
+      data: {
         success: boolean;
-        hash?: string;
+        walletResults?: {
+          address: string;
+          success: boolean;
+          hash?: string;
+          error?: string;
+        }[];
+        failedWallets?: number;
+        totalSuccessful?: number;
         error?: string;
-      }[];
-      failedWallets?: number;
-      totalSuccessful?: number;
-      error?: string;
+      }
     }>(
       `${BACKEND_URL}/snipe/bnbCollect`,
       params,
       getAuthHeaders()
     );
-    return response.data;
+    return response.data.data;
   }
 } 

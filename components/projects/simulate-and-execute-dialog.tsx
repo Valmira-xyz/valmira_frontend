@@ -1270,7 +1270,7 @@ export function SimulateAndExecuteDialog({
         bnbToSpend: 0,
         insufficientBnb: 0
       })));
-      
+
       const result = await BotService.collectBnb({
         botId: project?.addons.LiquidationSnipeBot._id,
         walletAddresses: selectedWallets.map(w => w.publicKey),
@@ -1280,7 +1280,7 @@ export function SimulateAndExecuteDialog({
       if (result.success) {
         toast({
           title: "Success",
-          description: `BNB collected successfully. ${result.totalSuccessful} transfers succeeded, ${result.failedWallets} failed.`,
+          description: `BNB collected successfully. ${result?.totalSuccessful} transfers succeeded, ${result?.failedWallets} failed.`,
         });
         // Refresh balances after successful collection
         const allAddresses = [
