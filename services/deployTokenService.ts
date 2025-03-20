@@ -212,9 +212,9 @@ export class TokenDeploymentService {
       params.tokenTotalSupply,
       params.buyFee || 3,
       params.sellFee || 3,
-      params.maxHoldingLimit_,
-      params.maxBuyLimit_ || 0,
-      params.maxSellLimit_ || 0, 
+      params.maxHoldingLimit_ || 10,
+      params.maxBuyLimit_ || 10,
+      params.maxSellLimit_ || 10, 
       this.walletClient.account?.address || "0x0000000000000000000000000000000000000000"
     ];
   }
