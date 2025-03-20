@@ -557,19 +557,27 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Bot Name</TableHead>
+            <TableHead>Actions</TableHead>
             <TableHead>Trades</TableHead>
             <TableHead>Profit Contribution</TableHead>
-            <TableHead>Date</TableHead>
+            <TableHead>Time</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {(isBotPerformanceExpanded ? filteredBotPerformanceData : filteredBotPerformanceData.slice(0, 3)).map(
             (bot: BotPerformanceHistory, index: number) => (
               <TableRow key={index}>
-                <TableCell>{extractBaseBotName(bot.botName)}</TableCell>               
+                <TableCell>{extractBaseBotName(bot.botName)}</TableCell>  
+                <TableCell>{bot?.action? bot?.action : bot.profit===0? "Snipe" : "Sell"}</TableCell>            
                 <TableCell>{bot.trades}</TableCell>
-                <TableCell>{formatCurrency(bot.profit)}</TableCell>
-                <TableCell>{format(new Date(bot?.lastUpdated || bot?.date), 'HH:mm:ss')}</TableCell>
+                <TableCell>
+                <span className={Number(bot.profit) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {
+                  formatCurrency(bot.profit)
+                  }
+                </span>
+                </TableCell>
+                <TableCell>{format(new Date(bot?.lastUpdated || bot?.date), 'dd/mm/yyyy HH:mm:ss')}</TableCell>
               </TableRow>
             )
           )}
@@ -594,18 +602,17 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Time</TableHead>
               <TableHead>Bot</TableHead>
               <TableHead>Action</TableHead>
               <TableHead>Volume</TableHead>
               <TableHead>Impact</TableHead>
+              <TableHead>Time</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {(isActivityLogExpanded ? filteredActivityLogData : filteredActivityLogData.slice(0, 3)).map(
               (activity: ActivityLog) => (
                 <TableRow key={`${activity.timestamp}-${activity.botName}-${activity.action}`}>
-                  <TableCell>{format(new Date(activity.timestamp), 'HH:mm:ss')}</TableCell>
                   <TableCell className="font-medium">{extractBaseBotName(activity.botName)}</TableCell>
                   <TableCell>{activity.action}</TableCell>
                   <TableCell>{formatCurrency(activity.volume)}</TableCell>
@@ -614,6 +621,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
                       {Number(activity.impact) >= 0 ? '+' : ''}{Number(activity.impact).toFixed(2)}%
                     </span>
                   </TableCell>
+                  <TableCell>{format(new Date(activity.timestamp), 'dd/mm/yyyy HH:mm:ss')}</TableCell>
                 </TableRow>
               )
             )}

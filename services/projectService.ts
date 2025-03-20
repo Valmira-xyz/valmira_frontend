@@ -137,6 +137,7 @@ export interface BotPerformanceHistory {
   botName: string;
   status: 'Active' | 'Inactive' | 'Error';
   trades: number;
+  action?: ActivityAction;
   profit: number;
   uptime: string;
   date: string;
