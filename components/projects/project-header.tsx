@@ -5,7 +5,7 @@ import { generateAvatarColor, getBadgeVariant } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {  ProjectHeaderProps } from "@/types"
 import { Button } from "../ui/button"
-import { Copy } from "lucide-react"
+import { Copy, ExternalLink } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
 export function ProjectHeader({ project }: ProjectHeaderProps) {
@@ -72,6 +72,17 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
                 >
                   <Copy className="h-4 w-4" />
                   <span className="sr-only">Copy address</span>
+                </Button>
+                
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <a
+                    href={`https://bscscan.com/address/${project.tokenAddress || "No token address"}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    <span className="sr-only">View on Explorer</span>
+                  </a>
                 </Button>
               </div>
             </div>
