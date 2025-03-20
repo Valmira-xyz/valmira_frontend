@@ -489,29 +489,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>{addon.name}</CardTitle>
-                    {addon.botType === "LiquidationSnipeBot" && (
-                      <Badge
-                        variant={getBadgeVariant(configs[addon.botType].enabled ? "active" : "inactive")} className="font-medium text-sm px-3 py-1 rounded-full"
-                      >
-                        {configs[addon.botType].status === "ready_to_simulation" && "Ready to Simulate"}
-                        {configs[addon.botType].status === "simulating" && "Simulating"}
-                        {configs[addon.botType].status === "simulation_failed" && "Simulation Failed"}
-                        {configs[addon.botType].status === "simulation_succeeded" && "Simulation Succeeded"}
-                        {configs[addon.botType].status === "sniping" && "Sniping"}
-                        {configs[addon.botType].status === "snipe_succeeded" && "Snipe Succeeded"}
-                        {configs[addon.botType].status === "snipe_failed" && "Snipe Failed"}
-                        {configs[addon.botType].status === "auto_selling" && "Auto Selling"}
-                        {configs[addon.botType].status === "selling" && "Selling"}
-                        {configs[addon.botType].status === "sell_failed" && "Sell Failed"}
-                        {configs[addon.botType].status === "sell_succeeded" && "Sell Succeeded"}
-                        {configs[addon.botType].status === "Inactive" && "Inactive"}
-                      </Badge>
-                    )}
-                    {addon.botType !== "LiquidationSnipeBot" && (
                       <Badge variant={getBadgeVariant(configs[addon.botType].enabled ? "active" : "inactive")} className="font-medium text-sm px-3 py-1 rounded-full" >
                         {configs[addon.botType].enabled ? "Active" : "Inactive"}
-                      </Badge>                      
-                    )}
+                      </Badge>      
                   </div>
                   <CardDescription>{addon.description}</CardDescription>
                   {addon.tutorialLink && (
