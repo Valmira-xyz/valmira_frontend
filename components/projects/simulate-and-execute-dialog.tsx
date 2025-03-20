@@ -1877,6 +1877,7 @@ export function SimulateAndExecuteDialog({
                       variant={"outline"}
                       size={"sm"}
                       onClick={() => setShowDistributeDialog(true)}
+                      className="border border-black"
                       disabled={
                         isEstimatingFees ||
                         !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||

@@ -58,28 +58,4 @@ export function useProjectSync() {
     }
   }, [isAuthenticated])
 
-  // Set up periodic refresh
-  useEffect(() => {
-    if (!isAuthenticated) return
-
-    const interval = setInterval(() => {
-      if (!loading && !error) {
-        console.log('Auto-refreshing projects data...')
-        fetchProjectsWithRetry()
-      }
-    }, REFRESH_INTERVAL)
-
-    return () => {
-      clearInterval(interval)
-    }
-  }, [isAuthenticated, loading, error])
-
-  // Handle error state
-  useEffect(() => {
-    if (error && retryCount.current < MAX_RETRIES) {
-      console.log(`Retrying after error (attempt ${retryCount.current + 1}/${MAX_RETRIES})...`)
-      const timeout = setTimeout(fetchProjectsWithRetry, backoffDelay)
-      return () => clearTimeout(timeout)
-    }
-  }, [error, backoffDelay])
 } 
