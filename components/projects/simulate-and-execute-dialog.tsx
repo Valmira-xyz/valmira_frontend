@@ -636,6 +636,101 @@ export function SimulateAndExecuteDialog({
     }
   }
 
+  const handleDistributeBnb = async () => {
+    try {
+      const depositWallet = project?.addons?.LiquidationSnipeBot?.depositWalletId;
+      if (!depositWallet) {
+        toast({
+          title: "Error",
+          description: "Deposit wallet not found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Calculate amounts for each wallet based on the estimation
+      const subWalletAddresses = project?.addons.LiquidationSnipeBot.subWalletIds
+        .map((w: SubWallet) => w.publicKey)
+
+      // Use the wallet's bnbToSpend value or a default if not set
+      const amounts = wallets
+        .filter(w => w.role !== 'botmain')
+        .map(w => w.bnbToSpend || 0);
+
+      console.log("wallets => ", wallets);
+
+      const totalInsufficientBNB = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)
+
+      console.log("totalInsufficientBNB => ", totalInsufficientBNB);
+
+      const totalBnbToSpend = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
+
+      console.log("totalBnbToSpend => ", totalBnbToSpend);
+
+      if (totalInsufficientBNB <= 0 && totalBnbToSpend <= 0) {
+        toast({
+          title: "Information",
+          description: "All wallets already have enough balance for sniping. You can Simulate Bundle now.",
+          variant: "default",
+        });
+        return;
+      }
+
+      setIsDistributingBNBs(true);
+
+      setInsufficientFundsDetails(null);
+      //iterate through wallets and make zero to bnbToSpend and insufficientBnb
+      setWallets(prevWallets => prevWallets.map(wallet => ({
+        ...wallet,
+        bnbToSpend: 0,
+        insufficientBnb: 0
+      })));
+
+      const result = await BotService.distributeBnb({
+        depositWallet: depositWallet.publicKey,
+        subWallets: subWalletAddresses,
+        amounts,
+        projectId: project?._id || "",
+        botId: project?.addons.LiquidationSnipeBot._id || ""
+      });
+      setIsDistributingBNBs(false);
+
+      if (result.success) {
+        setIsBnbDistributed(true);
+        toast({
+          title: "Success",
+          description: "BNB distributed successfully, now automatically estimating fees again",
+        });
+
+        // Save state after successful distribution
+        localStorage.setItem(`modalState_${depositWallet.publicKey}`, JSON.stringify({
+          wallets: wallets.filter(w => w.role !== 'botmain'),
+          snipePercentage,
+          isBnbDistributed: true,
+          liquidityBnbAmount,
+          liquidityTokenAmount,
+          doAddLiquidity
+        }));
+
+        handleEstimateFees();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to distribute BNB",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      setIsEstimatingFees(false);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to distribute BNB",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   const handleDistributeExtraBnb = async () => {
     try {
       const depositWallet = project?.addons?.SnipeBot?.depositWalletId;
@@ -1971,7 +2066,7 @@ export function SimulateAndExecuteDialog({
                   )}
                 </Button>
                 <Button
-                  onClick={() => setShowDistributeDialog(true)}
+                  onClick={handleDistributeBnb}
                   disabled={
                     isEstimatingFees ||
                     !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||
