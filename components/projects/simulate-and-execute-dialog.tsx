@@ -22,7 +22,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { projectService } from "@/services/projectService"
 import { walletApi } from "@/services/walletApi"
 
-
 // Define the SubWallet type for the LiquidationSnipeBot addon
 interface SubWallet {
   _id: string;
@@ -1193,6 +1192,12 @@ export function SimulateAndExecuteDialog({
     }
 
     try {
+      setInsufficientFundsDetails(null)
+      setWallets(prevWallets => prevWallets.map(w => ({
+        ...w,
+        bnbToSpend: 0,
+        insufficientBnb: 0
+      })));
       setIsExecutingMultiSell(true);
 
       const result = await BotService.multiWalletSell({
@@ -1259,6 +1264,13 @@ export function SimulateAndExecuteDialog({
     try {
       setIsCollectingBnb(true);
 
+      setInsufficientFundsDetails(null)
+      setWallets(prevWallets => prevWallets.map(w => ({
+        ...w,
+        bnbToSpend: 0,
+        insufficientBnb: 0
+      })));
+      
       const result = await BotService.collectBnb({
         botId: project?.addons.LiquidationSnipeBot._id,
         walletAddresses: selectedWallets.map(w => w.publicKey),
