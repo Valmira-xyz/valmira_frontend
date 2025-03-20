@@ -15,6 +15,10 @@ import { WalletConnectionButton } from "@/components/wallet/wallet-connection-bu
 import { RootState } from "@/store/store"
 import { generateAvatarColor, getBadgeVariant } from '@/lib/utils'
 import { fetchProjects } from "@/store/slices/projectSlice"
+import Image from "next/image"
+import { useTheme } from "next-themes"
+import { useAccount } from "wagmi"
+import { WalletDisplay } from "../wallet/wallet-display"
 
 import {
   Sidebar,
@@ -28,8 +32,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useAccount } from "wagmi"
-import { WalletDisplay } from "../wallet/wallet-display"
 
 export function DashboardSidebar() {
   const router = useRouter()
@@ -37,6 +39,7 @@ export function DashboardSidebar() {
   const { isConnected } = useAccount()
   const [openProjects, setOpenProjects] = useState(false)
   const [openKnowledge, setOpenKnowledge] = useState(false)
+  const { theme, resolvedTheme } = useTheme()
 
   // Get auth state from Redux store
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth)
@@ -93,7 +96,16 @@ export function DashboardSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4 relative w-full">
-        <h2 className="text-2xl font-bold text-primary">Valmira</h2>
+        <div className="flex justify-start items-center h-8">
+          <Image
+            src={resolvedTheme === "dark" ? "/sidebar/gray_logo.png" : "/sidebar/black_logo.png"}
+            alt="Valmira Logo"
+            width={136}
+            height={32}
+            priority
+            className="object-contain"
+          />
+        </div>
       </SidebarHeader>
       <SidebarContent className="flex flex-col h-full">
         <div className="p-4">
