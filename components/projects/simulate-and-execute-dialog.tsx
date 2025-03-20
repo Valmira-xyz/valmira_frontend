@@ -841,12 +841,14 @@ export function SimulateAndExecuteDialog({
 
 
     let shouldSign = false, unpackedSig = null;
-    const isTradingEnabled = await isTokenTradingEnabled(project?.tokenAddress);
-    shouldSign = !isTradingEnabled;
-
+    const isTradingEnabled = true;
+    console.log("isEmported  : ", project.isImported)
     // you need to check if this project is not a imported project,
     // then you should check the owner address of the token address by calling owner() function,
-    if (!project?.isImported && shouldSign) {
+    if (!project?.isImported) {
+      await isTokenTradingEnabled(project?.tokenAddress);
+      shouldSign = !isTradingEnabled;
+
       const tokenOwner = await getTokenOwner(project?.tokenAddress);
       //check if the token is already enabled for trading
       if (tokenOwner !== signer?.address) {
