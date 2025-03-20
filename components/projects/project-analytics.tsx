@@ -45,6 +45,16 @@ const formatUptime = (ms: number): string => {
   }
 };
 
+// Utility function to extract the base bot name from the full identifier
+const extractBaseBotName = (fullBotName: string): string => {
+  if (!fullBotName) return "";
+  
+  // Split by hyphen and return the first part
+  // e.g., "SnipeBot-2b68b4a081df1ba11c" becomes "SnipeBot"
+  const parts = fullBotName.split('-');
+  return parts[0];
+};
+
 // Utility function to safely check if a value is a valid date
 const isValidDate = (value: any): boolean => {
   if (!value) return false;
@@ -547,10 +557,8 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Bot Name</TableHead>
-            <TableHead>Status</TableHead>
             <TableHead>Trades</TableHead>
             <TableHead>Profit Contribution</TableHead>
-            <TableHead>Uptime</TableHead>
             <TableHead>Date</TableHead>
           </TableRow>
         </TableHeader>
@@ -558,21 +566,9 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
           {(isBotPerformanceExpanded ? filteredBotPerformanceData : filteredBotPerformanceData.slice(0, 3)).map(
             (bot: BotPerformanceHistory, index: number) => (
               <TableRow key={index}>
-                <TableCell>{bot.botName}</TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={
-                      bot.status === 'Active' ? 'default' :
-                      bot.status === 'Inactive' ? 'secondary' :
-                      'destructive'
-                    }
-                  >
-                    {bot.status}
-                  </Badge>
-                </TableCell>
+                <TableCell>{extractBaseBotName(bot.botName)}</TableCell>               
                 <TableCell>{bot.trades}</TableCell>
                 <TableCell>{formatCurrency(bot.profit)}</TableCell>
-                <TableCell>{bot.uptime}</TableCell>
                 <TableCell>{format(new Date(bot?.lastUpdated || bot?.date), 'HH:mm:ss')}</TableCell>
               </TableRow>
             )
@@ -610,7 +606,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
               (activity: ActivityLog) => (
                 <TableRow key={`${activity.timestamp}-${activity.botName}-${activity.action}`}>
                   <TableCell>{format(new Date(activity.timestamp), 'HH:mm:ss')}</TableCell>
-                  <TableCell className="font-medium">{activity.botName}</TableCell>
+                  <TableCell className="font-medium">{extractBaseBotName(activity.botName)}</TableCell>
                   <TableCell>{activity.action}</TableCell>
                   <TableCell>{formatCurrency(activity.volume)}</TableCell>
                   <TableCell>
@@ -752,7 +748,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
                     </>
                   )}
                   {selectedBotPerformance && (
-                    <> for {availableBots.find((bot) => bot.id === selectedBotPerformance)?.name}</>
+                    <> for {extractBaseBotName(availableBots.find((bot) => bot.id === selectedBotPerformance)?.name || '')}</>
                   )}
                 </span>
               </div>
@@ -814,7 +810,7 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
                       {format(activityLogDateRange.to, "MMM dd, yyyy")}
                     </>
                   )}
-                  {selectedBot && <> for {availableBots.find((bot) => bot.id === selectedBot)?.name}</>}
+                  {selectedBot && <> for {extractBaseBotName(availableBots.find((bot) => bot.id === selectedBot)?.name || '')}</>}
                 </span>
               </div>
             )}
