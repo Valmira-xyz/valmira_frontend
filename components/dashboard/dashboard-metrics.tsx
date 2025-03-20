@@ -55,7 +55,7 @@ export function DashboardMetrics() {
     },
     {
       title: "Total Funds Managed",
-      value: globalMetrics?.totalFundsManaged?.value || 0,
+      value: Math.abs(Number(globalMetrics?.aggregateTradingVolume?.value || 0)) + Math.abs(Number(globalMetrics?.aggregateProfits?.value || 0)),
       trend: globalMetrics?.totalFundsManaged?.trend,
       changePercent: globalMetrics?.totalFundsManaged?.changePercent || 0,
       icon: DollarSign
@@ -86,7 +86,7 @@ export function DashboardMetrics() {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {metrics.map((metric, index) => (
-        <Card key={metric.title} className={`relative overflow-hidden ${loading || isLoading ? 'opacity-60' : ''}`}>
+        <Card key={index} className={`relative overflow-hidden ${loading || isLoading ? 'opacity-60' : ''}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base font-bold">{metric.title}</CardTitle>
             <metric.icon className="h-4 w-4 text-muted-foreground" />
@@ -99,7 +99,7 @@ export function DashboardMetrics() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{formatNumber(metric.value)}</div>
+                <div className="text-2xl font-bold">{(index !== 0 && index !==3)? "$" : ""}{formatNumber(metric.value)}</div>
                 {/* {metric.trend && (
                   <div className={`text-xs mt-1 ${metric.trend === 'increasing' ? 'text-green-500' : metric.trend === 'decreasing' ? 'text-red-500' : 'text-gray-500'}`}>
                     {metric.trend === 'increasing' ? '↑' : metric.trend === 'decreasing' ? '↓' : '→'} {metric.changePercent}%
