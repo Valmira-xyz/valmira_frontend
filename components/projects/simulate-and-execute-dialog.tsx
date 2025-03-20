@@ -1087,8 +1087,16 @@ export function SimulateAndExecuteDialog({
       if (result.success) {
         toast({
           title: "Success",
-          description: "Snipe executed successfully",
+          description: "Snipe executed successfully, now refreshing balances.",
         });
+        
+        // Refresh balances after successful sell
+        const allAddresses = [
+          ...(project?.addons.LiquidationSnipeBot.depositWalletId?.publicKey ? [project?.addons.LiquidationSnipeBot.depositWalletId.publicKey] : []),
+          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+        ];
+        fetchBalances(allAddresses);
+
       } else {
         throw new Error(result.error || "Execution failed");
       }
@@ -1213,7 +1221,7 @@ export function SimulateAndExecuteDialog({
       if (result.success) {
         toast({
           title: "Success",
-          description: "Tokens sold successfully from all selected wallets",
+          description: "Tokens sold successfully from all selected wallets, Now refreshing balances",
         });
         // Refresh balances after successful sell
         const allAddresses = [
