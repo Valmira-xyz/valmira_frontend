@@ -120,7 +120,12 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
         <div className="mt-3 flex justify-between items-center">
           <div className="w-full p-2 flex justify-between items-center border rounded-md border-base-border ">
             <p className="text-xs font-medium text-muted-foreground">Active Bots</p>
-            <p className="text-xl font-bold">{metrics.activeBots}</p>
+            <p className="text-xl font-bold">{metrics.activeBots > 0 ? metrics.activeBots : 
+              (project?.addons ? 
+                Object.values(project.addons).reduce((sum: number, addon: any) => 
+                  sum + (addon.isEnabled ? 1 : 0), 0) 
+              : 0)
+            }</p>
           </div>
         </div>
         <div className="mt-3 flex justify-between items-center">
@@ -140,4 +145,5 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
     </Card>
   )
 }
+
 
