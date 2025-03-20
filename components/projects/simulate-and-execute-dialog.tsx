@@ -2254,10 +2254,18 @@ export function SimulateAndExecuteDialog({
                 )}
 
                 <div className="mt-3 p-2 rounded border bg-background">
-                  <p className={simulationResult.sufficientBalance ? "text-green-500 font-medium" : "text-red-500 font-medium"}>
+                  <p className={
+                    simulationResult.sufficientBalance
+                      ? (Number(simulationResult.snipingBnb) + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))) > 0
+                        ? "text-amber-500 font-medium"
+                        : "text-green-500 font-medium"
+                      : "text-red-500 font-medium"
+                  }>
                     {simulationResult.sufficientBalance
-                      ? "✓ Fee estimation successful. You can proceed with execution."
-                      : `⚠ Insufficient balance. Distribute more BNB before execution.`}
+                      ? (Number(simulationResult.snipingBnb) + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))) > 0 
+                        ? "✓ Fee estimation successful. You can distribute BNB to sniping wallets and then proceed with simulation and execution." 
+                        : "✓✓ Perfect. All sniping wallets have sufficient BNB balance."
+                      : `⚠ Insufficient balance. You need to fill BNB to deposit wallet and then distribute BNB to sniping wallets before proceeding with simulation and execution.`}
                   </p>
                 </div>
 
@@ -2283,7 +2291,7 @@ export function SimulateAndExecuteDialog({
             )}
           </div>
 
-          <div className="h-full flex flex-col gap-2 justify-end">
+          <div className="h-full flex flex-col gap-2 justify-start">
             <Button
               onClick={handleMultiSell}
               disabled={
