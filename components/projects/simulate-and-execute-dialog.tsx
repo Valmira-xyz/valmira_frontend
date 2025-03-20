@@ -677,6 +677,8 @@ export function SimulateAndExecuteDialog({
         depositWallet: depositWallet.publicKey,
         subWallets: subWalletAddresses,
         amounts,
+        projectId: project?._id || "",
+        botId: project?.addons.LiquidationSnipeBot._id || ""
       });
       setIsDistributingBNBs(false);
 
@@ -1282,7 +1284,8 @@ export function SimulateAndExecuteDialog({
       const result = await BotService.collectBnb({
         botId: project?.addons.LiquidationSnipeBot._id,
         walletAddresses: selectedWallets.map(w => w.publicKey),
-        targetWallet: project?.addons.LiquidationSnipeBot.depositWalletId.publicKey
+        targetWallet: project?.addons.LiquidationSnipeBot.depositWalletId.publicKey,
+        projectId: project?._id || ""
       });
 
       if (result.success) {

@@ -228,6 +228,8 @@ export class BotService {
     depositWallet: string;
     subWallets: string[];
     amounts: number[];
+    projectId: string;
+    botId: string;
   }): Promise<{ success: boolean; message: string }> {
     const response = await api.post<{ success: boolean; message: string }>(
       `${BACKEND_URL}/snipe/distribute`,
@@ -328,6 +330,7 @@ export class BotService {
     botId: string;
     walletAddresses: string[];
     targetWallet: string;
+    projectId: string;
   }): Promise<{
     success: boolean;
     walletResults?: {
