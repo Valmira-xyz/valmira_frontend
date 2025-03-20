@@ -400,22 +400,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
     });
   }
 
-  const handleSaveEdit = (id: string, newConfig: Partial<BotConfig>) => {
-    setConfigs((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], ...newConfig },
-    }))
-    
-    if (project?._id || projectId) {
-      dispatch(updateBotConfig({
-        projectId: project?._id || projectId,
-        botType: id as BotType,
-        config: newConfig
-      }));
-    }
-    
-    setEditingBot(null)
-  }
 
   const handleSave = (id: string) => {
     if (id === "LiquidationSnipeBot" && configs[id].status === "auto_selling") {
@@ -456,31 +440,6 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         ? "The sniping operation was successful. You can now migrate to Auto Sell Bot."
         : "The sniping operation failed. You can retry or adjust your parameters.",
       variant: success ? "default" : "destructive",
-    })
-  }
-
-  const handleReset = (id: string) => {
-    setConfigs((prev) => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        status: "ready_to_simulation" as LiquidationSnipeBotStatus,
-        enabled: false,
-        amount: 1000,
-        nativeCurrency: 0,
-        tokenAmount: 0,
-        autoSell: {
-          enabled: false,
-          targetPrice: 0,
-          stopLoss: 0,
-        },
-        speed: "medium" as Speed,
-        maxBundleSize: 0.25,
-      },
-    }))
-    toast({
-      title: "Bot Reset",
-      description: "The Liquidation & Snipe Bot has been reset and is ready for a new operation.",
     })
   }
 

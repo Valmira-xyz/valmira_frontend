@@ -20,6 +20,7 @@ import { getTokenOwner, isTokenTradingEnabled, calculateSnipeAmount as calculate
 import { ApproveAndAddLiquidityButtons } from "@/components/projects/ApproveAndAddLiquidityButtons"
 import { Checkbox } from "@/components/ui/checkbox"
 import { projectService } from "@/services/projectService"
+import { walletApi } from "@/services/walletApi"
 
 
 // Define the SubWallet type for the LiquidationSnipeBot addon
@@ -228,7 +229,7 @@ export function SimulateAndExecuteDialog({
 
     // Use a longer debounce time
     const timer = setTimeout(fetchBalances, 1000);
-    
+
     return () => {
       clearTimeout(timer);
       // Reset the progress flags on cleanup
@@ -643,17 +644,17 @@ export function SimulateAndExecuteDialog({
         .filter(w => w.role !== 'botmain')
         .map(w => w.bnbToSpend || 0);
 
-        console.log("wallets => ", wallets);
+      console.log("wallets => ", wallets);
 
-        const totalInsufficientBNB = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)
-        
-        console.log("totalInsufficientBNB => ", totalInsufficientBNB);
+      const totalInsufficientBNB = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)
 
-        const totalBnbToSpend = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
+      console.log("totalInsufficientBNB => ", totalInsufficientBNB);
 
-        console.log("totalBnbToSpend => ", totalBnbToSpend);
+      const totalBnbToSpend = wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)
 
-      if (totalInsufficientBNB <= 0 && totalBnbToSpend<=0) {
+      console.log("totalBnbToSpend => ", totalBnbToSpend);
+
+      if (totalInsufficientBNB <= 0 && totalBnbToSpend <= 0) {
         toast({
           title: "Information",
           description: "All wallets already have enough balance for sniping. You can Simulate Bundle now.",
@@ -663,7 +664,7 @@ export function SimulateAndExecuteDialog({
       }
 
       setIsDistributingBNBs(true);
-      
+
       setInsufficientFundsDetails(null);
       //iterate through wallets and make zero to bnbToSpend and insufficientBnb
       setWallets(prevWallets => prevWallets.map(wallet => ({
@@ -944,22 +945,22 @@ export function SimulateAndExecuteDialog({
           const errorMsg = result.error;
           const addressMatch = errorMsg.match(/address\s+([0-9a-fA-Fx]+)/);
           const amountsMatch = errorMsg.match(/have\s+(\d+)\s+want\s+(\d+)/);
-          
+
           if (addressMatch && amountsMatch) {
             const walletAddress = addressMatch[1];
             const availableWei = BigInt(amountsMatch[1]);
             const requiredWei = BigInt(amountsMatch[2]);
-            
+
             // Convert from wei to BNB (1 BNB = 10^18 wei)
             const availableBnb = Number(availableWei) / 1e18;
             const requiredBnb = Number(requiredWei) / 1e18;
             const missingBnb = Number(requiredWei - availableWei) / 1e18;
-            
+
             // Find which wallet has insufficient funds
-            const walletType = wallets.find(w => w.publicKey?.toString()?.toLowerCase() === walletAddress?.toString()?.toLowerCase())?.role === 'botmain' 
-              ? 'Deposit Wallet' 
+            const walletType = wallets.find(w => w.publicKey?.toString()?.toLowerCase() === walletAddress?.toString()?.toLowerCase())?.role === 'botmain'
+              ? 'Deposit Wallet'
               : 'Sniping Wallet';
-            
+
             // Update simulation result to reflect insufficient balance
             setSimulationResult(prev => {
               if (!prev) return null;
@@ -969,7 +970,7 @@ export function SimulateAndExecuteDialog({
                 totalBnbNeeded: prev.totalBnbNeeded + missingBnb,
               };
             });
-            
+
             // Set insufficient funds details
             setInsufficientFundsDetails({
               walletAddress,
@@ -978,29 +979,29 @@ export function SimulateAndExecuteDialog({
               requiredBnb,
               missingBnb
             });
-            
+
             // Update the wallet with the insufficientBnb property
-            setWallets(prevWallets => 
-              prevWallets.map(wallet => 
-                wallet.publicKey === walletAddress 
+            setWallets(prevWallets =>
+              prevWallets.map(wallet =>
+                wallet.publicKey === walletAddress
                   ? { ...wallet, bnbToSpend: Number(wallet.bnbToSpend) + Number(missingBnb), insufficientBnb: missingBnb }
                   : wallet
               )
             );
-            
+
             // Show detailed error message
             toast({
               title: "Insufficient BNB Balance",
               description: `${walletType} (${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}) has ${availableBnb.toFixed(6)} BNB but needs ${requiredBnb.toFixed(6)} BNB. Missing ${missingBnb.toFixed(6)} BNB.`,
               variant: "destructive",
             });
-            
+
             // Return early to prevent the generic error message
             setIsSimulating(false);
             return;
           }
         }
-        
+
         // If not an insufficient funds error or couldn't parse it, throw the original error
         throw new Error(result.error || "Simulation failed");
       }
@@ -1175,9 +1176,9 @@ export function SimulateAndExecuteDialog({
 
   const handleMultiSell = async () => {
     // Filter wallets that are selected for multi-sell and have token balance > 0
-    const selectedWallets = wallets.filter(w => 
-      w.isSelectedForMutilSell && 
-      w.role !== 'botmain' && 
+    const selectedWallets = wallets.filter(w =>
+      w.isSelectedForMutilSell &&
+      w.role !== 'botmain' &&
       (w.tokenBalance || 0) > 0
     );
 
@@ -1192,7 +1193,7 @@ export function SimulateAndExecuteDialog({
 
     try {
       setIsExecutingMultiSell(true);
-      
+
       const result = await BotService.multiWalletSell({
         projectId: project?._id,
         botId: project?.addons.LiquidationSnipeBot._id,
@@ -1541,7 +1542,7 @@ export function SimulateAndExecuteDialog({
                               console.error('Failed to log LP addition activity:', error);
                             }
                           }
-                          
+
                           setLiquidityTokenAmount(0);
                           setLiquidityBnbAmount(0);
                           fetchPoolInfo();
@@ -1635,6 +1636,50 @@ export function SimulateAndExecuteDialog({
                           <span className="sr-only">View on Explorer</span>
                         </a>
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={async () => {
+                          if (project.addons.LiquidationSnipeBot.depositWalletId) {
+                            try {
+                              const publicKey = project.addons.LiquidationSnipeBot.depositWalletId.publicKey;
+                              const blob = await walletApi.downloadWalletAsCsv(publicKey);
+
+                              // Create a URL for the blob
+                              const url = window.URL.createObjectURL(blob);
+
+                              // Create a temporary link element
+                              const link = document.createElement("a");
+                              link.href = url;
+                              link.setAttribute("download", `wallet-${publicKey}.csv`);
+
+                              // Append to the document, click it, and remove it
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+
+                              // Clean up the URL object
+                              window.URL.revokeObjectURL(url);
+
+                              toast({
+                                title: "Success",
+                                description: "Wallet downloaded successfully",
+                              });
+                            } catch (error) {
+                              console.error("Failed to download wallet:", error);
+                              toast({
+                                title: "Download Failed",
+                                description: "Could not download wallet. Please try again.",
+                                variant: "destructive",
+                              });
+                            }
+                          }
+                        }}
+                      >
+                        <Download className="h-4 w-4" />
+                        <span className="sr-only">Download Wallet</span>
+                      </Button>                      
                     </div>
                   </div>
                   <div className="w-full flex justify-between ">
@@ -1701,7 +1746,7 @@ export function SimulateAndExecuteDialog({
                   </div>
                   <Button
                     onClick={handleGenerateWallets}
-                    disabled={isGenerating || isProjectLoading ||  
+                    disabled={isGenerating || isProjectLoading ||
                       isEstimatingFees || isDistributingBNBs || isSimulating || isExecuting}
                     className="h-8 !w-32 whitespace-nowrap"
                     size="sm"
@@ -1732,7 +1777,7 @@ export function SimulateAndExecuteDialog({
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Percentage of tokens in pool 
+                    Percentage of tokens in pool
                   </div>
 
                   <Button
@@ -1790,7 +1835,7 @@ export function SimulateAndExecuteDialog({
                         }));
                       }
                     }}
-                    disabled={!wallets.length || isProjectLoading ||  
+                    disabled={!wallets.length || isProjectLoading ||
                       isEstimatingFees || isDistributingBNBs || isSimulating || isExecuting}
                     className="h-8 !w-32 whitespace-nowrap"
                     size="sm"
@@ -1815,25 +1860,25 @@ export function SimulateAndExecuteDialog({
                 </Button>
                 <Button
                   onClick={handleDistributeBnb}
-                  disabled={ 
-                    isEstimatingFees || 
-                    !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length || 
-                    isDistributingBNBs || 
-                    isProjectLoading || 
-                    isSimulating || 
+                  disabled={
+                    isEstimatingFees ||
+                    !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||
+                    isDistributingBNBs ||
+                    isProjectLoading ||
+                    isSimulating ||
                     isExecuting
                   }
                   className={
-                    simulationResult && 
-                    (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) < 
-                    (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
+                    simulationResult &&
+                      (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
+                      (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
                       ? "border-red-500 hover:border-red-600"
                       : ""
                   }
                   title={
-                    simulationResult && 
-                    (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) < 
-                    (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
+                    simulationResult &&
+                      (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
+                      (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
                       ? "Deposit wallet has insufficient BNB balance"
                       : ""
                   }
@@ -1844,9 +1889,9 @@ export function SimulateAndExecuteDialog({
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Distributing...
                       </>
-                    ) : simulationResult && 
-                       (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) < 
-                       (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0))) ? (
+                    ) : simulationResult &&
+                      (wallets.find(w => w.publicKey === project?.addons?.LiquidationSnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
+                      (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0))) ? (
                       <>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-red-500"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                         Insufficient BNB
@@ -1858,8 +1903,8 @@ export function SimulateAndExecuteDialog({
                 </Button>
                 <Button
                   onClick={handleSimulate}
-                  disabled={ 
-                    isEstimatingFees || isSimulating || !simulationResult || isExecuting || isProjectLoading }
+                  disabled={
+                    isEstimatingFees || isSimulating || !simulationResult || isExecuting || isProjectLoading}
                 >
                   {isSimulating ? (
                     <>
@@ -1874,8 +1919,8 @@ export function SimulateAndExecuteDialog({
                   onClick={handleExecute}
                   disabled={
                     isExecuting ||
-                    isEstimatingFees || 
-                    isSimulating || isProjectLoading 
+                    isEstimatingFees ||
+                    isSimulating || isProjectLoading
                   }
                 >
                   {isExecuting ? (
@@ -1984,13 +2029,13 @@ export function SimulateAndExecuteDialog({
                         </div>
                       </TableHead>
                       <TableHead className="bg-muted/50 font-medium w-[20%]">
-                          Sell amount(% of token balance)
+                        Sell amount(% of token balance)
                       </TableHead>
                       <TableHead className="bg-muted/50 font-medium w-[20%]">
-                          Select for mutil sell
+                        Select for mutil sell
                       </TableHead>
                       <TableHead className="bg-muted/50 font-medium w-[20%]">
-                          Single sell
+                        Single sell
                       </TableHead>
                     </TableRow>
                   </TableHeader>
@@ -2005,7 +2050,7 @@ export function SimulateAndExecuteDialog({
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
-                                onClick={() => wallet?.publicKey && copyToClipboard(wallet.publicKey) }
+                                onClick={() => wallet?.publicKey && copyToClipboard(wallet.publicKey)}
                               >
                                 <Copy className="h-4 w-4" />
                                 <span className="sr-only">Copy address</span>
@@ -2030,31 +2075,31 @@ export function SimulateAndExecuteDialog({
                           <TableCell className="text-center">{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
                           <TableCell className="text-center">{(wallet.tokenBalance || 0).toLocaleString()}</TableCell>
                           <TableCell className="text-center">
-                            {                           
+                            {
                               (wallet.bnbToSpend || 0).toFixed(4)
                             }
                           </TableCell>
                           <TableCell className="text-center">{(wallet.tokenAmount || 0).toFixed(0)}</TableCell>
                           <TableCell className="text-center">
-                            <Input 
-                              type="number" 
-                              min={0} 
-                              max={100} 
-                              value={wallet.sellPercentage === undefined ? 100 : wallet.sellPercentage} 
-                              onChange={(e) => setWallets(prev => 
-                                prev.map(w => w.publicKey === wallet.publicKey 
-                                  ? { ...w, sellPercentage: Number(e.target.value) } 
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={wallet.sellPercentage === undefined ? 100 : wallet.sellPercentage}
+                              onChange={(e) => setWallets(prev =>
+                                prev.map(w => w.publicKey === wallet.publicKey
+                                  ? { ...w, sellPercentage: Number(e.target.value) }
                                   : w
                                 )
-                              )} 
+                              )}
                             />
                           </TableCell>
                           <TableCell className="text-center">
-                            <Checkbox 
+                            <Checkbox
                               checked={(wallet.tokenBalance || 0) <= 0 ? false : (wallet.isSelectedForMutilSell || false)}
-                              onCheckedChange={(checked) => setWallets(prev => 
-                                prev.map(w => w.publicKey === wallet.publicKey 
-                                  ? { ...w, isSelectedForMutilSell: checked === true } 
+                              onCheckedChange={(checked) => setWallets(prev =>
+                                prev.map(w => w.publicKey === wallet.publicKey
+                                  ? { ...w, isSelectedForMutilSell: checked === true }
                                   : w
                                 )
                               )}
@@ -2062,12 +2107,12 @@ export function SimulateAndExecuteDialog({
                             />
                           </TableCell>
                           <TableCell className="text-center">
-                            <Button 
+                            <Button
                               className="h-8"
                               onClick={() => handleSingleSell(wallet.publicKey, wallet.sellPercentage || 100)}
                               disabled={
-                                executingSingleSells[wallet.publicKey] || 
-                                wallet.isSelectedForMutilSell || 
+                                executingSingleSells[wallet.publicKey] ||
+                                wallet.isSelectedForMutilSell ||
                                 (wallet.tokenBalance || 0) <= 0
                               }
                             >
@@ -2088,7 +2133,7 @@ export function SimulateAndExecuteDialog({
                     )}
                   </TableBody>
                 </Table>
-              </div>              
+              </div>
             </div>
           )}
         </div>
@@ -2166,24 +2211,24 @@ export function SimulateAndExecuteDialog({
           </div>
 
           <div className="h-full flex justify-end">
-          <Button
-            onClick={handleMultiSell}
-            disabled={
-              isExecutingMultiSell || 
-              !wallets.some(w => 
-                w.isSelectedForMutilSell && 
-                w.role !== 'botmain' && 
-                (w.tokenBalance || 0) > 0
-              )
-            }
-            className="bg-primary"
-          >
-            {isExecutingMultiSell ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            Execute Multi Sell
-          </Button>
-        </div>
+            <Button
+              onClick={handleMultiSell}
+              disabled={
+                isExecutingMultiSell ||
+                !wallets.some(w =>
+                  w.isSelectedForMutilSell &&
+                  w.role !== 'botmain' &&
+                  (w.tokenBalance || 0) > 0
+                )
+              }
+              className="bg-primary"
+            >
+              {isExecutingMultiSell ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Execute Multi Sell
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
