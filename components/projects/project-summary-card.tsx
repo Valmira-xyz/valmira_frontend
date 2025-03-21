@@ -102,14 +102,14 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
       </CardHeader>
       <CardContent className="pb-2">
         <div className="grid grid-cols-2 gap-4">
-          <div>
+        <div className="flex w-full flex-col items-start justify-center gap-2">
             <p className="text-xs font-medium text-muted-foreground">Cumulative Profit</p>
             <p className="text-2xl font-bold text-primary">${formatNumber(metrics.cumulativeProfit)}</p>
             {/* <div className="h-10">
               <SparklineChart data={trends.profitTrend.map(d => d.value)} color="hsl(var(--chart-1))" />
             </div> */}
           </div>
-          <div>
+          <div className="flex w-full flex-col items-end justify-center gap-2">
             <p className="text-xs font-medium text-muted-foreground">Cumulative Volume</p>
             <p className="text-xl font-bold">${formatNumber(metrics.volume24h)}</p>
             {/* <div className="h-10">
