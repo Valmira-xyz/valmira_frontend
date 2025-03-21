@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { DateRange } from "react-day-picker"
+import { CreateProjectButton } from "./create-project-button"
 
 interface ProjectsListProps {
   limit?: number
@@ -156,9 +157,7 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
             <Download className="mr-2 h-4 w-4" /> Export
           </Button>
           
-          <Button onClick={handleCreateNew}>
-            <Plus className="mr-2 h-4 w-4" /> Create New
-          </Button>
+          <CreateProjectButton />
         </div>
         
         {/* Project Cards Grid */}
