@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { RefreshCw } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
@@ -9,47 +9,73 @@ import { fetchProject, fetchProjectStats } from "@/store/slices/projectSlice"
 
 interface ProjectRefreshButtonProps {
   projectId: string
-  onRefresh?: () => void
+  onRefresh?: () => Promise<void>
 }
 
 export function ProjectRefreshButton({ projectId, onRefresh }: ProjectRefreshButtonProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
   const dispatch = useDispatch()
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isRefreshingRef = useRef(false) // Track refresh state in a ref to prevent race conditions
+
+  // Clean up any pending timers when component unmounts
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleRefresh = async () => {
-    setIsRefreshing(true)
-
-    try {
-      // Fetch updated project data
-      await dispatch(fetchProject(projectId) as any)
-
-      // Fetch updated project stats
-      const end = new Date()
-      const start = new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-      await dispatch(fetchProjectStats({ projectId, timeRange: { start, end } }) as any)
-
-      // Call the onRefresh callback if provided
-      if (onRefresh) {
-        onRefresh()
-      }
-
-      // Show success toast
-      toast({
-        title: "Data refreshed",
-        description: "Project data has been updated successfully.",
-        duration: 3000,
-      })
-    } catch (error) {
-      toast({
-        title: "Refresh failed",
-        description: "Failed to refresh project data. Please try again.",
-        variant: "destructive",
-        duration: 5000,
-      })
-    } finally {
-      setIsRefreshing(false)
+    // Prevent multiple rapid clicks
+    if (isRefreshing || isRefreshingRef.current) {
+      return
     }
+
+    // Debounce the refresh action
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    debounceTimerRef.current = setTimeout(async () => {
+      setIsRefreshing(true)
+      isRefreshingRef.current = true
+
+      try {
+        // Fetch updated project data
+        await dispatch(fetchProject(projectId) as any)
+
+        // Fetch updated project stats
+        const end = new Date()
+        const start = new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+        await dispatch(fetchProjectStats({ projectId, timeRange: { start, end } }) as any)
+
+        // Call the onRefresh callback if provided
+        if (onRefresh) {
+          await onRefresh()
+        }
+
+        // Show success toast
+        toast({
+          title: "Data refreshed",
+          description: "Project data has been updated successfully.",
+          duration: 3000,
+        })
+      } catch (error) {
+        console.error("Refresh error:", error)
+        toast({
+          title: "Refresh failed",
+          description: "Failed to refresh project data. Please try again.",
+          variant: "destructive",
+          duration: 5000,
+        })
+      } finally {
+        setIsRefreshing(false)
+        isRefreshingRef.current = false
+      }
+    }, 300) // 300ms debounce
   }
 
   return (

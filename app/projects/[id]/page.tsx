@@ -3,12 +3,12 @@ import { useParams } from "next/navigation"
 import { PageHeader } from "@/components/layout/page-header"
 import { ProjectHeader } from "@/components/projects/project-header"
 import { ProjectMetrics } from "@/components/projects/project-metrics"
-import { ProjectAnalytics } from "@/components/projects/project-analytics"
+import { ProjectAnalytics, ProjectAnalyticsHandle } from "@/components/projects/project-analytics"
 import { ProjectAddOns } from "@/components/projects/project-add-ons"
 import { ProjectDangerZone } from "@/components/projects/project-danger-zone"
 import { ProjectRefreshButton } from "@/components/projects/project-refresh-button"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchProject, clearCurrentProject, fetchProjectStats } from '@/store/slices/projectSlice'
@@ -39,6 +39,9 @@ export default function ProjectDetailPage() {
   const projectId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : ''
   const { projects, loading: isLoading, error, projectStats } = useSelector((state: RootState) => state.projects)
   const project = projects.find((project) => project._id?.toString() === projectId)
+
+  // Add a ref to access the ProjectAnalytics methods
+  const analyticsRef = useRef<ProjectAnalyticsHandle>(null);
 
   // Combined authentication check and data fetching
   useEffect(() => {
@@ -90,8 +93,17 @@ export default function ProjectDetailPage() {
 
   const handleRefresh = async () => {
     if (projectId) {
-      // Fetch project first
-      await dispatch(fetchProject(projectId) as any)            
+      try {
+        // Fetch project first
+        await dispatch(fetchProject(projectId) as any);
+        
+        // Then refresh the analytics component using the exposed method
+        if (analyticsRef.current) {
+          await analyticsRef.current.refreshData();
+        }
+      } catch (error) {
+        console.error("Error refreshing data:", error);
+      }
     }
   }
 
@@ -110,6 +122,7 @@ export default function ProjectDetailPage() {
       {projectWithAddons && <ProjectMetrics project={projectWithAddons} /> }
       <ProjectAnalytics 
         project={project}
+        ref={analyticsRef}
       />
       <ProjectAddOns project={projectWithAddons} />
       {projectWithAddons && <ProjectDangerZone project={projectWithAddons} />}     

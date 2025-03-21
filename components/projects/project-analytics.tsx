@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback, forwardRef, useImperativeHandle } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
@@ -91,15 +91,22 @@ const toSafeDate = (value: any): Date | null => {
   }
 };
 
+// Define the imperative handle interface
+export interface ProjectAnalyticsHandle {
+  refreshData: () => Promise<void>;
+}
+
 interface ProjectAnalyticsProps {
   project?: {
     _id: string;
     botPerformance?: BotPerformanceHistory[];
     recentActivity?: ActivityLog[];
   };
+  ref?: React.Ref<ProjectAnalyticsHandle>;
 }
 
-export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
+// Convert to forwardRef component to expose methods to parent
+export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyticsProps>(({ project }, ref) => {
   const [volumeTrends, setVolumeTrends] = useState<TimeSeriesDataPoint[]>([])
   const [profitTrends, setProfitTrends] = useState<TimeSeriesDataPoint[]>([])
   const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>("24h")
@@ -164,6 +171,35 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
     profitPeriod: undefined,
     volumePeriod: undefined
   })
+
+  // Add a new ref to track refresh requests
+  const refreshInProgress = useRef(false);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Expose methods to parent component via useImperativeHandle
+  useImperativeHandle(ref, () => ({
+    refreshData: async () => {
+      // Clear any pending refresh timeout
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+      
+      // Set a small delay to prevent accidental double-clicks
+      return new Promise(resolve => {
+        refreshTimeoutRef.current = setTimeout(async () => {
+          try {
+            await fetchTrendingData(true); // Pass true to force refresh
+            await fetchBotPerformance();
+            await fetchActivityLog();
+            resolve();
+          } catch (error) {
+            console.error("Error refreshing analytics data:", error);
+            resolve(); // Resolve even on error to prevent hanging promises
+          }
+        }, 100);
+      });
+    }
+  }));
 
   // Filtered data memoization
   const filteredBotPerformanceData = useMemo(() => {
@@ -401,10 +437,6 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
     }
   }
 
-  const formatDate = (timestamp: number) => {
-    return format(new Date(timestamp), 'MMM dd HH:mm')
-  }
-
   // Function to get date range based on time period
   const getDateRangeForPeriod = (period: TimePeriod): { start: Date; end: Date } => {
     const end = new Date()
@@ -430,57 +462,85 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
     return { start, end }
   }
 
-  // Function to fetch both trending data sets
-  const fetchTrendingData = useCallback(async () => {
-    if (!projectId) return
+  // Update fetchTrendingData to accept a force parameter
+  const fetchTrendingData = useCallback(async (force = false) => {
+    if (!projectId) return;
 
     const newParams = {
       projectId,
       profitPeriod: profitTimePeriod,
       volumePeriod: volumeTimePeriod
-    }
+    };
 
-    // Skip if fetch is already in progress or if params haven't changed
-    if (trendingFetchInProgress.current) {
-      return
+    // Skip if fetch is already in progress
+    if (trendingFetchInProgress.current && !force) {
+      return;
     }
 
     const paramsUnchanged = 
       lastTrendingFetchParams.current.projectId === newParams.projectId &&
       lastTrendingFetchParams.current.profitPeriod === newParams.profitPeriod &&
-      lastTrendingFetchParams.current.volumePeriod === newParams.volumePeriod
+      lastTrendingFetchParams.current.volumePeriod === newParams.volumePeriod;
 
-    if (paramsUnchanged) {
-      return
+    // Skip if params haven't changed, unless force=true
+    if (paramsUnchanged && !force) {
+      return;
     }
 
     try {
-      trendingFetchInProgress.current = true
-      lastTrendingFetchParams.current = newParams
+      // Set the in-progress flag to prevent duplicate fetches
+      trendingFetchInProgress.current = true;
+      lastTrendingFetchParams.current = newParams;
 
-      // Fetch both trending datasets in parallel
-      const [profitData, volumeData] = await Promise.all([
-        projectService.getProfitTrending(projectId, getDateRangeForPeriod(profitTimePeriod)),
-        projectService.getVolumeTrending(projectId, getDateRangeForPeriod(volumeTimePeriod))
-      ])
+      // Add exponential backoff for retries to prevent 429 errors
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      let profitData, volumeData;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          // Fetch both trending datasets in parallel
+          [profitData, volumeData] = await Promise.all([
+            projectService.getProfitTrending(projectId, getDateRangeForPeriod(profitTimePeriod)),
+            projectService.getVolumeTrending(projectId, getDateRangeForPeriod(volumeTimePeriod))
+          ]);
+          
+          // If successful, break out of retry loop
+          break;
+        } catch (error: any) {
+          // If it's a 429 error, wait and retry
+          if (error.status === 429 && retryCount < maxRetries) {
+            retryCount++;
+            // Exponential backoff: 1s, 2s, 4s, etc.
+            const delay = Math.pow(2, retryCount) * 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else {
+            // If it's not a 429 error or we've exceeded retries, rethrow
+            throw error;
+          }
+        }
+      }
 
-      setProfitTrends(profitData)
-      setVolumeTrends(volumeData)
+      // Only update state if we have data
+      if (profitData) setProfitTrends(profitData);
+      if (volumeData) setVolumeTrends(volumeData);
     } catch (error) {
-      console.error("Error fetching trending data:", error)
+      console.error("Error fetching trending data:", error);
     } finally {
-      trendingFetchInProgress.current = false
+      // Always clear the in-progress flag when done
+      trendingFetchInProgress.current = false;
     }
-  }, [projectId, profitTimePeriod, volumeTimePeriod])
+  }, [projectId, profitTimePeriod, volumeTimePeriod]);
 
   // Single effect to handle both trending data fetches
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchTrendingData()
-    }, 100)
+      fetchTrendingData();
+    }, 100);
 
-    return () => clearTimeout(timer)
-  }, [fetchTrendingData])
+    return () => clearTimeout(timer);
+  }, [fetchTrendingData]);
 
   // Update the chartData memo to use the new state
   const chartData = useMemo(() => {
@@ -827,5 +887,8 @@ export function ProjectAnalytics({ project }: ProjectAnalyticsProps) {
       </Collapsible>
     </div>
   )
-}
+})
+
+// Add display name for debugging
+ProjectAnalytics.displayName = "ProjectAnalytics";
 
