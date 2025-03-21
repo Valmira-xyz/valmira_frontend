@@ -101,11 +101,11 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     // Validate fees
     const buyTax = parseFloat(newTokenBuyTax);
     const sellTax = parseFloat(newTokenSellTax);
-    if (isNaN(buyTax) || buyTax < 0 || buyTax > 25) {
-      errors.push("Buy tax must be between 0 and 25");
+    if (isNaN(buyTax) || buyTax < 0 || buyTax > 5) {
+      errors.push("Buy tax must be between 0 and 5");
     }
-    if (isNaN(sellTax) || sellTax < 0 || sellTax > 25) {
-      errors.push("Sell tax must be between 0 and 25");
+    if (isNaN(sellTax) || sellTax < 0 || sellTax > 5) {
+      errors.push("Sell tax must be between 0 and 5");
     }
 
     // Validate limits
@@ -732,9 +732,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenBuyTax(e.target.value)}
                         required
                         min="0"
-                        max="10"
+                        max="5"
                         step="0.1"
                         disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                        placeholder="Max 5%"
                       />
                       
                     </div>
@@ -748,8 +749,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenSellTax(e.target.value)}
                         required
                         min="0"
-                        max="10"
+                        max="5"
                         step="0.1"
+                        placeholder="Max 5%"
                         disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
                       />
                     </div>
