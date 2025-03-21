@@ -111,11 +111,88 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
   }
 
   const handleExport = () => {
-    // Export logic here
-    toast({
-      title: "Export Initiated",
-      description: "Your projects data is being exported",
-    });
+    // Don't export if no projects to export
+    if (displayedProjects.length === 0) {
+      toast({
+        title: "Export Failed",
+        description: "No projects available to export",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Define CSV headers based on the project data structure
+      const headers = [
+        'Project ID',
+        'Name',
+        'Token Address',
+        'Pair Address',
+        'Chain',
+        'Symbol',
+        'Status',
+        'Created Date',
+        'Active Bots',
+        'Volume (24h)',
+        'Cumulative Profit'
+      ];
+
+      // Convert displayed projects to CSV rows
+      const csvData = displayedProjects.map(project => {
+        // Format the data for CSV
+        return [
+          project._id,
+          project.name,
+          project.tokenAddress || '',
+          project.pairAddress || '',
+          project.chainName || '',
+          project.symbol || '',
+          project.status || '',
+          new Date(project.createdAt).toLocaleDateString(),
+          project.metrics?.activeBots || 0,
+          project.metrics?.volume24h || 0,
+          project.metrics?.cumulativeProfit || 0
+        ];
+      });
+
+      // Convert arrays to CSV format
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => row.map(cell => 
+          typeof cell === 'string' && cell.includes(',') 
+            ? `"${cell}"` 
+            : cell
+        ).join(','))
+      ].join('\n');
+
+      // Create a Blob and download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Set up download attributes
+      const date = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `projects_export_${date}.csv`);
+      link.style.visibility = 'hidden';
+      
+      // Append to document, trigger download and clean up
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Export Successful",
+        description: "Your projects data has been exported as CSV",
+      });
+    } catch (error) {
+      console.error("Export failed:", error);
+      toast({
+        title: "Export Failed",
+        description: "An error occurred while exporting data",
+        variant: "destructive"
+      });
+    }
   }
   
   return (
