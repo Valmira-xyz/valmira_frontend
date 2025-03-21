@@ -44,7 +44,7 @@ export function DistributeBnbDialog({
     ? selectedForMulti 
     : wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain');
     
-  const walletCount = snipingWallets.length;
+  const walletCount = selectedForMulti.length;
   const amountPerWallet = walletCount > 0 ? (distributeAmount / walletCount) : 0;
 
   // Quick percentage button handler

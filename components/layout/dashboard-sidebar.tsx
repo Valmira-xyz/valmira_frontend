@@ -37,7 +37,7 @@ export function DashboardSidebar() {
   const router = useRouter()
   const dispatch = useDispatch()
   const { isConnected } = useAccount()
-  const [openProjects, setOpenProjects] = useState(false)
+  const [openProjects, setOpenProjects] = useState(true)
   const [openKnowledge, setOpenKnowledge] = useState(false)
   const { theme, resolvedTheme } = useTheme()
 
@@ -165,13 +165,13 @@ export function DashboardSidebar() {
                     onClick={() => router.push("/projects")}
                     className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
                   >
-                    Your projects...
+                    Your projects
                   </button>
                   <button
                     onClick={() => router.push("/public-projects")}
                     className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
                   >
-                    View all projects...
+                    View all projects
                   </button>
                 </>
               ) : (
@@ -185,7 +185,7 @@ export function DashboardSidebar() {
                     onClick={() => router.push("/public-projects")}
                     className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
                   >
-                    Browse public projects...
+                    View all Projects
                   </button>
                 </>
               )}

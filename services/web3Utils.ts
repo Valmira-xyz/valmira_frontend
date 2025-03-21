@@ -6,14 +6,18 @@ const ERC20_ABI = MemeTemplateJson.abi;
 // PancakeSwap V2 Router ABI (minimal)
 const ROUTER_ABI = [
   "function factory() external pure returns (address)",
-  "function WETH() external pure returns (address)",
+  "function WETH() external view returns (address)",
   "function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity)",
-  "function removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH)"
+  "function removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH)",
+  "function removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB)",
+  "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] amounts)",
+  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] amounts)"
 ];
 
 // PancakeSwap V2 Factory ABI (minimal)
 const FACTORY_ABI = [
-  "function getPair(address tokenA, address tokenB) external view returns (address pair)"
+  "function getPair(address tokenA, address tokenB) external view returns (address pair)",
+  "function createPair(address tokenA, address tokenB) external returns (address pair)"
 ];
 
 // PancakeSwap V2 Pair ABI (minimal)
@@ -29,7 +33,7 @@ const PAIR_ABI = [
 ];
 
 // PancakeSwap V2 addresses
-const PANCAKESWAP_ADDRESSES = {
+const PANCAKESWAP_ADDRESSES: Record<Network, { router: string, factory: string }> = {
   mainnet: {
     router: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
     factory: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
@@ -427,7 +431,7 @@ export async function getLPTokenBalance(
 export async function burnLiquidity(
   signer: ethers.Signer,
   tokenAddress: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; tokenAmount?: number; bnbAmount?: number }> {
   try {
     const walletAddress = await signer.getAddress();
     
@@ -476,7 +480,171 @@ export async function burnLiquidity(
     console.error('Failed to burn liquidity:', error);
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : "Unknown error occurred" 
+      error: error instanceof Error ? error.message : 'Unknown error burning liquidity'
+    };
+  }
+}
+
+/**
+ * Removes liquidity from a PancakeSwap pool
+ * @param signer The signer to execute the transaction
+ * @param tokenAddress The token address
+ * @param percentage The percentage of LP tokens to remove (0-100)
+ * @returns Object with success flag, error message, and amounts returned
+ */
+export async function removeLiquidity(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  percentage: number = 100 // Default to 100% (remove all)
+): Promise<{ success: boolean; error?: string; tokenAmount?: number; bnbAmount?: number }> {
+  try {
+    const walletAddress = await signer.getAddress();
+    const network = process.env.NEXT_PUBLIC_NETWORK_ENV === 'testnet' ? 'testnet' : 'mainnet';
+    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
+    const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+    
+    // Hardcoded WBNB addresses to avoid WETH() call issues
+    const wbnbAddress = network === 'mainnet' 
+      ? '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c' // Mainnet WBNB
+      : '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd'; // Testnet WBNB
+    
+    // Initialize contracts with provider first to avoid connection issues
+    const provider = signer.provider;
+    if (!provider) {
+      return { success: false, error: "No provider connected to signer" };
+    }
+    
+    const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
+    const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
+    
+    // Connect signer to contracts for transactions
+    const factoryWithSigner = factory.connect(signer);
+    const routerWithSigner = router.connect(signer);
+    
+    // Get the pair address
+    let pairAddress;
+    try {
+      // Use explicit typing for the call to avoid linter errors
+      pairAddress = await factory.getPair(tokenAddress, wbnbAddress) as string;
+    } catch (error) {
+      console.error('Error getting pair address:', error);
+      return { success: false, error: "Failed to get liquidity pair" };
+    }
+    
+    // If pair doesn't exist, return error
+    if (pairAddress === ethers.ZeroAddress) {
+      return { success: false, error: "Liquidity pool does not exist" };
+    }
+    
+    // Get LP token balance with proper typing
+    const pairContract = new ethers.Contract(pairAddress, PAIR_ABI, provider).connect(signer);
+    const lpBalance = await (pairContract as any).balanceOf(walletAddress) as bigint;
+    
+    // If no LP tokens, return error
+    if (lpBalance === BigInt(0)) {
+      return { success: false, error: "No LP tokens to remove" };
+    }
+    
+    // Calculate amount to remove based on percentage
+    const amountToRemove = (lpBalance * BigInt(Math.floor(percentage))) / BigInt(100);
+    
+    // Get reserves to estimate returned amounts
+    const reserves = await (pairContract as any).getReserves() as [bigint, bigint, number];
+    const token0 = await (pairContract as any).token0() as string;
+    
+    // Determine which token is which in the pair
+    const isBnbToken0 = token0.toLowerCase() === wbnbAddress.toLowerCase();
+    const bnbReserve = isBnbToken0 ? reserves[0] : reserves[1];
+    const tokenReserve = isBnbToken0 ? reserves[1] : reserves[0];
+    
+    const totalSupply = await (pairContract as any).totalSupply() as bigint;
+    
+    // Calculate expected returns
+    const expectedBnb = (bnbReserve * amountToRemove) / totalSupply;
+    const expectedTokens = (tokenReserve * amountToRemove) / totalSupply;
+    
+    // Approve router to spend LP tokens
+    const approveTx = await (pairContract as any).approve(routerAddress, amountToRemove);
+    await approveTx.wait();
+    
+    // Calculate minimum amounts (with 5% slippage)
+    const minBnb = (expectedBnb * BigInt(95)) / BigInt(100);
+    const minTokens = (expectedTokens * BigInt(95)) / BigInt(100);
+    
+    // Current timestamp + 20 minutes
+    const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+    
+    // Remove liquidity - Try with non-ETH method directly as the primary approach
+    let receipt;
+    try {
+      console.log('Removing liquidity using removeLiquidity method');
+      // Use explicit any typing to bypass TypeScript checks since we know the method exists
+      const removeTx = await (routerWithSigner as any).removeLiquidity(
+        tokenAddress,
+        wbnbAddress,
+        amountToRemove,
+        minTokens,
+        minBnb,
+        walletAddress,
+        deadline,
+        { gasLimit: 800000 }
+      );
+      
+      receipt = await removeTx.wait();
+    } catch (routerError) {
+      console.error('Error in removeLiquidity, trying ETH specific method:', routerError);
+      
+      try {
+        // Try with ETH method as fallback
+        const removeTx = await (routerWithSigner as any).removeLiquidityETH(
+          tokenAddress,
+          amountToRemove,
+          minTokens,
+          minBnb,
+          walletAddress,
+          deadline,
+          { gasLimit: 800000 }
+        );
+        
+        receipt = await removeTx.wait();
+      } catch (ethError) {
+        console.error('Both removal methods failed:', ethError);
+        return { 
+          success: false, 
+          error: "Failed to remove liquidity: " + (ethError instanceof Error ? ethError.message : String(ethError))
+        };
+      }
+    }
+    
+    if (!receipt || !receipt.status) {
+      return { success: false, error: "Remove liquidity transaction failed" };
+    }
+    
+    // Convert to human-readable numbers with 18 decimals for BNB
+    const bnbAmount = Number(ethers.formatUnits(expectedBnb, 18));
+    
+    // Get token decimals with error handling
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider).connect(signer);
+    let tokenDecimals = 18; // Default to 18 decimals
+    try {
+      tokenDecimals = await (tokenContract as any).decimals() as number;
+    } catch (error) {
+      console.error('Error getting token decimals, using default 18:', error);
+    }
+    
+    const tokenAmount = Number(ethers.formatUnits(expectedTokens, tokenDecimals));
+    
+    return { 
+      success: true,
+      bnbAmount,
+      tokenAmount,
+      error: undefined
+    };
+  } catch (error) {
+    console.error('Failed to remove liquidity:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error removing liquidity'
     };
   }
 }

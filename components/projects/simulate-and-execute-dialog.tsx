@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Loader2, Copy, ExternalLink, Download, Flame } from "lucide-react"
+import { Loader2, Copy, ExternalLink, Download, Flame, Coins, BarChart3, Wallet, DollarSign, RefreshCw, ZoomInIcon, Percent, ArrowRightLeft, XCircle, Plus } from "lucide-react"
 import { useDispatch, useSelector } from "react-redux"
 import { generateWallets, getWalletBalances, deleteMultipleWallets } from "@/store/slices/walletSlice"
 import type { AppDispatch, RootState } from "@/store/store"
@@ -16,7 +16,7 @@ import { BotService } from "@/services/botService"
 import { ethers } from "ethers"
 import { useEthersSigner } from "@/lib/ether-adapter"
 import { useChainId, useAccount } from "wagmi"
-import { getTokenOwner, isTokenTradingEnabled, calculateSnipeAmount as calculatePoolSnipeAmount, getPoolInfo, getWalletBalances as getWeb3WalletBalances, getLPTokenBalance, burnLiquidity } from "@/services/web3Utils"
+import { getTokenOwner, isTokenTradingEnabled, calculateSnipeAmount as calculatePoolSnipeAmount, getPoolInfo, getWalletBalances as getWeb3WalletBalances, getLPTokenBalance, burnLiquidity, removeLiquidity } from "@/services/web3Utils"
 import { ApproveAndAddLiquidityButtons } from "@/components/projects/ApproveAndAddLiquidityButtons"
 import { Checkbox } from "@/components/ui/checkbox"
 import { projectService } from "@/services/projectService"
@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { DistributeBnbDialog } from "@/components/projects/distribute-bnb-dialog"
+import { Slider } from "@/components/ui/slider"
 
 // Define the SubWallet type for the SnipeBot addon
 interface SubWallet {
@@ -174,6 +175,8 @@ export function SimulateAndExecuteDialog({
   const [lpTokenBalance, setLpTokenBalance] = useState<number>(0);
   const [isLoadingLpBalance, setIsLoadingLpBalance] = useState(false);
   const [isBurningLiquidity, setIsBurningLiquidity] = useState(false);
+  const [isRemovingLiquidity, setIsRemovingLiquidity] = useState(false);
+  const [removePercentage, setRemovePercentage] = useState(100); // Default to 100%
   const [insufficientFundsDetails, setInsufficientFundsDetails] = useState<{
     walletAddress: string;
     walletType: string;
@@ -426,6 +429,53 @@ export function SimulateAndExecuteDialog({
       });
     } finally {
       setIsBurningLiquidity(false);
+    }
+  };
+
+  // Function to remove liquidity
+  const handleRemoveLiquidity = async () => {
+    if (!address || !project?.tokenAddress || !signer || lpTokenBalance <= 0) return;
+
+    try {
+      setIsRemovingLiquidity(true);
+      const result = await removeLiquidity(signer, project.tokenAddress, removePercentage);
+
+      if (result.success && project?._id) {
+        try {
+          // Log the LP removal activity
+          await projectService.logLPRemoval(
+            project._id,
+            result.tokenAmount || 0,
+            result.bnbAmount || 0,
+            (lpTokenBalance * removePercentage) / 100
+          );
+        } catch (error) {
+          console.error('Failed to log LP removal activity:', error);
+        }
+
+        toast({
+          title: "Success",
+          description: `Successfully removed ${removePercentage}% of your liquidity`,
+        });
+        fetchLpTokenBalance();
+        fetchConnectedWalletBalance();
+        fetchPoolInfo();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to remove liquidity",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to remove liquidity:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to remove liquidity",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRemovingLiquidity(false);
     }
   };
 
@@ -1542,148 +1592,151 @@ export function SimulateAndExecuteDialog({
               </div>
 
               <div className="border-t pt-2 mt-2">
-
-
-                <div className="grid md:grid-cols-3 gap-4 bg-muted/10 p-2 rounded-md">
-                  <div className="space-y-1">
-                    <div className="flex w-full justify-between gap-1 items-center">
-                      <Label htmlFor="bnbAmount" className="text-xs font-medium">
-                        BNB Amount
-                      </Label>
-                      <div className="flex gap-1 mt-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 flex-1"
-                          onClick={() => {
-                            const maxBnb = connectedWalletBalance.bnb;
-                            setLiquidityBnbAmount(Number((maxBnb * 0.1).toFixed(4)));
-                          }}
-                        >
-                          10%
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 flex-1"
-                          onClick={() => {
-                            const maxBnb = connectedWalletBalance.bnb;
-                            setLiquidityBnbAmount(Number((maxBnb * 0.2).toFixed(4)));
-                          }}
-                        >
-                          20%
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 flex-1"
-                          onClick={() => {
-                            const maxBnb = connectedWalletBalance.bnb;
-                            setLiquidityBnbAmount(Number((maxBnb * 0.5).toFixed(4)));
-                          }}
-                        >
-                          50%
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 flex-1"
-                          onClick={() => {
-                            const maxBnb = connectedWalletBalance.bnb;
-                            // Leave a small amount for gas
-                            setLiquidityBnbAmount(Number((maxBnb * 0.99).toFixed(4)));
-                          }}
-                        >
-                          Max
-                        </Button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-muted/10 p-2 rounded-md">
+                  {/* BNB and Token Amount Column */}
+                  <div className="space-y-3">
+                    {/* BNB Amount */}
+                    <div>
+                      <div className="flex w-full justify-between items-center mb-1">
+                        <Label htmlFor="bnbAmount" className="text-xs font-medium">
+                          BNB Amount
+                        </Label>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-5 text-xs px-1.5"
+                            onClick={() => {
+                              const maxBnb = connectedWalletBalance.bnb;
+                              setLiquidityBnbAmount(Number((maxBnb * 0.1).toFixed(4)));
+                            }}
+                          >
+                            10%
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-5 text-xs px-1.5"
+                            onClick={() => {
+                              const maxBnb = connectedWalletBalance.bnb;
+                              setLiquidityBnbAmount(Number((maxBnb * 0.2).toFixed(4)));
+                            }}
+                          >
+                            20%
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-5 text-xs px-1.5"
+                            onClick={() => {
+                              const maxBnb = connectedWalletBalance.bnb;
+                              setLiquidityBnbAmount(Number((maxBnb * 0.5).toFixed(4)));
+                            }}
+                          >
+                            50%
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-5 text-xs px-1.5"
+                            onClick={() => {
+                              const maxBnb = connectedWalletBalance.bnb;
+                              // Leave a small amount for gas
+                              setLiquidityBnbAmount(Number((maxBnb * 0.99).toFixed(4)));
+                            }}
+                          >
+                            Max
+                          </Button>
+                        </div>
                       </div>
+                      <Input
+                        id="bnbAmount"
+                        type="number"
+                        value={liquidityBnbAmount}
+                        onChange={(e) => setLiquidityBnbAmount(Number(e.target.value))}
+                        placeholder="0.0"
+                        step="0.1"
+                        min="0"
+                        className="w-full h-7"
+                      />
                     </div>
-                    <Input
-                      id="bnbAmount"
-                      type="number"
-                      value={liquidityBnbAmount}
-                      onChange={(e) => setLiquidityBnbAmount(Number(e.target.value))}
-                      placeholder="0.0"
-                      step="0.1"
-                      min="0"
-                      className="w-full h-8"
-                    />
-                  </div>
-                  <div className="space-y-1">
-
-                    <div className="flex w-full justify-between gap-1 items-center">
-                      <Label htmlFor="tokenAmount" className="text-xs font-medium">
-                        {project?.symbol || "Token"} Amount
-                      </Label>
-
-                      <div className="flex gap-1 mt-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 flex-1"
-                          onClick={() => {
-                            const maxToken = connectedWalletBalance.token;
-                            setLiquidityTokenAmount(Number((maxToken * 0.1).toFixed(0)));
-                          }}
-                        >
-                          10%
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 flex-1"
-                          onClick={() => {
-                            const maxToken = connectedWalletBalance.token;
-                            setLiquidityTokenAmount(Number((maxToken * 0.2).toFixed(0)));
-                          }}
-                        >
-                          20%
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 flex-1"
-                          onClick={() => {
-                            const maxToken = connectedWalletBalance.token;
-                            setLiquidityTokenAmount(Number((maxToken * 0.5).toFixed(0)));
-                          }}
-                        >
-                          50%
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 flex-1"
-                          onClick={() => {
-                            const maxToken = connectedWalletBalance.token;
-                            setLiquidityTokenAmount(Number(maxToken.toFixed(0)));
-                          }}
-                        >
-                          Max
-                        </Button>
+                    
+                    {/* Token Amount */}
+                    <div>
+                      <div className="flex w-full justify-between items-center mb-1">
+                        <Label htmlFor="tokenAmount" className="text-xs font-medium">
+                          {project?.symbol || "Token"} Amount
+                        </Label>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-5 text-xs px-1.5"
+                            onClick={() => {
+                              const maxToken = connectedWalletBalance.token;
+                              setLiquidityTokenAmount(Number((maxToken * 0.1).toFixed(0)));
+                            }}
+                          >
+                            10%
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-5 text-xs px-1.5"
+                            onClick={() => {
+                              const maxToken = connectedWalletBalance.token;
+                              setLiquidityTokenAmount(Number((maxToken * 0.2).toFixed(0)));
+                            }}
+                          >
+                            20%
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-5 text-xs px-1.5"
+                            onClick={() => {
+                              const maxToken = connectedWalletBalance.token;
+                              setLiquidityTokenAmount(Number((maxToken * 0.5).toFixed(0)));
+                            }}
+                          >
+                            50%
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-5 text-xs px-1.5"
+                            onClick={() => {
+                              const maxToken = connectedWalletBalance.token;
+                              setLiquidityTokenAmount(Number(maxToken.toFixed(0)));
+                            }}
+                          >
+                            Max
+                          </Button>
+                        </div>
                       </div>
+                      <Input
+                        id="tokenAmount"
+                        type="number"
+                        value={liquidityTokenAmount}
+                        onChange={(e) => setLiquidityTokenAmount(Number(e.target.value))}
+                        placeholder="0"
+                        min="0"
+                        className="w-full h-7"
+                      />
                     </div>
-                    <Input
-                      id="tokenAmount"
-                      type="number"
-                      value={liquidityTokenAmount}
-                      onChange={(e) => setLiquidityTokenAmount(Number(e.target.value))}
-                      placeholder="0"
-                      min="0"
-                      className="w-full h-8"
-                    />
                   </div>
-                  <div className="space-y-1">
+                  
+                  {/* Actions Column */}
+                  <div className="space-y-3">
                     <div className="w-full flex items-center justify-between">
                       <Label className="text-xs font-medium">Actions</Label>
-
                       {!signer && (
-                        <p className="text-xs text-amber-500 mt-1">
+                        <p className="text-xs text-amber-500">
                           ⚠️ Connect wallet
                         </p>
                       )}
                       {signer && lpTokenBalance <= 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground">
                           No LP tokens to burn
                         </p>
                       )}
@@ -1719,26 +1772,74 @@ export function SimulateAndExecuteDialog({
 
                       <Button
                         variant="destructive"
-                        className="h-9"
+                        className="h-8"
                         disabled={!signer || lpTokenBalance <= 0 || isBurningLiquidity}
                         onClick={handleBurnLiquidity}
                       >
                         {isBurningLiquidity ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
                         ) : (
-                          <Flame className="h-4 w-4 mr-1" />
+                          <Flame className="h-3.5 w-3.5 mr-1" />
                         )}
                         Burn LP
                       </Button>
                     </div>
-                  </div>
-                  <div className="md:col-span-3">
+                    
                     <p className="text-xs text-muted-foreground">
-                      Approve tokens before adding liquidity if this is your first time using this token with PancakeSwap. Burning liquidity will remove all your LP tokens and return BNB and tokens to your wallet.
+                      Approve tokens before adding liquidity if this is your first time using this token with PancakeSwap.
+                    </p>
+                  </div>
+                  
+                  {/* Remove Liquidity Column */}
+                  <div className="space-y-3 px-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium">Remove Liquidity</Label>
+                      {!signer && (
+                        <p className="text-xs text-amber-500">
+                          ⚠️ Connect wallet
+                        </p>
+                      )}
+                      {signer && lpTokenBalance <= 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          No LP tokens to remove
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-xs">Remove percentage:</Label>
+                      <span className="text-xs font-medium">{removePercentage}%</span>
+                    </div>
+                    
+                    <Slider
+                      defaultValue={[100]}
+                      max={100}
+                      step={1}
+                      value={[removePercentage]}
+                      onValueChange={(values) => setRemovePercentage(values[0])}
+                      disabled={!signer || lpTokenBalance <= 0 || isRemovingLiquidity}
+                      className="mb-2"
+                    />
+                    
+                    <Button
+                      variant="outline"
+                      className="h-8 w-full"
+                      disabled={!signer || lpTokenBalance <= 0 || isRemovingLiquidity}
+                      onClick={handleRemoveLiquidity}
+                    >
+                      {isRemovingLiquidity ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      ) : (
+                        <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                      )}
+                      Remove {removePercentage}% LP
+                    </Button>
+                    
+                    <p className="text-xs text-muted-foreground">
+                      Remove a specific percentage of your LP tokens to get back BNB and tokens.
                     </p>
                   </div>
                 </div>
-
               </div>
             </div>
           )}
@@ -1851,7 +1952,7 @@ export function SimulateAndExecuteDialog({
                   <div className="w-full flex justify-between ">
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-muted-foreground">
-                        BNB Balance: <span className="font-medium text-black"> {wallets.find(w => w.publicKey === project?.addons.SnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}</span>
+                        BNB Balance: <span className="font-medium"> {wallets.find(w => w.publicKey === project?.addons.SnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'}</span>
                       </p>
                     </div>
                     <Button
@@ -1889,7 +1990,7 @@ export function SimulateAndExecuteDialog({
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-muted-foreground">
-                        {project?.symbol || project?.name} Balance: <span className="font-medium text-black"> {wallets.find(w => w.publicKey === project?.addons.SnipeBot.depositWalletId?.publicKey)?.tokenBalance?.toFixed(4) || '0.0000'}</span>
+                        {project?.symbol || project?.name} Balance: <span className="font-medium"> {wallets.find(w => w.publicKey === project?.addons.SnipeBot.depositWalletId?.publicKey)?.tokenBalance?.toFixed(4) || '0.0000'}</span>
                       </p>
                     </div>
                   </div>
@@ -2062,7 +2163,7 @@ export function SimulateAndExecuteDialog({
                   className={
                     simulationResult &&
                       (wallets.find(w => w.publicKey === project?.addons?.SnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
-                      (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
+                      (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))
                       ? "border-2 border-red-500 hover:border-red-600"
                       : simulationResult && (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))>0?
                       "border-2 border-amber-500 hover:border-amber-600"
@@ -2071,7 +2172,7 @@ export function SimulateAndExecuteDialog({
                   title={
                     simulationResult &&
                       (wallets.find(w => w.publicKey === project?.addons?.SnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
-                      (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.bnbToSpend || 0), 0)))
+                      (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))
                       ? "Deposit wallet has insufficient BNB balance"
                       : simulationResult && (simulationResult.snipingBnb + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))>0?
                       "Sniping wallets have insufficient BNB balance"
