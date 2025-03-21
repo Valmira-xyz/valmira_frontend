@@ -578,10 +578,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       <div className="flex items-center justify-between">
                         <h4 className="font-semibold">Token Deployed Successfully</h4>
                       </div>
-                      <AddressDisplay
-                        address={deployedTokenAddress}
-                        label="Contract Address"
-                      />
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Contract Address</p>
+                        <p className="text-sm text-muted-foreground">{deployedTokenAddress}</p>
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="text-sm font-medium">Name</p>
