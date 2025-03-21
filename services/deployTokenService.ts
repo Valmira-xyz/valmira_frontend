@@ -187,6 +187,7 @@ export class TokenDeploymentService {
   }
 
   private validateParams(params: DeploymentParams): void {
+    console.log("deployment params : ", params);
     if (!params.tokenName) {
       throw new Error("Token name is required");
     }
