@@ -1854,8 +1854,8 @@ export function SimulateAndExecuteDialog({
                     <label>Deposit Wallet</label>
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
+                      size="sm"
+                      className="h-8 px-2"
                       onClick={() => {
                         const allAddresses = [
                           ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
@@ -1875,7 +1875,7 @@ export function SimulateAndExecuteDialog({
                           <path d="M3 21v-5h5"></path>
                         </svg>
                       )}
-                      <span className="sr-only">Refresh Balances</span>
+                      <span className="sr-only">Refresh</span>
                     </Button>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
@@ -1959,7 +1959,6 @@ export function SimulateAndExecuteDialog({
                       variant={"outline"}
                       size={"sm"}
                       onClick={() => setShowDistributeDialog(true)}
-                      className="border border-black"
                       disabled={
                         isEstimatingFees ||
                         !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||
