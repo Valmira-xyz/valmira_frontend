@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/components/ui/use-toast"
 import Link from "next/link"
 import { SimulateAndExecuteDialog } from "@/components/projects/simulate-and-execute-dialog"
+import { SnipeWizardDialog } from "./snipe-wizard-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/store/store"
@@ -641,7 +642,8 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     </p> 
                   <Button
                       className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                      onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
+                      // onClick={() => isProjectOwner && setIsSimulateDialogOpen(true)}
+                      onClick={() => setIsSimulateDialogOpen(true)}
                     >
                       Simulate & Execute
                     </Button></>
@@ -652,7 +654,12 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
             ))}
           </div>
     
-          <SimulateAndExecuteDialog
+          {/* <SimulateAndExecuteDialog
+            open={isSimulateDialogOpen}
+            onOpenChange={setIsSimulateDialogOpen}
+            onSimulationResult={handleSimulationResult}
+          /> */}
+          <SnipeWizardDialog
             open={isSimulateDialogOpen}
             onOpenChange={setIsSimulateDialogOpen}
             onSimulationResult={handleSimulationResult}

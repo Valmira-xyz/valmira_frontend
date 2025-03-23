@@ -12,6 +12,78 @@ import { fetchProject } from './projectSlice';
 import { getWalletBalances as getWeb3WalletBalances } from '@/services/web3Utils';
 import { formatBalance } from '@/services/web3Utils';
 
+// Add missing thunks
+export const sellTokens = createAsyncThunk(
+  'wallets/sellTokens',
+  async ({ 
+    projectId, 
+    walletAddress,
+    tokenAddress, 
+    percentage 
+  }: { 
+    projectId: string; 
+    walletAddress: string;
+    tokenAddress: string;
+    percentage: number 
+  }, { rejectWithValue }) => {
+    try {
+      // Implementation would go here
+      return { success: true, error: null };
+    } catch (error) {
+      if (error instanceof Error) {
+        return rejectWithValue(error.message);
+      }
+      return rejectWithValue('Failed to sell tokens');
+    }
+  }
+);
+
+export const multiSellTokens = createAsyncThunk(
+  'wallets/multiSellTokens',
+  async ({ 
+    projectId,
+    tokenAddress,
+    walletAddresses
+  }: { 
+    projectId: string;
+    tokenAddress: string;
+    walletAddresses: { publicKey: string; percentage: number }[]
+  }, { rejectWithValue }) => {
+    try {
+      // Implementation would go here
+      return { success: true, error: null };
+    } catch (error) {
+      if (error instanceof Error) {
+        return rejectWithValue(error.message);
+      }
+      return rejectWithValue('Failed to sell tokens from multiple wallets');
+    }
+  }
+);
+
+export const collectBnb = createAsyncThunk(
+  'wallets/collectBnb',
+  async ({ 
+    projectId, 
+    sourceWalletAddresses,
+    destinationWalletAddress
+  }: { 
+    projectId: string; 
+    sourceWalletAddresses: string[];
+    destinationWalletAddress: string;
+  }, { rejectWithValue }) => {
+    try {
+      // Implementation would go here
+      return { success: true, error: null };
+    } catch (error) {
+      if (error instanceof Error) {
+        return rejectWithValue(error.message);
+      }
+      return rejectWithValue('Failed to collect BNB');
+    }
+  }
+);
+
 const initialState: WalletState = {
   wallets: [],
   loading: false,
