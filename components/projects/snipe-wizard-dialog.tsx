@@ -1225,37 +1225,7 @@ export function SnipeWizardDialog({
                   )}
                 </Button>
 
-                <div className="flex items-center gap-2 mt-2">
-                  <Label htmlFor="distributeExtra" className="text-sm">Extra BNB for each wallet:</Label>
-                  <div className="flex-1">
-                    <Input
-                      id="distributeExtra"
-                      type="number"
-                      placeholder="0.01"
-                      value={distributeAmount}
-                      onChange={(e) => setDistributeAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full"
-                      min={0}
-                      step={0.01}
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowDistributeDialog(true)}
-                    disabled={
-                      isEstimatingFees ||
-                      !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||
-                      isDistributingBNBs ||
-                      distributeAmount <= 0
-                    }
-                  >
-                    Distribute Extra BNB
-                  </Button>
-                </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-4 text-blue-700 text-sm">
-                  <p>💡 This is useful for providing BNB to wallets for later operations like selling tokens.</p>
-                </div>
               </div>
             </div>
           </div>
@@ -1263,9 +1233,7 @@ export function SnipeWizardDialog({
           {/* Extra BNB Distribution */}
           <div className="border rounded-lg p-4">
             <h3 className="text-base font-medium mb-3">Distribute Extra BNB (Optional)</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              You can distribute additional BNB to wallets for post-snipe operations like selling tokens.
-            </p>
+
 
             <div className="flex items-center gap-3">
               <Label htmlFor="distributeAmount" className="whitespace-nowrap">Amount per wallet:</Label>
