@@ -50,7 +50,7 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
             id="date"
             variant={"outline"}
             className={cn(
-              "w-[240px] justify-start text-left font-normal",
+              "max-w-[260px] w-full justify-start text-left font-normal",
               !dateRange && "text-muted-foreground",
               "truncate",
             )}

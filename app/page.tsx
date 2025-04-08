@@ -14,12 +14,10 @@ export default function DashboardPage() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth)
 
   return (
-    <div className="space-y-10 w-[calc(100vw-320px)]">
+    <div className="space-y-10 w-full">
       <PageHeader title="Dashboard">
-        {isAuthenticated ? (
+        {isAuthenticated && (
           <CreateProjectButton />
-        ) : (
-          <></>
         )}
       </PageHeader>
       

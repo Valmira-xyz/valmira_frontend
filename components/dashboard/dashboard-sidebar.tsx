@@ -118,4 +118,4 @@ export function DashboardSidebar({ className, ...props }: DashboardSidebarProps)
       </div>
     </div>
   )
-} 
+}

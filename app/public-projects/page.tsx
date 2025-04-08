@@ -12,5 +12,4 @@ export default function PublicProjectsPage() {
         <ProjectsList isPublic={true} />
       </div>
     )
-  
 } 

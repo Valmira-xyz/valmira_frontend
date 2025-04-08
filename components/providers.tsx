@@ -52,9 +52,9 @@ export function Providers({ children, cookies }: { children: ReactNode; cookies:
               <WalletProvider>
                 <AuthProvider>
                   <SidebarProvider>
-                    <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80">
+                    <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80 w-full">
                       <DashboardSidebar />
-                      <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out">
+                      <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out w-full">
                         <main className="flex-1 px-6 py-6">{children}</main>
                       </div>
                     </div>
