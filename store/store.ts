@@ -3,13 +3,16 @@ import authReducer from './slices/authSlice';
 import projectReducer from './slices/projectSlice';
 import walletReducer from './slices/walletSlice';
 import botReducer from './slices/botSlice';
-
+import { useDispatch } from 'react-redux';
+import { projectApi } from './api/project';
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     projects: projectReducer,
     wallets: walletReducer,
     bots: botReducer,
+
+    [projectApi.reducerPath]: projectApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -47,8 +50,10 @@ export const store = configureStore({
           'projects.currentProject.createdAt'
         ],
       },
-    }),
+    }).concat(projectApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch; 
+
+export const useAppDispatch = () => useDispatch<AppDispatch>();

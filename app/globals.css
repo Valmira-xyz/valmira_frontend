@@ -95,6 +95,17 @@ body {
   }
 }
 
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+      display: none;
+  }
+
+  .no-scrollbar {
+      -ms-overflow-style: hidden;
+      scrollbar-width: none;
+  }
+}
+
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap");
 
 .sidebar-menu-button {
