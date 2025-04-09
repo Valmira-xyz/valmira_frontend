@@ -68,7 +68,7 @@ export function Providers({
                   <SidebarProvider>
                     <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80 w-full">
                       <DashboardSidebar />
-                      <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out w-full">
+                      <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out w-full overflow-x-hidden">
                         <main className="">{children}</main>
                       </div>
                     </div>

@@ -20,10 +20,10 @@ export const metadata: Metadata = {
 
 export default function TutorialsPage() {
   return (
-    <div className="w-[calc(100vw-320px)]">
+    <div className="w-full">
       <PageHeader title="Tutorials & Resources" />
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6 px-4 md:px-6">
         <Card>
           <CardHeader>
             <CardTitle>Getting Started</CardTitle>
@@ -34,28 +34,34 @@ export default function TutorialsPage() {
           <CardContent>
             <ul className="space-y-2">
               <li>
-                <Link
-                  href="/tutorials/projects"
-                  className="text-blue-600 hover:underline"
-                >
-                  Creating Your First Project
-                </Link>
+                <Button variant="secondary" className="w-full">
+                  <Link
+                    href="/tutorials/projects"
+                    className="hover:underline w-full text-start"
+                  >
+                    Creating Your First Project
+                  </Link>
+                </Button>
               </li>
               <li>
-                <Link
-                  href="/tutorials/wallet-setup"
-                  className="text-blue-600 hover:underline"
-                >
-                  Wallet Setup Guide
-                </Link>
+                <Button variant="secondary" className="w-full">
+                  <Link
+                    href="/tutorials/wallet-setup"
+                    className="w-full text-start hover:underline"
+                  >
+                    Wallet Setup Guide
+                  </Link>
+                </Button>
               </li>
               <li>
-                <Link
-                  href="/tutorials/dashboard-overview"
-                  className="text-blue-600 hover:underline"
-                >
-                  Dashboard Overview
-                </Link>
+                <Button variant="secondary" className="w-full">
+                  <Link
+                    href="/tutorials/dashboard-overview"
+                    className="w-full text-start hover:underline"
+                  >
+                    Dashboard Overview
+                  </Link>
+                </Button>
               </li>
             </ul>
           </CardContent>
@@ -79,28 +85,34 @@ export default function TutorialsPage() {
           <CardContent>
             <ul className="space-y-2">
               <li>
-                <Link
-                  href="/tutorials/add-ons/bundle-snipe"
-                  className="text-blue-600 hover:underline"
-                >
-                  Liquidation Snipe Bot
-                </Link>
+                <Button variant="secondary" className="w-full">
+                  <Link
+                    href="/tutorials/add-ons/bundle-snipe"
+                    className="w-full text-start hover:underline"
+                  >
+                    Liquidation Snipe Bot
+                  </Link>
+                </Button>
               </li>
               <li>
-                <Link
-                  href="/tutorials/add-ons/volume-bot"
-                  className="text-blue-600 hover:underline"
-                >
-                  Volume Bot
-                </Link>
+                <Button variant="secondary" className="w-full">
+                  <Link
+                    href="/tutorials/add-ons/volume-bot"
+                    className="w-full text-start hover:underline"
+                  >
+                    Volume Bot
+                  </Link>
+                </Button>
               </li>
               <li>
-                <Link
-                  href="/tutorials/add-ons/holder-bot"
-                  className="text-blue-600 hover:underline"
-                >
-                  Holder Bot
-                </Link>
+                <Button variant="secondary" className="w-full">
+                  <Link
+                    href="/tutorials/add-ons/holder-bot"
+                    className="w-full text-start hover:underline"
+                  >
+                    Holder Bot
+                  </Link>
+                </Button>
               </li>
             </ul>
           </CardContent>
@@ -124,25 +136,34 @@ export default function TutorialsPage() {
           <CardContent>
             <ul className="space-y-2">
               <li>
-                <Link href="/faqs" className="text-blue-600 hover:underline">
-                  Frequently Asked Questions
-                </Link>
+                <Button variant="secondary" className="w-full">
+                  <Link
+                    href="/faqs"
+                    className="w-full text-start hover:underline"
+                  >
+                    Frequently Asked Questions
+                  </Link>
+                </Button>
               </li>
               <li>
-                <Link
-                  href="/tutorials/glossary"
-                  className="text-blue-600 hover:underline"
-                >
-                  Crypto Trading Glossary
-                </Link>
+                <Button variant="secondary" className="w-full">
+                  <Link
+                    href="/tutorials/glossary"
+                    className="w-full text-start hover:underline"
+                  >
+                    Crypto Trading Glossary
+                  </Link>
+                </Button>
               </li>
               <li>
-                <Link
-                  href="/tutorials/best-practices"
-                  className="text-blue-600 hover:underline"
-                >
-                  Trading Best Practices
-                </Link>
+                <Button variant="secondary" className="w-full">
+                  <Link
+                    href="/tutorials/best-practices"
+                    className="w-full text-start hover:underline"
+                  >
+                    Trading Best Practices
+                  </Link>
+                </Button>
               </li>
             </ul>
           </CardContent>
