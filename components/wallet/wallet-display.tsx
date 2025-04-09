@@ -1,7 +1,12 @@
-"use client"
+'use client';
 
-import { Copy, ExternalLink, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useDispatch } from 'react-redux';
+
+import { Copy, LogOut } from 'lucide-react';
+import { useAccount, useDisconnect } from 'wagmi';
+
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,47 +14,44 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useAccount, useDisconnect } from 'wagmi'
-import { useDispatch } from 'react-redux'
-import { setUser, logout } from '@/store/slices/authSlice'
-import { generateAvatarColor } from '@/lib/utils'
+} from '@/components/ui/dropdown-menu';
+import { generateAvatarColor } from '@/lib/utils';
+import { logout } from '@/store/slices/authSlice';
 
 interface WalletDisplayProps {
-  variant: "header" | "sidebar"
+  variant: 'header' | 'sidebar';
 }
 
 export function WalletDisplay({ variant }: WalletDisplayProps) {
-  const { address } = useAccount()
-  const { disconnect } = useDisconnect()
-  const dispatch = useDispatch()
+  const { address } = useAccount();
+  const { disconnect } = useDisconnect();
+  const dispatch = useDispatch();
 
   // Format address for display (0x1234...5678)
   const formatAddress = (address: string) => {
-    if (!address) return ""
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`
-  }
+    if (!address) return '';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
 
-  const avatarColor = generateAvatarColor(address || "")
+  const avatarColor = generateAvatarColor(address || '');
 
   // Copy address to clipboard
   const copyAddress = () => {
     if (address) {
-      navigator.clipboard.writeText(address)
+      navigator.clipboard.writeText(address);
     }
-  }
+  };
 
   const handleDisconnect = async () => {
     try {
-      dispatch(logout())
-      disconnect()
+      dispatch(logout());
+      disconnect();
     } catch (error) {
-      console.error('Error during disconnect:', error)
+      console.error('Error during disconnect:', error);
     }
-  }
+  };
 
-  if (variant === "sidebar") {
+  if (variant === 'sidebar') {
     return (
       <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
         <Avatar className="h-8 w-8 border-2 border-primary/20">
@@ -58,27 +60,36 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col">
-          <span className="text-xs font-medium">{formatAddress(address || "")}</span>
+          <span className="text-xs font-medium">
+            {formatAddress(address || '')}
+          </span>
           <span className="text-xs text-muted-foreground">Connected</span>
         </div>
-        <Button variant="secondary" className="ml-auto h-6 w-6" onClick={handleDisconnect}>
+        <Button
+          variant="secondary"
+          className="ml-auto h-6 w-6"
+          onClick={handleDisconnect}
+        >
           <LogOut className="h-3 w-3" />
           <span className="sr-only">Disconnect</span>
         </Button>
       </div>
-    )
+    );
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" className="rounded-full h-8 gap-2 pl-2 pr-3">
+        <Button
+          variant="secondary"
+          className="rounded-full h-8 gap-2 pl-2 pr-3"
+        >
           <Avatar className="h-6 w-6 border-2 border-primary/20">
             <AvatarFallback style={{ backgroundColor: avatarColor }}>
               {address?.substring(2, 4).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span className="text-xs">{formatAddress(address || "")}</span>
+          <span className="text-xs">{formatAddress(address || '')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
@@ -95,6 +106,5 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
-

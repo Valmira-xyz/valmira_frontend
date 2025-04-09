@@ -1,23 +1,32 @@
-"use client"
-import { format, subDays } from "date-fns"
-import { CalendarIcon } from "lucide-react"
-import type { DateRange } from "react-day-picker"
-import { useState, useEffect } from "react"
+'use client';
+import { useEffect, useState } from 'react';
+import type { DateRange } from 'react-day-picker';
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format, subDays } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 interface DateRangePickerProps {
-  className?: string
-  dateRange: DateRange | undefined
-  onDateRangeChange: (range: DateRange | undefined) => void
+  className?: string;
+  dateRange: DateRange | undefined;
+  onDateRangeChange: (range: DateRange | undefined) => void;
 }
 
-export function DateRangePicker({ className, dateRange, onDateRangeChange }: DateRangePickerProps) {
-  const today = new Date()
-  const [open, setOpen] = useState(false)
+export function DateRangePicker({
+  className,
+  dateRange,
+  onDateRangeChange,
+}: DateRangePickerProps) {
+  const today = new Date();
+  const [open, setOpen] = useState(false);
 
   // Ensure dateRange is valid when component mounts or dateRange prop changes
   useEffect(() => {
@@ -30,39 +39,40 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
   }, [dateRange]);
 
   const presets = [
-    { name: "Last 7 days", range: { from: subDays(today, 7), to: today } },
-    { name: "Last 30 days", range: { from: subDays(today, 30), to: today } },
-    { name: "Last 90 days", range: { from: subDays(today, 90), to: today } },
+    { name: 'Last 7 days', range: { from: subDays(today, 7), to: today } },
+    { name: 'Last 30 days', range: { from: subDays(today, 30), to: today } },
+    { name: 'Last 90 days', range: { from: subDays(today, 90), to: today } },
     {
-      name: "This month",
+      name: 'This month',
       range: {
         from: new Date(today.getFullYear(), today.getMonth(), 1),
         to: today,
       },
     },
-  ]
+  ];
 
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div className={cn('grid gap-2', className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             id="date"
-            variant={"outline"}
+            variant={'outline'}
             className={cn(
-              "w-[240px] justify-start text-left font-normal",
-              !dateRange && "text-muted-foreground",
-              "truncate",
+              'max-w-[260px] w-full justify-start text-left font-normal',
+              !dateRange && 'text-muted-foreground',
+              'truncate'
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
             {dateRange?.from ? (
               dateRange.to ? (
                 <>
-                  {format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}
+                  {format(dateRange.from, 'LLL dd, y')} -{' '}
+                  {format(dateRange.to, 'LLL dd, y')}
                 </>
               ) : (
-                format(dateRange.from, "LLL dd, y")
+                format(dateRange.from, 'LLL dd, y')
               )
             ) : (
               <span>Pick a date range</span>
@@ -78,8 +88,8 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    onDateRangeChange(preset.range)
-                    setOpen(false)
+                    onDateRangeChange(preset.range);
+                    setOpen(false);
                   }}
                 >
                   {preset.name}
@@ -94,9 +104,9 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
               defaultMonth={dateRange?.from}
               selected={dateRange}
               onSelect={(range) => {
-                onDateRangeChange(range)
+                onDateRangeChange(range);
                 if (range?.from && range?.to) {
-                  setTimeout(() => setOpen(false), 300)
+                  setTimeout(() => setOpen(false), 300);
                 }
               }}
               numberOfMonths={2}
@@ -106,6 +116,5 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
         </PopoverContent>
       </Popover>
     </div>
-  )
+  );
 }
-

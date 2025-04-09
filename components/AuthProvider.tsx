@@ -1,5 +1,6 @@
 import React from 'react';
-import { useWeb3Auth } from '../hooks/use-web3-auth';   
+
+import { useWeb3Auth } from '../hooks/use-web3-auth';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -18,4 +19,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // }
 
   return <>{children}</>;
-}; 
+};

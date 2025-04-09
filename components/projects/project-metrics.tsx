@@ -1,46 +1,52 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Project, ProjectWithAddons } from "@/types"
-import { useSelector, useDispatch } from 'react-redux'
-import { RootState, AppDispatch } from "@/store/store"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useEffect, useState, useRef, useCallback } from "react"
-import { getPoolInfo } from "@/services/web3Utils"
-import { fetchBnbPrice } from "@/store/slices/projectSlice"
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { getPoolInfo } from '@/services/web3Utils';
+import { fetchBnbPrice } from '@/store/slices/projectSlice';
+import { AppDispatch, RootState } from '@/store/store';
+import { ProjectWithAddons } from '@/types';
 
-export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
+export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
   const dispatch = useDispatch<AppDispatch>();
-  const { projectStats, loading, bnbPrice, bnbPriceLoading } = useSelector((state: RootState) => state.projects)
-  const [poolLiquidity, setPoolLiquidity] = useState<number>(0)
-  const [loadingLiquidity, setLoadingLiquidity] = useState<boolean>(false)
-  const isFetchingBnbPrice = useRef(false)
-  const hasInitialBnbPriceFetch = useRef(false)
-  const isCalculatingLiquidity = useRef(false)
+  const { projectStats, loading, bnbPrice, bnbPriceLoading } = useSelector(
+    (state: RootState) => state.projects
+  );
+  const [poolLiquidity, setPoolLiquidity] = useState<number>(0);
+  const [loadingLiquidity, setLoadingLiquidity] = useState<boolean>(false);
+  const isFetchingBnbPrice = useRef(false);
+  const hasInitialBnbPriceFetch = useRef(false);
+  const isCalculatingLiquidity = useRef(false);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value)
-  }
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
 
   const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('en-US').format(value)
-  }
+    return new Intl.NumberFormat('en-US').format(value);
+  };
 
   // Fetch BNB price with debounce mechanism
   const fetchBnbPriceData = useCallback(async () => {
     // Skip if fetch is already in progress or we've already fetched and have data
-    if (isFetchingBnbPrice.current || (hasInitialBnbPriceFetch.current && bnbPrice)) return
-    
+    if (
+      isFetchingBnbPrice.current ||
+      (hasInitialBnbPriceFetch.current && bnbPrice)
+    )
+      return;
+
     try {
-      isFetchingBnbPrice.current = true
+      isFetchingBnbPrice.current = true;
       await dispatch(fetchBnbPrice());
-      hasInitialBnbPriceFetch.current = true
+      hasInitialBnbPriceFetch.current = true;
     } finally {
-      isFetchingBnbPrice.current = false
+      isFetchingBnbPrice.current = false;
     }
   }, [dispatch, bnbPrice]);
 
@@ -52,11 +58,11 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
   const calculateLiquidity = useCallback(async () => {
     const tokenAddress = project.tokenAddress;
     if (!tokenAddress || !bnbPrice || isCalculatingLiquidity.current) return;
-    
+
     try {
       isCalculatingLiquidity.current = true;
       setLoadingLiquidity(true);
-      
+
       const poolInfo = await getPoolInfo(tokenAddress);
       if (poolInfo) {
         // Calculate liquidity in USD using the BNB price from Redux
@@ -83,25 +89,25 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
   // Calculate active bots count similar to dashboard-metrics.tsx
   const calculateActiveBots = (): number => {
     let activeBots = 0;
-    
+
     // Count active bots from addons
     if (project.addons) {
       // SnipeBot
       if (project.addons.SnipeBot?.isEnabled) {
         activeBots += 1;
       }
-      
+
       // VolumeBot
       if (project.addons.VolumeBot?.isEnabled) {
         activeBots += 1;
       }
-      
+
       // HolderBot
       if (project.addons.HolderBot?.isEnabled) {
         activeBots += 1;
       }
     }
-    
+
     return activeBots;
   };
 
@@ -120,24 +126,32 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
           </Card>
         ))}
       </div>
-    )
+    );
   }
 
   const metrics = {
-    cumulativeProfit: projectStats?.metrics?.cumulativeProfit ?? project.metrics?.cumulativeProfit ?? 0,
-    volume24h: projectStats?.metrics?.volume24h ?? project.metrics?.volume24h ?? 0,
+    cumulativeProfit:
+      projectStats?.metrics?.cumulativeProfit ??
+      project.metrics?.cumulativeProfit ??
+      0,
+    volume24h:
+      projectStats?.metrics?.volume24h ?? project.metrics?.volume24h ?? 0,
     activeBots: calculateActiveBots(), // Use our new calculation method
-    liquidity: poolLiquidity
-  }
+    liquidity: poolLiquidity,
+  };
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Cumulative Profit</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            Cumulative Profit
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(metrics.cumulativeProfit)}</div>
+          <div className="text-2xl font-bold">
+            {formatCurrency(metrics.cumulativeProfit)}
+          </div>
           <p className="text-xs text-muted-foreground">
             Total profit since inception
           </p>
@@ -145,10 +159,14 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Cumulative Volume</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            Cumulative Volume
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(metrics.volume24h)}</div>
+          <div className="text-2xl font-bold">
+            {formatCurrency(metrics.volume24h)}
+          </div>
           <p className="text-xs text-muted-foreground">
             Trading volume since inception
           </p>
@@ -159,7 +177,9 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
           <CardTitle className="text-sm font-medium">Active Bots</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(metrics.activeBots)}</div>
+          <div className="text-2xl font-bold">
+            {formatNumber(metrics.activeBots)}
+          </div>
           <p className="text-xs text-muted-foreground">
             Currently active trading bots
           </p>
@@ -170,13 +190,14 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
           <CardTitle className="text-sm font-medium">Liquidity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(metrics.liquidity)}</div>
+          <div className="text-2xl font-bold">
+            {formatCurrency(metrics.liquidity)}
+          </div>
           <p className="text-xs text-muted-foreground">
             Total available liquidity
           </p>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
-

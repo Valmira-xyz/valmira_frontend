@@ -1,4 +1,5 @@
 import api from './walletApi';
+
 import { BotType } from '@/store/slices/botSlice';
 
 // Define API response type
@@ -105,9 +106,12 @@ export class BotService {
   /**
    * Toggle a bot's enabled status
    */
-  static async toggleBot(botId: string, enabled: boolean): Promise<BotResponse> {
+  static async toggleBot(
+    botId: string,
+    enabled: boolean
+  ): Promise<BotResponse> {
     const response = await api.put<ApiResponse<BotResponse>>(
-      `${BACKEND_URL}/bots/${botId}/toggle`, 
+      `${BACKEND_URL}/bots/${botId}/toggle`,
       { enabled },
       getAuthHeaders()
     );
@@ -149,11 +153,11 @@ export class BotService {
    * Enable an addon bot for a project
    */
   static async enableAddonBot(
-    projectId: string, 
+    projectId: string,
     addonType: BotType
   ): Promise<BotResponse> {
     const response = await api.put<ApiResponse<BotResponse>>(
-      `${BACKEND_URL}/bots/project/${projectId}/addons/${addonType}/enable`, 
+      `${BACKEND_URL}/bots/project/${projectId}/addons/${addonType}/enable`,
       {},
       getAuthHeaders()
     );
@@ -167,25 +171,25 @@ export class BotService {
    * Toggle a bot's enabled status or create it if it doesn't exist
    */
   static async toggleOrCreateBot(
-    projectId: string, 
-    botType: BotType, 
+    projectId: string,
+    botType: BotType,
     enabled: boolean
   ): Promise<BotResponse> {
     try {
       // First, try to get the bot ID if we have it
       const botsResponse = await this.getProjectBots(projectId);
-      
+
       // Check if botsResponse is an array before using find
       if (Array.isArray(botsResponse)) {
         // Find the specific bot by type
-        const bot = botsResponse.find(b => b.botType === botType);
-        
+        const bot = botsResponse.find((b) => b.botType === botType);
+
         if (bot && bot._id) {
           // If we have the bot ID, use the toggle endpoint
           return await this.toggleBot(bot._id, enabled);
         }
       }
-      
+
       // If the bot doesn't exist yet or botsResponse is not an array, use the enable addon endpoint
       return await this.enableAddonBot(projectId, botType);
     } catch (error) {
@@ -307,8 +311,8 @@ export class BotService {
    * Execute multi wallet sell operation
    */
   static async multiWalletSell(params: {
-    projectId: string,
-    botId: string,
+    projectId: string;
+    botId: string;
     walletAddresses: string[];
     tokenAddress: string;
     sellPercentages: number[];
@@ -356,12 +360,8 @@ export class BotService {
         failedWallets?: number;
         totalSuccessful?: number;
         error?: string;
-      }
-    }>(
-      `${BACKEND_URL}/snipe/bnbCollect`,
-      params,
-      getAuthHeaders()
-    );
+      };
+    }>(`${BACKEND_URL}/snipe/bnbCollect`, params, getAuthHeaders());
     return response.data.data;
   }
-} 
+}

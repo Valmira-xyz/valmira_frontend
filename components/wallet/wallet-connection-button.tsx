@@ -1,48 +1,74 @@
-"use client"
+'use client';
 
-import { Wallet } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { web3modal } from "../providers"
-import { useDispatch } from "react-redux"
-import { setUser } from "@/store/slices/authSlice"
-import { authService } from "@/services/authService"
-import { useEffect } from "react"
-import { useAccount } from "wagmi"
+import { useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 
-export function WalletConnectionButton() {
-  const dispatch = useDispatch()
-  const { address, isConnected } = useAccount()
+import { Wallet } from 'lucide-react';
+import { useAccount } from 'wagmi';
 
-  useEffect(() => {
-    const handleAuthentication = async () => {
-      if (isConnected && address) {
-        try {
-          // Get nonce from backend
-          const nonce = await authService.getNonce(address)
-          
-          // In a real implementation, you would sign the nonce here
-          // For now, we'll use a mock signature
-          const mockSignature = "0x" + "1".repeat(130)
-          
-          // Verify signature and get user data
-          const authResponse = await authService.verifySignature(address, mockSignature, nonce.nonce)
-          
-          // Update Redux store with user data
-          dispatch(setUser(authResponse.user))
-        } catch (error) {
-          console.error('Authentication error:', error)
-        }
-      }
-    }
+import { Button, ButtonProps } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { authService } from '@/services/authService';
+import { setUser } from '@/store/slices/authSlice';
+import { AuthResponse } from '@/types';
 
-    handleAuthentication()
-  }, [isConnected, address, dispatch])
+import { web3modal } from '../providers';
 
-  return (
-    <Button onClick={() => web3modal.open()} className="bg-primary hover:bg-primary/90">
-      <Wallet className="mr-2 h-4 w-4" />
-      Connect Wallet
-    </Button>
-  )
+interface WalletConnectionButtonProps {
+  variant?: ButtonProps['variant'];
+  className?: string;
+  buttonText?: string;
+  onAuthSuccess?: (authResponse: AuthResponse) => void;
+  onAuthError?: (error: unknown) => void;
 }
 
+export function WalletConnectionButton({
+  variant = 'default',
+  className,
+  buttonText = 'Connect Wallet',
+  onAuthSuccess,
+  onAuthError,
+}: WalletConnectionButtonProps) {
+  const dispatch = useDispatch();
+  const { address, isConnected } = useAccount();
+
+  useEffect(() => {
+    const authenticateUser = async () => {
+      if (isConnected && address) {
+        try {
+          const nonce = await authService.getNonce(address);
+          const mockSignature = '0x' + '1'.repeat(130);
+          const authResponse = await authService.verifySignature(
+            address,
+            mockSignature,
+            nonce.nonce
+          );
+
+          if (onAuthSuccess) {
+            onAuthSuccess(authResponse);
+          } else {
+            dispatch(setUser(authResponse.user));
+          }
+        } catch (error) {
+          console.error('Authentication error:', error);
+          if (onAuthError) {
+            onAuthError(error);
+          }
+        }
+      }
+    };
+
+    authenticateUser();
+  }, [isConnected, address, dispatch, onAuthSuccess, onAuthError]);
+
+  return (
+    <Button
+      variant={variant}
+      onClick={() => web3modal.open()}
+      className={cn('', className)}
+    >
+      <Wallet className="h-4 w-4" />
+      {buttonText}
+    </Button>
+  );
+}

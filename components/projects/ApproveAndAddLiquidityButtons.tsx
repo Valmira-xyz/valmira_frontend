@@ -1,18 +1,24 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Loader2 } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import { hasTokenAllowance, approveTokens, addLiquidity } from "@/services/web3Utils"
-import { ethers } from "ethers"
+import { useEffect, useState } from 'react';
+
+import { ethers } from 'ethers';
+import { Loader2 } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  addLiquidity,
+  approveTokens,
+  hasTokenAllowance,
+} from '@/services/web3Utils';
 
 interface ApproveAndAddLiquidityButtonsProps {
-  tokenAddress: string
-  tokenAmount: string
-  bnbAmount: string
-  signer: ethers.Signer | null
-  onSuccess?: () => void
+  tokenAddress: string;
+  tokenAmount: string;
+  bnbAmount: string;
+  signer: ethers.Signer | null;
+  onSuccess?: () => void;
 }
 
 export function ApproveAndAddLiquidityButtons({
@@ -20,18 +26,19 @@ export function ApproveAndAddLiquidityButtons({
   tokenAmount,
   bnbAmount,
   signer,
-  onSuccess
+  onSuccess,
 }: ApproveAndAddLiquidityButtonsProps) {
-  const [isApproved, setIsApproved] = useState(false)
-  const [isCheckingApproval, setIsCheckingApproval] = useState(false)
-  const [isApproving, setIsApproving] = useState(false)
-  const [isAddingLiquidity, setIsAddingLiquidity] = useState(false)
-  const { toast } = useToast()
+  const [isApproved, setIsApproved] = useState(false);
+  const [isCheckingApproval, setIsCheckingApproval] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isAddingLiquidity, setIsAddingLiquidity] = useState(false);
+  const { toast } = useToast();
 
   // Network-specific router addresses
-  const routerAddress = process.env.NEXT_PUBLIC_NETWORK === 'testnet'
-    ? '0xD99D1c33F9fC3444f8101754aBC46c52416550D1'  // PancakeSwap Router on BSC Testnet
-    : '0x10ED43C718714eb63d5aA57B78B54704E256024E'; // PancakeSwap Router on BSC Mainnet
+  const routerAddress =
+    process.env.NEXT_PUBLIC_NETWORK === 'testnet'
+      ? '0xD99D1c33F9fC3444f8101754aBC46c52416550D1' // PancakeSwap Router on BSC Testnet
+      : '0x10ED43C718714eb63d5aA57B78B54704E256024E'; // PancakeSwap Router on BSC Mainnet
 
   // Check if token is approved when component mounts or inputs change
   useEffect(() => {
@@ -40,7 +47,12 @@ export function ApproveAndAddLiquidityButtons({
 
   // Function to check if token is approved
   const checkApproval = async () => {
-    if (!signer || !tokenAddress || !tokenAmount || parseFloat(tokenAmount) <= 0) {
+    if (
+      !signer ||
+      !tokenAddress ||
+      !tokenAmount ||
+      parseFloat(tokenAmount) <= 0
+    ) {
       setIsApproved(false);
       return;
     }
@@ -57,7 +69,7 @@ export function ApproveAndAddLiquidityButtons({
       );
       setIsApproved(hasAllowance);
     } catch (error) {
-      console.error("Error checking token approval:", error);
+      console.error('Error checking token approval:', error);
       setIsApproved(false);
     } finally {
       setIsCheckingApproval(false);
@@ -66,34 +78,35 @@ export function ApproveAndAddLiquidityButtons({
 
   // Function to approve tokens
   const handleApprove = async () => {
-    if (!signer || !tokenAddress || !tokenAmount || parseFloat(tokenAmount) <= 0) {
+    if (
+      !signer ||
+      !tokenAddress ||
+      !tokenAmount ||
+      parseFloat(tokenAmount) <= 0
+    ) {
       toast({
-        title: "Error",
-        description: "Please enter valid token amount and connect your wallet",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please enter valid token amount and connect your wallet',
+        variant: 'destructive',
       });
       return;
     }
 
     try {
       setIsApproving(true);
-      await approveTokens(
-        tokenAddress,
-        routerAddress,
-        tokenAmount,
-        signer
-      );
+      await approveTokens(tokenAddress, routerAddress, tokenAmount, signer);
       setIsApproved(true);
       toast({
-        title: "Success",
-        description: "Token approval successful",
+        title: 'Success',
+        description: 'Token approval successful',
       });
     } catch (error) {
-      console.error("Error approving tokens:", error);
+      console.error('Error approving tokens:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to approve tokens",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to approve tokens',
+        variant: 'destructive',
       });
     } finally {
       setIsApproving(false);
@@ -102,48 +115,51 @@ export function ApproveAndAddLiquidityButtons({
 
   // Function to add liquidity
   const handleAddLiquidity = async () => {
-    if (!signer || !tokenAddress || !tokenAmount || !bnbAmount || 
-        parseFloat(tokenAmount) <= 0 || parseFloat(bnbAmount) <= 0) {
+    if (
+      !signer ||
+      !tokenAddress ||
+      !tokenAmount ||
+      !bnbAmount ||
+      parseFloat(tokenAmount) <= 0 ||
+      parseFloat(bnbAmount) <= 0
+    ) {
       toast({
-        title: "Error",
-        description: "Please enter valid token and BNB amounts and connect your wallet",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          'Please enter valid token and BNB amounts and connect your wallet',
+        variant: 'destructive',
       });
       return;
     }
 
     if (!isApproved) {
       toast({
-        title: "Error",
-        description: "Please approve tokens first",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please approve tokens first',
+        variant: 'destructive',
       });
       return;
     }
 
     try {
       setIsAddingLiquidity(true);
-      await addLiquidity(
-        tokenAddress,
-        tokenAmount,
-        bnbAmount,
-        signer
-      );
+      await addLiquidity(tokenAddress, tokenAmount, bnbAmount, signer);
       toast({
-        title: "Success",
-        description: "Liquidity added successfully",
+        title: 'Success',
+        description: 'Liquidity added successfully',
       });
-      
+
       // Call the onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
-      console.error("Error adding liquidity:", error);
+      console.error('Error adding liquidity:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to add liquidity",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to add liquidity',
+        variant: 'destructive',
       });
     } finally {
       setIsAddingLiquidity(false);
@@ -151,8 +167,13 @@ export function ApproveAndAddLiquidityButtons({
   };
 
   // If no signer or invalid inputs, disable buttons
-  const isDisabled = !signer || !tokenAddress || !tokenAmount || !bnbAmount || 
-                    parseFloat(tokenAmount) <= 0 || parseFloat(bnbAmount) <= 0;
+  const isDisabled =
+    !signer ||
+    !tokenAddress ||
+    !tokenAmount ||
+    !bnbAmount ||
+    parseFloat(tokenAmount) <= 0 ||
+    parseFloat(bnbAmount) <= 0;
 
   return (
     <div className="flex gap-2">
@@ -174,7 +195,7 @@ export function ApproveAndAddLiquidityButtons({
               Checking...
             </>
           ) : (
-            "Approve Tokens"
+            'Approve Tokens'
           )}
         </Button>
       )}
@@ -189,9 +210,9 @@ export function ApproveAndAddLiquidityButtons({
             Adding Liquidity...
           </>
         ) : (
-          "Add Liquidity"
+          'Add Liquidity'
         )}
       </Button>
     </div>
   );
-} 
+}

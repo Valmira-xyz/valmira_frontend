@@ -1,10 +1,12 @@
 'use client';
 
-import { ThemeProvider } from 'next-themes';
 import { Provider as ReduxProvider } from 'react-redux';
-import { store } from '@/store/store';
+
+import { ThemeProvider } from 'next-themes';
 import { WagmiConfig } from 'wagmi';
+
 import { wagmiConfig } from '@/lib/wagmi';
+import { store } from '@/store/store';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -26,4 +28,4 @@ export function Providers({ children, cookies }: ProvidersProps) {
       </WagmiConfig>
     </ReduxProvider>
   );
-} 
+}
