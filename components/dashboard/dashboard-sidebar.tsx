@@ -1,28 +1,35 @@
-"use client"
+'use client';
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { useDispatch, useSelector } from 'react-redux'
-import { fetchProjects } from '@/store/slices/projectSlice'
-import type { RootState } from '@/store/store'
-import { useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
-interface DashboardSidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
+import { usePathname, useRouter } from 'next/navigation';
 
-export function DashboardSidebar({ className, ...props }: DashboardSidebarProps) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const dispatch = useDispatch()
-  const { projects, loading } = useSelector((state: RootState) => state.projects)
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { fetchProjects } from '@/store/slices/projectSlice';
+import type { RootState } from '@/store/store';
+
+type DashboardSidebarProps = React.HTMLAttributes<HTMLDivElement>;
+
+export function DashboardSidebar({
+  className,
+  ...props
+}: DashboardSidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const { projects, loading } = useSelector(
+    (state: RootState) => state.projects
+  );
 
   useEffect(() => {
-    dispatch(fetchProjects() as any)
-  }, [dispatch])
+    dispatch(fetchProjects() as any);
+  }, [dispatch]);
 
   return (
-    <div className={cn("pb-12", className)} {...props}>
+    <div className={cn('pb-12', className)} {...props}>
       <div className="space-y-4 py-4">
         <div className="px-3 py-2">
           <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
@@ -30,7 +37,7 @@ export function DashboardSidebar({ className, ...props }: DashboardSidebarProps)
           </h2>
           <div className="space-y-1">
             <Button
-              variant={pathname === "/dashboard" ? "secondary" : "ghost"}
+              variant={pathname === '/dashboard' ? 'secondary' : 'ghost'}
               className="w-full justify-start"
               onClick={() => router.push('/dashboard')}
             >
@@ -52,7 +59,7 @@ export function DashboardSidebar({ className, ...props }: DashboardSidebarProps)
               Overview
             </Button>
             <Button
-              variant={pathname === "/dashboard/new" ? "secondary" : "ghost"}
+              variant={pathname === '/dashboard/new' ? 'secondary' : 'ghost'}
               className="w-full justify-start"
               onClick={() => router.push('/dashboard/new')}
             >
@@ -88,7 +95,11 @@ export function DashboardSidebar({ className, ...props }: DashboardSidebarProps)
                 projects.map((project) => (
                   <Button
                     key={project._id}
-                    variant={pathname === `/projects/${project._id}` ? "secondary" : "ghost"}
+                    variant={
+                      pathname === `/projects/${project._id}`
+                        ? 'secondary'
+                        : 'ghost'
+                    }
                     className="w-full justify-start font-normal"
                     onClick={() => router.push(`/projects/${project._id}`)}
                   >
@@ -117,5 +128,5 @@ export function DashboardSidebar({ className, ...props }: DashboardSidebarProps)
         </div>
       </div>
     </div>
-  )
+  );
 }

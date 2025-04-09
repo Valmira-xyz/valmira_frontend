@@ -1,20 +1,22 @@
 'use client';
 
+import { ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { store } from '@/store/store';
-import { SessionProvider } from '@/components/session-provider';
+
+import { bsc, bscTestnet } from 'viem/chains';
+import { type Config, cookieToInitialState, WagmiProvider } from 'wagmi';
+import { createAppKit } from '@reown/appkit/react';
+
+import { AuthProvider } from '@/components/AuthProvider';
+import { DashboardSidebar } from '@/components/layout/dashboard-sidebar';
 import { QueryProvider } from '@/components/query-provider';
+import { SessionProvider } from '@/components/session-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { DashboardSidebar } from '@/components/layout/dashboard-sidebar';
 import { Toaster } from '@/components/ui/toaster';
-import { wagmiAdapter, projectId } from '@/lib/web3modal';
-import { createAppKit } from '@reown/appkit/react';
-import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi';
-import { bsc, bscTestnet } from 'viem/chains';
-import { ReactNode } from 'react';
 import { WalletProvider } from '@/components/wallet/wallet-provider';
-import { AuthProvider } from '@/components/AuthProvider';
+import { projectId, wagmiAdapter } from '@/lib/web3modal';
+import { store } from '@/store/store';
 
 if (!projectId) {
   throw new Error('Project ID is not defined');

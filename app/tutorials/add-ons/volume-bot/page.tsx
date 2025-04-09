@@ -1,18 +1,22 @@
-"use client"
+'use client';
 
-import { PageHeader } from "@/components/layout/page-header"
+import { PageHeader } from '@/components/layout/page-header';
 
 export default function VolumeBotTutorialPage() {
   return (
     <div className="container mx-auto py-6">
-        <PageHeader title="Volume Bot Tutorial" />
+      <PageHeader title="Volume Bot Tutorial" />
 
       <div className="prose dark:prose-invert max-w-none">
-        <p className="text-lg">Trying to get your token trending or just need some volume on the cheap? We got you.</p>
+        <p className="text-lg">
+          Trying to get your token trending or just need some volume on the
+          cheap? We got you.
+        </p>
 
         <div className="my-6 space-y-4">
           <p className="flex items-center text-xl">
-            <span className="mr-2">🚀</span> You can fire our bot up with just 1SOL!
+            <span className="mr-2">🚀</span> You can fire our bot up with just
+            1SOL!
           </p>
           <p className="flex items-center text-xl">
             <span className="mr-2">💰</span> Pancakeswap V2 tokens only.
@@ -21,23 +25,33 @@ export default function VolumeBotTutorialPage() {
 
         <h2 className="text-2xl font-bold mt-8 mb-4">How It Works…</h2>
         <p className="flex items-center text-lg">
-          <span className="mr-2">💡</span> Our bot splits your deposit into two separate bots for a more organic boost:
+          <span className="mr-2">💡</span> Our bot splits your deposit into two
+          separate bots for a more organic boost:
         </p>
         <ul className="list-none space-y-3 my-4 pl-8">
           <li className="flex items-start">
             <span className="mr-2 text-primary">🔹</span>
-            <span>Bot 1: Micro buys with multiple wallets, sells bundle with one wallet.</span>
+            <span>
+              Bot 1: Micro buys with multiple wallets, sells bundle with one
+              wallet.
+            </span>
           </li>
           <li className="flex items-start">
             <span className="mr-2 text-primary">🔹</span>
-            <span>Bot 2: Bigger buys, with different wallets, sells bundle with one wallet.</span>
+            <span>
+              Bot 2: Bigger buys, with different wallets, sells bundle with one
+              wallet.
+            </span>
           </li>
         </ul>
         <p className="flex items-center text-lg">
-          <span className="mr-2">🔥</span> You can choose the bot speed and max buy amount.
+          <span className="mr-2">🔥</span> You can choose the bot speed and max
+          buy amount.
         </p>
 
-        <h2 className="text-2xl font-bold mt-8 mb-4">Whales Hybrid Bot Benefits:</h2>
+        <h2 className="text-2xl font-bold mt-8 mb-4">
+          Whales Hybrid Bot Benefits:
+        </h2>
         <ul className="list-none space-y-3 my-4">
           <li className="flex items-center">
             <span className="mr-2 text-green-500">✅</span> Boost Transactions
@@ -49,17 +63,18 @@ export default function VolumeBotTutorialPage() {
             <span className="mr-2 text-green-500">✅</span> Boost Makers
           </li>
           <li className="flex items-center">
-            <span className="mr-2 text-green-500">✅</span> Makes More Buys Than Sells
+            <span className="mr-2 text-green-500">✅</span> Makes More Buys Than
+            Sells
           </li>
         </ul>
 
         <div className="bg-primary/10 border-l-4 border-primary p-4 mt-8 rounded-r-lg">
           <p className="text-xl font-bold flex items-center">
-            <span className="mr-2">🚀</span> Fire it up today & make an impact on your stats! 🚀
+            <span className="mr-2">🚀</span> Fire it up today & make an impact
+            on your stats! 🚀
           </p>
         </div>
       </div>
     </div>
-  )
+  );
 }
-

@@ -1,6 +1,7 @@
-import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+
+import { Button } from '@/components/ui/button';
 
 export default function BundleSnipeTutorial() {
   return (
@@ -11,11 +12,13 @@ export default function BundleSnipeTutorial() {
           Back to Projects
         </Link>
       </Button>
-      <h1 className="text-3xl font-bold mb-6">How the Bundle Snipe Bot Works</h1>
+      <h1 className="text-3xl font-bold mb-6">
+        How the Bundle Snipe Bot Works
+      </h1>
       <div className="space-y-4">
         <p>
-          The Bundle Snipe Bot helps you capture profitable trading opportunities in transaction bundles. Here's how it
-          works:
+          The Bundle Snipe Bot helps you capture profitable trading
+          opportunities in transaction bundles. Here's how it works:
         </p>
         <ol className="list-decimal list-inside space-y-2">
           <li>Monitor incoming transaction bundles in real-time</li>
@@ -24,11 +27,10 @@ export default function BundleSnipeTutorial() {
           <li>Manage risk and optimize profit potential</li>
         </ol>
         <p>
-          For more detailed information and step-by-step usage instructions, please refer to our comprehensive
-          documentation.
+          For more detailed information and step-by-step usage instructions,
+          please refer to our comprehensive documentation.
         </p>
       </div>
     </div>
-  )
+  );
 }
-

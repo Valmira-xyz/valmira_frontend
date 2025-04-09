@@ -1,16 +1,16 @@
-import { ethers } from "ethers";
 import axios from 'axios';
-import type { PublicClient, WalletClient } from "viem";
+import { ethers } from 'ethers';
+import type { PublicClient, WalletClient } from 'viem';
 
-import { 
-  SocialLinks, 
-  ContractResponse, 
-  DeploymentJobResponse, 
+import { Config } from '@/lib/deploy-token/config';
+import {
+  ContractResponse,
+  DeploymentJobResponse,
+  DeploymentParams,
   JobStatusResponse,
+  SocialLinks,
   VerificationParams,
-  DeploymentParams
 } from '@/types';
-import { Config } from "@/lib/deploy-token/config";
 
 const CONTRACT_SERVER_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts`;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -29,7 +29,9 @@ const waitForRateLimit = async () => {
   const timeSinceLastRequest = now - lastRequestTime;
   if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
     // console.log(`Rate limit active. Waiting for ${RATE_LIMIT_DELAY - timeSinceLastRequest}ms`);
-    await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY - timeSinceLastRequest));
+    await new Promise((resolve) =>
+      setTimeout(resolve, RATE_LIMIT_DELAY - timeSinceLastRequest)
+    );
   }
   lastRequestTime = Date.now();
 };
@@ -44,11 +46,13 @@ const retryWithBackoff = async <T>(
     return await operation();
   } catch (error) {
     if (retries === 0) {
-      console.error("Max retries reached. Throwing error:", error);
+      console.error('Max retries reached. Throwing error:', error);
       throw error;
     }
-    console.warn(`Operation failed. Retrying in ${RETRY_DELAY}ms... Retries left: ${retries - 1}`);
-    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+    console.warn(
+      `Operation failed. Retrying in ${RETRY_DELAY}ms... Retries left: ${retries - 1}`
+    );
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
     return retryWithBackoff(operation, retries - 1);
   }
 };
@@ -58,9 +62,13 @@ export const getContractWithSocialLinks = async (
   templateNumber: number,
   tokenName: string
 ): Promise<ContractResponse> => {
-  console.log("Fetching contract with social links:", { socialLinks, templateNumber, tokenName });
+  console.log('Fetching contract with social links:', {
+    socialLinks,
+    templateNumber,
+    tokenName,
+  });
   await waitForRateLimit();
-  
+
   return retryWithBackoff(async () => {
     try {
       const response = await axios.post<ContractResponse>(
@@ -68,77 +76,84 @@ export const getContractWithSocialLinks = async (
         { ...socialLinks, templateNumber, tokenName },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
         }
       );
-      console.log("Contract retrieved successfully:", response.data);
+      console.log('Contract retrieved successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error("Error fetching contract:", error);
+      console.error('Error fetching contract:', error);
       throw error;
     }
   });
 };
 
-export async function verifyContract(params: VerificationParams): Promise<DeploymentJobResponse> {
-  console.log("Verifying contract with params:", params);
+export async function verifyContract(
+  params: VerificationParams
+): Promise<DeploymentJobResponse> {
+  console.log('Verifying contract with params:', params);
   await waitForRateLimit();
-  
+
   try {
     const response = await fetch(`${CONTRACT_SERVER_URL}/verify-contract`, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem('token')}`
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
       body: JSON.stringify(params),
     });
 
     const data = await response.json();
-    console.log("Verification response received:", data);
-
+    console.log('Verification response received:', data);
 
     return data;
   } catch (error) {
-    console.error("Error verifying contract:", error);
+    console.error('Error verifying contract:', error);
     throw error;
   }
 }
 
 export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
-  console.log("Fetching job status for jobId:", jobId);
+  console.log('Fetching job status for jobId:', jobId);
   await waitForRateLimit();
-  
+
   return retryWithBackoff(async () => {
     try {
       const response = await fetch(`${CONTRACT_SERVER_URL}/job/${jobId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
       });
 
       const data = await response.json();
-      console.log("Job status received:", data);
+      console.log('Job status received:', data);
 
       return data;
     } catch (error) {
-      console.error("Error getting job status:", error);
+      console.error('Error getting job status:', error);
       throw error;
     }
   });
 }
 
-export const contractDeployByCustomByteCode = async (byteCode: string, args: any[], signer: any, tokenTemplate: number) => {
-  console.log("contractDeployByCustomByteCode  : ", args, signer, tokenTemplate);
+export const contractDeployByCustomByteCode = async (
+  byteCode: string,
+  args: any[],
+  signer: any,
+  tokenTemplate: number
+) => {
+  console.log(
+    'contractDeployByCustomByteCode  : ',
+    args,
+    signer,
+    tokenTemplate
+  );
 
   const TokenAbi = (Config.template2AbiMap as any)[tokenTemplate];
 
-  const factory = new ethers.ContractFactory(
-    TokenAbi.abi,
-    byteCode,
-    signer
-  );
+  const factory = new ethers.ContractFactory(TokenAbi.abi, byteCode, signer);
 
   const contract = await factory.deploy(...args);
 
@@ -150,9 +165,7 @@ export const contractDeployByCustomByteCode = async (byteCode: string, args: any
 export const getPairAddress = async (tokenAddress: string, signer: any) => {
   try {
     // Determine the ABI for the token contract
-    const tokenAbi = [
-      "function uniswapPair() view returns (address)"
-    ]; // Modify this ABI if needed
+    const tokenAbi = ['function uniswapPair() view returns (address)']; // Modify this ABI if needed
 
     // Create an instance of the token contract
     const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
@@ -162,8 +175,8 @@ export const getPairAddress = async (tokenAddress: string, signer: any) => {
 
     return pairAddress;
   } catch (error) {
-    console.error("Error fetching pair address:", error);
-    return "0x0000000000000000000000000000000000000000"; // Return a zero address in case of failure
+    console.error('Error fetching pair address:', error);
+    return '0x0000000000000000000000000000000000000000'; // Return a zero address in case of failure
   }
 };
 
@@ -173,40 +186,57 @@ export class TokenDeploymentService {
   private walletClient: WalletClient;
   private signer: any;
 
-  private constructor(provider: PublicClient, walletClient: WalletClient, signer: any) {
+  private constructor(
+    provider: PublicClient,
+    walletClient: WalletClient,
+    signer: any
+  ) {
     this.provider = provider;
     this.walletClient = walletClient;
     this.signer = signer;
   }
 
-  public static getInstance(provider: PublicClient, walletClient: WalletClient, signer: any): TokenDeploymentService {
+  public static getInstance(
+    provider: PublicClient,
+    walletClient: WalletClient,
+    signer: any
+  ): TokenDeploymentService {
     if (!TokenDeploymentService.instance) {
-      TokenDeploymentService.instance = new TokenDeploymentService(provider, walletClient, signer);
+      TokenDeploymentService.instance = new TokenDeploymentService(
+        provider,
+        walletClient,
+        signer
+      );
     }
     return TokenDeploymentService.instance;
   }
 
   private validateParams(params: DeploymentParams): void {
-    console.log("deployment params : ", params);
+    console.log('deployment params : ', params);
     if (!params.tokenName) {
-      throw new Error("Token name is required");
+      throw new Error('Token name is required');
     }
     if (!params.tokenSymbol) {
-      throw new Error("Token symbol is required");
+      throw new Error('Token symbol is required');
     }
     if (!params.tokenTotalSupply) {
-      throw new Error("Total supply is required");
+      throw new Error('Total supply is required');
     }
-    if (params.buyFee !== undefined && (params.buyFee < 0 || params.buyFee > 25)) {
-      throw new Error("Marketing buy fee must be between 0 and 25");
+    if (
+      params.buyFee !== undefined &&
+      (params.buyFee < 0 || params.buyFee > 25)
+    ) {
+      throw new Error('Marketing buy fee must be between 0 and 25');
     }
-    if (params.sellFee !== undefined && (params.sellFee < 0 || params.sellFee > 25)) {
-      throw new Error("Marketing sell fee must be between 0 and 25");
+    if (
+      params.sellFee !== undefined &&
+      (params.sellFee < 0 || params.sellFee > 25)
+    ) {
+      throw new Error('Marketing sell fee must be between 0 and 25');
     }
   }
 
   private async getDeployArgs(params: DeploymentParams): Promise<any[]> {
-
     return [
       params.tokenName,
       params.tokenSymbol,
@@ -215,20 +245,22 @@ export class TokenDeploymentService {
       params.sellFee || 3,
       params.maxHoldingLimit_ || 10,
       params.maxBuyLimit_ || 10,
-      params.maxSellLimit_ || 10, 
-      this.walletClient.account?.address || "0x0000000000000000000000000000000000000000"
+      params.maxSellLimit_ || 10,
+      this.walletClient.account?.address ||
+        '0x0000000000000000000000000000000000000000',
     ];
   }
 
-  public async deployToken(params: DeploymentParams): Promise<{ 
-    contractAddress: string; 
-    pairAddress: string,
-    success: boolean,
-    message: string }> {
+  public async deployToken(params: DeploymentParams): Promise<{
+    contractAddress: string;
+    pairAddress: string;
+    success: boolean;
+    message: string;
+  }> {
     try {
       // Check wallet connection
       if (!this.walletClient.account) {
-        throw new Error("Please connect your wallet before deploying");
+        throw new Error('Please connect your wallet before deploying');
       }
 
       // Validate parameters
@@ -241,19 +273,19 @@ export class TokenDeploymentService {
         params.tokenName
       );
 
-      if (!contractResponse.success || !contractResponse.byteCode ) {
-        throw new Error(contractResponse.message || "Failed to get contract");
+      if (!contractResponse.success || !contractResponse.byteCode) {
+        throw new Error(contractResponse.message || 'Failed to get contract');
       }
 
-      console.log("contractResponse : ", contractResponse);
-      
+      console.log('contractResponse : ', contractResponse);
+
       // Get deployment arguments
       const deployArgs = await this.getDeployArgs(params);
-      
+
       console.log('Deployment preparation:', {
         walletAddress: this.walletClient.account.address,
         templateNumber: params.templateNumber,
-        argumentsCount: deployArgs.length
+        argumentsCount: deployArgs.length,
       });
 
       // Deploy contract
@@ -261,41 +293,41 @@ export class TokenDeploymentService {
         contractResponse.byteCode,
         deployArgs,
         this.signer,
-        params.templateNumber,
+        params.templateNumber
       );
 
       if (!contractAddress) {
-        throw new Error("Failed to deploy contract");
+        throw new Error('Failed to deploy contract');
       }
 
       // Fetch pair address with native currency at here
-      const pairAddress = await getPairAddress(contractAddress as string, this.signer);
-      console.log("pairAddress : ", pairAddress);
+      const pairAddress = await getPairAddress(
+        contractAddress as string,
+        this.signer
+      );
+      console.log('pairAddress : ', pairAddress);
 
       // Notify backend for verification
       const verifyParams: VerificationParams = {
         deployedAddress: contractAddress as string,
         constructorArguments: deployArgs,
-        customContractPath: contractResponse.path || "",
+        customContractPath: contractResponse.path || '',
         templateNumber: params?.templateNumber || 0,
-        tokenName: params.tokenName
-        
+        tokenName: params.tokenName,
       };
-      console.log("auth token: ", localStorage.getItem("token"));
-      console.log("verifyParams : ", verifyParams);
+      console.log('auth token: ', localStorage.getItem('token'));
+      console.log('verifyParams : ', verifyParams);
       const response = await verifyContract(verifyParams);
 
       return {
         contractAddress: contractAddress as string,
         pairAddress: pairAddress as string,
         success: response.success || false,
-        message: response.message || "Failed to verify contract"
+        message: response.message || 'Failed to verify contract',
       };
     } catch (error) {
-      console.error("Error verifying token:", error);
+      console.error('Error verifying token:', error);
       throw error;
     }
   }
-
-} 
-
+}

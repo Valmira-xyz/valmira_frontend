@@ -1,14 +1,16 @@
 'use client';
 
-import { PageHeader } from '@/components/layout/page-header';
+import { useSelector } from 'react-redux';
+
+import Link from 'next/link';
+
 import { DashboardMetrics } from '@/components/dashboard/dashboard-metrics';
 import { LatestProjects } from '@/components/dashboard/latest-projects';
+import { PageHeader } from '@/components/layout/page-header';
 import { CreateProjectButton } from '@/components/projects/create-project-button';
-import { WalletConnectionCTA } from '@/components/wallet/wallet-connection-cta';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { WalletConnectionCTA } from '@/components/wallet/wallet-connection-cta';
+import { RootState } from '@/store/store';
 
 export default function DashboardPage() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);

@@ -1,10 +1,12 @@
+import { useDispatch } from 'react-redux';
+
 import { configureStore } from '@reduxjs/toolkit';
+
+import { projectApi } from './api/project';
 import authReducer from './slices/authSlice';
+import botReducer from './slices/botSlice';
 import projectReducer from './slices/projectSlice';
 import walletReducer from './slices/walletSlice';
-import botReducer from './slices/botSlice';
-import { useDispatch } from 'react-redux';
-import { projectApi } from './api/project';
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -28,7 +30,7 @@ export const store = configureStore({
           'projects/fetchProfitTrending/pending',
           'projects/fetchProfitTrending/fulfilled',
           'projects/fetchVolumeTrending/pending',
-          'projects/fetchVolumeTrending/fulfilled'
+          'projects/fetchVolumeTrending/fulfilled',
         ],
         // Ignore these field paths in all actions
         ignoredActionPaths: [
@@ -38,7 +40,7 @@ export const store = configureStore({
           'meta.arg.startDate',
           'meta.arg.endDate',
           'payload.metrics.lastUpdate',
-          'payload.timeRange'
+          'payload.timeRange',
         ],
         // Ignore these paths in the state
         ignoredPaths: [
@@ -47,13 +49,13 @@ export const store = configureStore({
           'projects.projectStats.metrics.lastUpdate',
           'projects.projectStats.timeRange',
           'projects.currentProject.updatedAt',
-          'projects.currentProject.createdAt'
+          'projects.currentProject.createdAt',
         ],
       },
     }).concat(projectApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch; 
+export type AppDispatch = typeof store.dispatch;
 
 export const useAppDispatch = () => useDispatch<AppDispatch>();

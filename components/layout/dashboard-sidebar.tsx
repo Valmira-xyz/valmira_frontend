@@ -1,43 +1,42 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import {
-  FolderKanban,
-  HelpCircle,
-  Settings,
-  ChevronDown,
-  BookOpen,
-  Circle,
-  HomeIcon,
-  AlertCircleIcon,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '@/store/store';
-import { generateAvatarColor, getBadgeVariant } from '@/lib/utils';
-import { fetchProjects } from '@/store/slices/projectSlice';
-import Image from 'next/image';
-import { useTheme } from 'next-themes';
-import { useAccount } from 'wagmi';
-import Logo from '@/public/sidebar/logo.svg';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
+  AlertCircleIcon,
+  BookOpen,
+  ChevronDown,
+  Circle,
+  FolderKanban,
+  HelpCircle,
+  HomeIcon,
+  Settings,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { useAccount } from 'wagmi';
+
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenuButton,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { generateAvatarColor, getBadgeVariant } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import Link from 'next/link';
+import Logo from '@/public/sidebar/logo.svg';
+import { fetchProjects } from '@/store/slices/projectSlice';
+import { RootState } from '@/store/store';
 
 export function DashboardSidebar() {
   const router = useRouter();
@@ -46,6 +45,7 @@ export function DashboardSidebar() {
   const [openProjects, setOpenProjects] = useState(true);
   const [openKnowledge, setOpenKnowledge] = useState(false);
   const { theme, resolvedTheme } = useTheme();
+  const { open, setOpen, isMobile } = useSidebar();
 
   // Get auth state from Redux store
   const { user, isAuthenticated } = useSelector(
@@ -120,12 +120,14 @@ export function DashboardSidebar() {
   const avatarColor = generateAvatarColor(user?.walletAddress || '');
 
   return (
-    <Sidebar>
+    <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'}>
       <SidebarHeader className="p-2 relative w-full">
         <div className="flex justify-between items-center h-8">
-          <Link href={'/'}>
-            <Logo />
-          </Link>
+          {open && (
+            <Link href={'/'}>
+              <Logo />
+            </Link>
+          )}
           <SidebarTrigger className="h-9 w-9 flex items-center justify-center" />
         </div>
       </SidebarHeader>
@@ -140,22 +142,32 @@ export function DashboardSidebar() {
           </SidebarMenuButton>
 
           {/* Projects with submenu */}
-          <Collapsible open={openProjects} onOpenChange={setOpenProjects}>
+          <Collapsible
+            open={openProjects && open}
+            onOpenChange={(isOpen) => {
+              setOpenProjects(isOpen);
+              if (isOpen && !open) {
+                setOpen(true);
+              }
+            }}
+          >
             <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1  h-8 hover:bg-accent hover:text-accent-foreground rounded-md">
               <div className="flex items-center gap-2">
                 <FolderKanban className="h-4 w-4" />
-                <span className="text-sm">Projects</span>
+                {open && <span className="text-sm">Projects</span>}
               </div>
-              <ChevronDown
-                className={cn(
-                  'h-4 w-4 transition-transform',
-                  openProjects && 'transform rotate-180'
-                )}
-              />
+              {open && (
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    openProjects && 'transform rotate-180'
+                  )}
+                />
+              )}
             </CollapsibleTrigger>
 
             <CollapsibleContent>
-              <div className="ml-4">
+              <div className="ml-4 border-l-[1px]">
                 {filteredAndSortedProjects &&
                 filteredAndSortedProjects.length > 0 ? (
                   <>
@@ -219,11 +231,19 @@ export function DashboardSidebar() {
           </Collapsible>
 
           {/* Knowledge Base with submenu */}
-          <Collapsible open={openKnowledge} onOpenChange={setOpenKnowledge}>
+          <Collapsible
+            open={openKnowledge && open}
+            onOpenChange={(isOpen) => {
+              setOpenKnowledge(isOpen);
+              if (isOpen && !open) {
+                setOpen(true);
+              }
+            }}
+          >
             <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1 h-8  hover:bg-accent hover:text-accent-foreground rounded-md">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
-                <span className="text-sm">Knowledge Base</span>
+                {open && <span className="text-sm">Knowledge Base</span>}
               </div>
               <ChevronDown
                 className={cn(
@@ -234,7 +254,7 @@ export function DashboardSidebar() {
             </CollapsibleTrigger>
 
             <CollapsibleContent>
-              <div className="ml-4">
+              <div className="ml-4 border-l-[1px]">
                 <button
                   onClick={() => router.push('/tutorials')}
                   className="flex items-center w-full px-4 py-2 h-8 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
@@ -277,7 +297,12 @@ export function DashboardSidebar() {
         </div>
 
         {/* Profile section at the bottom */}
-        <div className="mx-4 mb-6 mt-auto border border-border p-4 space-y-4 rounded-xl">
+        <div
+          className={cn(
+            'mx-4 mb-6 mt-auto border-border p-4 space-y-4 rounded-xl',
+            open && 'border'
+          )}
+        >
           {isAuthenticated && isConnected && user ? (
             <>
               <div className="flex items-center space-x-3">
@@ -321,9 +346,11 @@ export function DashboardSidebar() {
               </div>
             </>
           ) : (
-            <div className="text-sm text-muted-foreground">
-              <p>Connect your wallet and login to see your profile</p>
-            </div>
+            open && (
+              <div className="text-sm text-muted-foreground">
+                <p>Connect your wallet and login to see your profile</p>
+              </div>
+            )
           )}
         </div>
       </SidebarContent>

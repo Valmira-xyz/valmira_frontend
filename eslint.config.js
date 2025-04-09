@@ -69,7 +69,6 @@ export default tseslint.config(
     rules: {
       ...commonTsRules,
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
-      'no-console': ['error', { allow: ['warn', 'error'] }],
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off',

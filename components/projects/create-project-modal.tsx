@@ -1,10 +1,28 @@
-"use client"
+'use client';
 
-import type React from "react"
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { FaDiscord } from 'react-icons/fa';
+import { useDispatch } from 'react-redux';
 
-import { useState, useEffect } from "react"
-import { Loader2, AlertCircle, ChevronDown, Globe, Send, Twitter, Copy, ExternalLink } from "lucide-react"
-import { FaDiscord } from "react-icons/fa"
+import {
+  AlertCircle,
+  ChevronDown,
+  Globe,
+  Loader2,
+  Send,
+  Twitter,
+} from 'lucide-react';
+import { useChainId, usePublicClient, useWalletClient } from 'wagmi';
+
+import { AddressDisplay } from '@/components/ui/address-display';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -12,100 +30,116 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AddressDisplay } from "@/components/ui/address-display"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { cn } from "@/lib/utils"
-import { TokenDeploymentService } from "@/services/deployTokenService"
-import { useWalletClient, usePublicClient, useChainId } from "wagmi"
-import { useEthersSigner } from "@/lib/ether-adapter"
-import { useTokenValidation } from '@/hooks/useTokenValidation'
-import { useDispatch } from "react-redux"
-import { createProject } from "@/store/slices/projectSlice"
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/use-toast';
+import { useTokenValidation } from '@/hooks/useTokenValidation';
+import { useEthersSigner } from '@/lib/ether-adapter';
+import { cn } from '@/lib/utils';
+import { TokenDeploymentService } from '@/services/deployTokenService';
+import { createProject } from '@/store/slices/projectSlice';
 
 interface CreateProjectModalProps {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-type TokenDeploymentStatus = "idle" | "deploying" | "success" | "error"
-type TokenImportStatus = "idle" | "validating" | "valid" | "invalid"
+type TokenDeploymentStatus = 'idle' | 'deploying' | 'success' | 'error';
+type TokenImportStatus = 'idle' | 'validating' | 'valid' | 'invalid';
 
-export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
-  const [activeTab, setActiveTab] = useState("deploy")
-  const { toast } = useToast()
-  const [showSocialLinks, setShowSocialLinks] = useState(false)
-  const publicClient = usePublicClient()
-  const { data: walletClient } = useWalletClient()
+export function CreateProjectModal({
+  isOpen,
+  onClose,
+}: CreateProjectModalProps) {
+  const [activeTab, setActiveTab] = useState('deploy');
+  const { toast } = useToast();
+  const [showSocialLinks, setShowSocialLinks] = useState(false);
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
   const signer = useEthersSigner({ chainId });
-  const [deploymentStatusText, setDeploymentStatusText] = useState<string>("")
-  const [isDeploying, setIsDeploying] = useState(false)
-  const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const [deploymentStatusText, setDeploymentStatusText] = useState<string>('');
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   // State for deploying new token
-  const [newTokenName, setNewTokenName] = useState("")
-  const [newTokenSymbol, setNewTokenSymbol] = useState("")
-  const [newTokenTotalSupply, setNewTokenTotalSupply] = useState("")
-  const [newTokenBuyTax, setNewTokenBuyTax] = useState("0")
-  const [newTokenSellTax, setNewTokenSellTax] = useState("0")
-  const [newTokenMaxHoldingRate, setNewTokenMaxHoldingRate] = useState("10")
-  const [newTokenMaxBuySellRate, setNewTokenMaxBuySellRate] = useState("10")
-  const [tokenTemplate, setTokenTemplate] = useState("0")
-  const [deployedTokenAddress, setDeployedTokenAddress] = useState<string | null>(null)
-  const [pairAddress, setPairAddress] = useState<string | null>(null)
+  const [newTokenName, setNewTokenName] = useState('');
+  const [newTokenSymbol, setNewTokenSymbol] = useState('');
+  const [newTokenTotalSupply, setNewTokenTotalSupply] = useState('');
+  const [newTokenBuyTax, setNewTokenBuyTax] = useState('0');
+  const [newTokenSellTax, setNewTokenSellTax] = useState('0');
+  const [newTokenMaxHoldingRate, setNewTokenMaxHoldingRate] = useState('10');
+  const [newTokenMaxBuySellRate, setNewTokenMaxBuySellRate] = useState('10');
+  const [tokenTemplate, setTokenTemplate] = useState('0');
+  const [deployedTokenAddress, setDeployedTokenAddress] = useState<
+    string | null
+  >(null);
+  const [pairAddress, setPairAddress] = useState<string | null>(null);
 
   // Add social links state
-  const [website, setWebsite] = useState("")
-  const [telegram, setTelegram] = useState("")
-  const [discord, setDiscord] = useState("")
-  const [twitter, setTwitter] = useState("")
+  const [website, setWebsite] = useState('');
+  const [telegram, setTelegram] = useState('');
+  const [discord, setDiscord] = useState('');
+  const [twitter, setTwitter] = useState('');
 
   // State for deploying new token
-  const [deploymentStatus, setDeploymentStatus] = useState<TokenDeploymentStatus>("idle")
-  const [deploymentError, setDeploymentError] = useState("")
+  const [deploymentStatus, setDeploymentStatus] =
+    useState<TokenDeploymentStatus>('idle');
+  const [deploymentError, setDeploymentError] = useState('');
 
   // State for importing existing token
-  const [existingContractAddress, setExistingContractAddress] = useState("")
-  const [existingNetwork, setExistingNetwork] = useState("bsc")
-  const { status: tokenImportStatus, error: importError, tokenInfo: analyzedToken, validateToken, initializeState } = useTokenValidation();
+  const [existingContractAddress, setExistingContractAddress] = useState('');
+  const [existingNetwork, setExistingNetwork] = useState('bsc');
+  const {
+    status: tokenImportStatus,
+    error: importError,
+    tokenInfo: analyzedToken,
+    validateToken,
+    initializeState,
+  } = useTokenValidation();
 
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
 
   const validateTokenInputs = () => {
     const errors: string[] = [];
 
     // Validate name
     if (!newTokenName || newTokenName.length < 3 || newTokenName.length > 50) {
-      errors.push("Token name must be between 3 and 50 characters");
+      errors.push('Token name must be between 3 and 50 characters');
     }
 
     // Validate symbol
-    if (!newTokenSymbol || newTokenSymbol.length < 2 || newTokenSymbol.length > 10) {
-      errors.push("Token symbol must be between 2 and 10 characters");
+    if (
+      !newTokenSymbol ||
+      newTokenSymbol.length < 2 ||
+      newTokenSymbol.length > 10
+    ) {
+      errors.push('Token symbol must be between 2 and 10 characters');
     }
 
     // Validate total supply
     const totalSupply = parseFloat(newTokenTotalSupply);
     if (isNaN(totalSupply) || totalSupply <= 0 || totalSupply > 1e18) {
-      errors.push("Total supply must be between 0 and 1e18");
+      errors.push('Total supply must be between 0 and 1e18');
     }
 
     // Validate fees
     const buyTax = parseFloat(newTokenBuyTax);
     const sellTax = parseFloat(newTokenSellTax);
     if (isNaN(buyTax) || buyTax < 0 || buyTax > 5) {
-      errors.push("Buy tax must be between 0 and 5");
+      errors.push('Buy tax must be between 0 and 5');
     }
     if (isNaN(sellTax) || sellTax < 0 || sellTax > 5) {
-      errors.push("Sell tax must be between 0 and 5");
+      errors.push('Sell tax must be between 0 and 5');
     }
 
     // Validate limits
@@ -120,16 +154,16 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
     // Validate social links
     if (website && !isValidUrl(website)) {
-      errors.push("Invalid website URL");
+      errors.push('Invalid website URL');
     }
     if (telegram && !isValidUrl(telegram)) {
-      errors.push("Invalid Telegram URL");
+      errors.push('Invalid Telegram URL');
     }
     if (discord && !isValidUrl(discord)) {
-      errors.push("Invalid Discord URL");
+      errors.push('Invalid Discord URL');
     }
     if (twitter && !isValidUrl(twitter)) {
-      errors.push("Invalid Twitter URL");
+      errors.push('Invalid Twitter URL');
     }
 
     return errors;
@@ -149,9 +183,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
     if (!publicClient || !walletClient) {
       toast({
-        title: "Error",
-        description: "Please connect your wallet first",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please connect your wallet first',
+        variant: 'destructive',
       });
       return;
     }
@@ -160,9 +194,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     const errors = validateTokenInputs();
     if (errors.length > 0) {
       toast({
-        title: "Validation Error",
-        description: errors.join("\n"),
-        variant: "destructive",
+        title: 'Validation Error',
+        description: errors.join('\n'),
+        variant: 'destructive',
       });
       return;
     }
@@ -170,52 +204,61 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     // Get the connected wallet address
     if (!walletClient) {
       toast({
-        title: "Error",
-        description: "Failed to get wallet address",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to get wallet address',
+        variant: 'destructive',
       });
       return;
     }
 
     setIsDeploying(true);
-    setDeploymentStatusText("Initializing deployment...");
+    setDeploymentStatusText('Initializing deployment...');
 
     try {
-      const deploymentService = TokenDeploymentService.getInstance(publicClient, walletClient, signer);
+      const deploymentService = TokenDeploymentService.getInstance(
+        publicClient,
+        walletClient,
+        signer
+      );
 
-      setDeploymentStatusText("Processing token deployment and waiting for confirmation of 5 blocks and verification on the blockchain explorer...");
-      const { contractAddress, pairAddress: newPairAddress } = await deploymentService.deployToken({
-        tokenName: newTokenName,
-        tokenSymbol: newTokenSymbol,
-        tokenTotalSupply: newTokenTotalSupply,
-        buyFee: parseFloat(newTokenBuyTax) || 0,
-        sellFee: parseFloat(newTokenSellTax) || 0,
-        maxHoldingLimit_: parseFloat(newTokenMaxHoldingRate) || 0,
-        maxBuyLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
-        maxSellLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
-        socialLinks: {
-          websiteLink: website || "",
-          telegramLink: telegram || "",
-          discordLink: discord || "",
-          twitterLink: twitter || ""
-        },
-        templateNumber: parseInt(tokenTemplate)
-      });
+      setDeploymentStatusText(
+        'Processing token deployment and waiting for confirmation of 5 blocks and verification on the blockchain explorer...'
+      );
+      const { contractAddress, pairAddress: newPairAddress } =
+        await deploymentService.deployToken({
+          tokenName: newTokenName,
+          tokenSymbol: newTokenSymbol,
+          tokenTotalSupply: newTokenTotalSupply,
+          buyFee: parseFloat(newTokenBuyTax) || 0,
+          sellFee: parseFloat(newTokenSellTax) || 0,
+          maxHoldingLimit_: parseFloat(newTokenMaxHoldingRate) || 0,
+          maxBuyLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
+          maxSellLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
+          socialLinks: {
+            websiteLink: website || '',
+            telegramLink: telegram || '',
+            discordLink: discord || '',
+            twitterLink: twitter || '',
+          },
+          templateNumber: parseInt(tokenTemplate),
+        });
 
       setDeployedTokenAddress(contractAddress);
       setPairAddress(newPairAddress);
-      setDeploymentStatusText("Token is deployed and verified successfully.");
+      setDeploymentStatusText('Token is deployed and verified successfully.');
 
       setIsDeploying(false);
-
     } catch (error) {
-      console.error("Deployment error:", error);
-      setDeploymentStatusText("Deployment failed");
+      console.error('Deployment error:', error);
+      setDeploymentStatusText('Deployment failed');
       setIsDeploying(false);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to deploy token. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to deploy token. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -225,9 +268,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
     if (!existingContractAddress || !existingNetwork) {
       toast({
-        title: "Missing Information",
-        description: "Please provide both contract address and network.",
-        variant: "destructive",
+        title: 'Missing Information',
+        description: 'Please provide both contract address and network.',
+        variant: 'destructive',
       });
       return;
     }
@@ -236,164 +279,198 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       await validateToken(existingContractAddress);
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to validate token",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to validate token',
+        variant: 'destructive',
       });
     }
   };
 
   const handleCreateProject = async () => {
-    if (activeTab === "deploy" && !deployedTokenAddress) {
+    if (activeTab === 'deploy' && !deployedTokenAddress) {
       toast({
-        title: "Error",
-        description: "Please deploy a token first",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (activeTab === "import" && tokenImportStatus !== "valid") {
-      toast({
-        title: "Error",
-        description: "Please validate an existing token first",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const tokenAddress = activeTab === "deploy" ? deployedTokenAddress : existingContractAddress
-    if (!tokenAddress) {
-      toast({
-        title: "Error",
-        description: "Invalid token address",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!walletClient) {
-      toast({
-        title: "Error",
-        description: "Failed to get wallet address",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please deploy a token first',
+        variant: 'destructive',
       });
       return;
     }
 
-    setIsCreatingProject(true)
-    
+    if (activeTab === 'import' && tokenImportStatus !== 'valid') {
+      toast({
+        title: 'Error',
+        description: 'Please validate an existing token first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const tokenAddress =
+      activeTab === 'deploy' ? deployedTokenAddress : existingContractAddress;
+    if (!tokenAddress) {
+      toast({
+        title: 'Error',
+        description: 'Invalid token address',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!walletClient) {
+      toast({
+        title: 'Error',
+        description: 'Failed to get wallet address',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreatingProject(true);
+
     try {
       const projectData = {
-        name: activeTab === "deploy" ? newTokenName : analyzedToken?.name || "",
+        name: activeTab === 'deploy' ? newTokenName : analyzedToken?.name || '',
         tokenAddress: tokenAddress,
         chainId: chainId,
-        symbol: activeTab === "deploy" ? newTokenSymbol : analyzedToken?.symbol || "",
-        totalSupply: activeTab === "deploy" ? newTokenTotalSupply : (analyzedToken?.totalSupply || ""),
-        isImported: activeTab?.toString() === "import" ? true : false,
-        pairAddress: activeTab === "deploy" ? (pairAddress || "") : (analyzedToken?.pairAddress || ""),
+        symbol:
+          activeTab === 'deploy' ? newTokenSymbol : analyzedToken?.symbol || '',
+        totalSupply:
+          activeTab === 'deploy'
+            ? newTokenTotalSupply
+            : analyzedToken?.totalSupply || '',
+        isImported: activeTab?.toString() === 'import' ? true : false,
+        pairAddress:
+          activeTab === 'deploy'
+            ? pairAddress || ''
+            : analyzedToken?.pairAddress || '',
         tokenData: {
-          name: activeTab === "deploy" ? newTokenName : analyzedToken?.name || "",
-          symbol: activeTab === "deploy" ? newTokenSymbol : analyzedToken?.symbol || "",
-          decimals: activeTab === "deploy" ? 18 : (analyzedToken?.decimals || 18),
-          totalSupply: activeTab === "deploy" ? newTokenTotalSupply : (analyzedToken?.totalSupply || ""),
+          name:
+            activeTab === 'deploy' ? newTokenName : analyzedToken?.name || '',
+          symbol:
+            activeTab === 'deploy'
+              ? newTokenSymbol
+              : analyzedToken?.symbol || '',
+          decimals: activeTab === 'deploy' ? 18 : analyzedToken?.decimals || 18,
+          totalSupply:
+            activeTab === 'deploy'
+              ? newTokenTotalSupply
+              : analyzedToken?.totalSupply || '',
           websiteLink: website,
           telegramLink: telegram,
           twitterLink: twitter,
           discordLink: discord,
-          buyFee: activeTab === "deploy" ? parseFloat(newTokenBuyTax) : (analyzedToken?.buyTax || 0),
-          sellFee: activeTab === "deploy" ? parseFloat(newTokenSellTax) : (analyzedToken?.sellTax || 0),
-          maxHoldingLimit_: activeTab === "deploy" ? parseFloat(newTokenMaxHoldingRate) : 0,
-          maxBuyLimit_: activeTab === "deploy" ? parseFloat(newTokenMaxBuySellRate) : 0,
-          maxSellLimit_: activeTab === "deploy" ? parseFloat(newTokenMaxBuySellRate) : 0,
-          templateNumber: activeTab === "deploy" ? parseInt(tokenTemplate) : 0
-        }
-      }
+          buyFee:
+            activeTab === 'deploy'
+              ? parseFloat(newTokenBuyTax)
+              : analyzedToken?.buyTax || 0,
+          sellFee:
+            activeTab === 'deploy'
+              ? parseFloat(newTokenSellTax)
+              : analyzedToken?.sellTax || 0,
+          maxHoldingLimit_:
+            activeTab === 'deploy' ? parseFloat(newTokenMaxHoldingRate) : 0,
+          maxBuyLimit_:
+            activeTab === 'deploy' ? parseFloat(newTokenMaxBuySellRate) : 0,
+          maxSellLimit_:
+            activeTab === 'deploy' ? parseFloat(newTokenMaxBuySellRate) : 0,
+          templateNumber: activeTab === 'deploy' ? parseInt(tokenTemplate) : 0,
+        },
+      };
 
-      const resultAction = await dispatch(createProject(projectData) as any)
-      
+      const resultAction = await dispatch(createProject(projectData) as any);
+
       if (createProject.fulfilled.match(resultAction)) {
         toast({
-          title: "Success",
-          description: "Project created successfully",
-        })
+          title: 'Success',
+          description: 'Project created successfully',
+        });
 
-        setIsCreatingProject(false)
+        setIsCreatingProject(false);
         // Reset form and close modal
-        resetForm()
-        onClose()
+        resetForm();
+        onClose();
       } else {
-        throw new Error(resultAction.error?.message || "Failed to create project")
+        throw new Error(
+          resultAction.error?.message || 'Failed to create project'
+        );
       }
     } catch (error) {
-      setIsCreatingProject(false)
+      setIsCreatingProject(false);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create project",
-        variant: "destructive",
-      })
-    } 
-  }
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to create project',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const resetForm = () => {
     // Reset deploy token form
-    setNewTokenName("")
-    setNewTokenSymbol("")
-    setNewTokenTotalSupply("")
-    setNewTokenBuyTax("")
-    setNewTokenSellTax("")
-    setNewTokenMaxHoldingRate("")
-    setNewTokenMaxBuySellRate("")
-    setTokenTemplate("0")
-    setDeploymentStatusText("")
-    setDeployedTokenAddress(null)
-    setPairAddress(null)
-    setDeploymentError("")
-    setDeploymentStatus("idle")
-    setIsDeploying(false)
+    setNewTokenName('');
+    setNewTokenSymbol('');
+    setNewTokenTotalSupply('');
+    setNewTokenBuyTax('');
+    setNewTokenSellTax('');
+    setNewTokenMaxHoldingRate('');
+    setNewTokenMaxBuySellRate('');
+    setTokenTemplate('0');
+    setDeploymentStatusText('');
+    setDeployedTokenAddress(null);
+    setPairAddress(null);
+    setDeploymentError('');
+    setDeploymentStatus('idle');
+    setIsDeploying(false);
 
     // Reset import token form
-    setExistingContractAddress("")
-    setExistingNetwork("bsc")
+    setExistingContractAddress('');
+    setExistingNetwork('bsc');
 
     // Reset project creation
-    setIsCreatingProject(false)
+    setIsCreatingProject(false);
 
     // Reset social links
-    setWebsite("")
-    setTelegram("")
-    setDiscord("")
-    setTwitter("")
-    setShowSocialLinks(false)
+    setWebsite('');
+    setTelegram('');
+    setDiscord('');
+    setTwitter('');
+    setShowSocialLinks(false);
 
     // Reset active tab
-    setActiveTab("deploy")
+    setActiveTab('deploy');
 
     // Reset token validation state
-    initializeState()
-  }
+    initializeState();
+  };
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      resetForm()
+      resetForm();
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open: boolean) => {
         if (!open) {
-          resetForm()
-          onClose()
+          resetForm();
+          onClose();
         }
       }}
     >
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
-          <DialogDescription>Deploy a new token or import an existing one(<span className="font-semibold text-primary">Pancakeswap V2 token</span>) to create a project.</DialogDescription>
+          <DialogDescription>
+            Deploy a new token or import an existing one(
+            <span className="font-semibold text-primary">
+              Pancakeswap V2 token
+            </span>
+            ) to create a project.
+          </DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
@@ -410,9 +487,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       <Input
                         id="newTokenName"
                         value={newTokenName}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenName(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setNewTokenName(e.target.value)
+                        }
                         required
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                        disabled={
+                          deploymentStatusText === 'deploying' ||
+                          deploymentStatusText === 'success'
+                        }
                       />
                     </div>
                     <div className="space-y-2">
@@ -420,9 +502,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       <Input
                         id="newTokenSymbol"
                         value={newTokenSymbol}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenSymbol(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setNewTokenSymbol(e.target.value)
+                        }
                         required
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                        disabled={
+                          deploymentStatusText === 'deploying' ||
+                          deploymentStatusText === 'success'
+                        }
                       />
                     </div>
                   </div>
@@ -432,9 +519,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       id="newTokenTotalSupply"
                       type="number"
                       value={newTokenTotalSupply}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenTotalSupply(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setNewTokenTotalSupply(e.target.value)
+                      }
                       required
-                      disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                      disabled={
+                        deploymentStatusText === 'deploying' ||
+                        deploymentStatusText === 'success'
+                      }
                     />
                   </div>
                   <div className="flex gap-2 justify-between w-full">
@@ -445,12 +537,17 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         type="number"
                         className="w-full"
                         value={newTokenBuyTax}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenBuyTax(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setNewTokenBuyTax(e.target.value)
+                        }
                         required
                         min="0"
                         max="10"
                         step="0.1"
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                        disabled={
+                          deploymentStatusText === 'deploying' ||
+                          deploymentStatusText === 'success'
+                        }
                       />
                     </div>
                     <div className="space-y-2 w-1/2">
@@ -460,12 +557,17 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         type="number"
                         className="w-full"
                         value={newTokenSellTax}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenSellTax(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setNewTokenSellTax(e.target.value)
+                        }
                         required
                         min="0"
                         max="10"
                         step="0.1"
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                        disabled={
+                          deploymentStatusText === 'deploying' ||
+                          deploymentStatusText === 'success'
+                        }
                       />
                     </div>
                   </div>
@@ -501,22 +603,36 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                   </div> */}
                 </div>
                 <div className="col-span-2">
-                  <Collapsible open={showSocialLinks} onOpenChange={setShowSocialLinks}>
+                  <Collapsible
+                    open={showSocialLinks}
+                    onOpenChange={setShowSocialLinks}
+                  >
                     <CollapsibleTrigger asChild>
                       <Button
                         type="button"
                         variant="secondary"
                         className="flex w-full justify-between"
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                        disabled={
+                          deploymentStatusText === 'deploying' ||
+                          deploymentStatusText === 'success'
+                        }
                       >
                         <span>Social Links</span>
-                        <ChevronDown className={cn("h-4 w-4 transition-transform", showSocialLinks && "rotate-180")} />
+                        <ChevronDown
+                          className={cn(
+                            'h-4 w-4 transition-transform',
+                            showSocialLinks && 'rotate-180'
+                          )}
+                        />
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="website" className="flex items-center gap-2">
+                          <Label
+                            htmlFor="website"
+                            className="flex items-center gap-2"
+                          >
                             <Globe className="h-4 w-4" /> Website
                           </Label>
                           <Input
@@ -524,12 +640,20 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                             type="url"
                             placeholder="https://"
                             value={website}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
-                            disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>
+                            ) => setWebsite(e.target.value)}
+                            disabled={
+                              deploymentStatusText === 'deploying' ||
+                              deploymentStatusText === 'success'
+                            }
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="telegram" className="flex items-center gap-2">
+                          <Label
+                            htmlFor="telegram"
+                            className="flex items-center gap-2"
+                          >
                             <Send className="h-4 w-4" /> Telegram
                           </Label>
                           <Input
@@ -537,12 +661,20 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                             type="url"
                             placeholder="https://t.me/"
                             value={telegram}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTelegram(e.target.value)}
-                            disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>
+                            ) => setTelegram(e.target.value)}
+                            disabled={
+                              deploymentStatusText === 'deploying' ||
+                              deploymentStatusText === 'success'
+                            }
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="discord" className="flex items-center gap-2">
+                          <Label
+                            htmlFor="discord"
+                            className="flex items-center gap-2"
+                          >
                             <div className="w-4 h-4 flex items-center justify-center">
                               <FaDiscord size={16} />
                             </div>
@@ -553,12 +685,20 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                             type="url"
                             placeholder="https://discord.gg/"
                             value={discord}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDiscord(e.target.value)}
-                            disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>
+                            ) => setDiscord(e.target.value)}
+                            disabled={
+                              deploymentStatusText === 'deploying' ||
+                              deploymentStatusText === 'success'
+                            }
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="twitter" className="flex items-center gap-2">
+                          <Label
+                            htmlFor="twitter"
+                            className="flex items-center gap-2"
+                          >
                             <Twitter className="h-4 w-4" /> Twitter
                           </Label>
                           <Input
@@ -566,8 +706,13 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                             type="url"
                             placeholder="https://twitter.com/"
                             value={twitter}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTwitter(e.target.value)}
-                            disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>
+                            ) => setTwitter(e.target.value)}
+                            disabled={
+                              deploymentStatusText === 'deploying' ||
+                              deploymentStatusText === 'success'
+                            }
                           />
                         </div>
                       </div>
@@ -576,20 +721,28 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                   {deployedTokenAddress && (
                     <div className="mt-4 space-y-4 rounded-lg border p-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-semibold">Token Deployed Successfully</h4>
+                        <h4 className="font-semibold">
+                          Token Deployed Successfully
+                        </h4>
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium">Contract Address</p>
-                        <p className="text-sm text-muted-foreground">{deployedTokenAddress}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {deployedTokenAddress}
+                        </p>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="text-sm font-medium">Name</p>
-                          <p className="text-sm text-muted-foreground">{newTokenName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {newTokenName}
+                          </p>
                         </div>
                         <div>
                           <p className="text-sm font-medium">Symbol</p>
-                          <p className="text-sm text-muted-foreground">{newTokenSymbol}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {newTokenSymbol}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -607,8 +760,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
               {isDeploying && (
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Deployment Status</span>
-                    <span className="text-sm text-muted-foreground">{deploymentStatusText}</span>
+                    <span className="text-sm font-medium">
+                      Deployment Status
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {deploymentStatusText}
+                    </span>
                   </div>
                 </div>
               )}
@@ -622,18 +779,21 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         Deploying and verifying
                       </>
                     ) : (
-                      "Deploy & verify Token"
+                      'Deploy & verify Token'
                     )}
                   </Button>
                 ) : (
-                  <Button onClick={handleCreateProject} disabled={isCreatingProject}>
+                  <Button
+                    onClick={handleCreateProject}
+                    disabled={isCreatingProject}
+                  >
                     {isCreatingProject ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creating Project
                       </>
                     ) : (
-                      "Create Project"
+                      'Create Project'
                     )}
                   </Button>
                 )}
@@ -645,26 +805,41 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-x-8">
                   <div className="space-y-2">
-                    <Label htmlFor="existingContractAddress">Contract Address</Label>
+                    <Label htmlFor="existingContractAddress">
+                      Contract Address
+                    </Label>
                     <Input
                       id="existingContractAddress"
                       value={existingContractAddress}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExistingContractAddress(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setExistingContractAddress(e.target.value)
+                      }
                       required
-                      disabled={tokenImportStatus === "validating" || tokenImportStatus === "valid"}
+                      disabled={
+                        tokenImportStatus === 'validating' ||
+                        tokenImportStatus === 'valid'
+                      }
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="existingNetwork">Network</Label>
-                    <Select onValueChange={setExistingNetwork} value={existingNetwork} disabled={true}>
+                    <Select
+                      onValueChange={setExistingNetwork}
+                      value={existingNetwork}
+                      disabled={true}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="BSC (Binance Smart Chain)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="bsc">BSC (Binance Smart Chain)</SelectItem>
+                        <SelectItem value="bsc">
+                          BSC (Binance Smart Chain)
+                        </SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">Currently, only BSC network is supported.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Currently, only BSC network is supported.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -676,19 +851,23 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 </Alert>
               )}
 
-              {tokenImportStatus !== "valid" ? (
+              {tokenImportStatus !== 'valid' ? (
                 <DialogFooter>
                   <Button
                     type="submit"
-                    disabled={tokenImportStatus === "validating" || !existingContractAddress || !existingNetwork}
+                    disabled={
+                      tokenImportStatus === 'validating' ||
+                      !existingContractAddress ||
+                      !existingNetwork
+                    }
                   >
-                    {tokenImportStatus === "validating" ? (
+                    {tokenImportStatus === 'validating' ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Validating
                       </>
                     ) : (
-                      "Validate Token"
+                      'Validate Token'
                     )}
                   </Button>
                 </DialogFooter>
@@ -712,7 +891,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                     <p>
                       <strong>Total Supply:</strong> {analyzedToken.totalSupply}
                     </p>
-                    
+
                     <AddressDisplay
                       address={analyzedToken.pairAddress}
                       label="Pair Address"
@@ -720,54 +899,76 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                   </div>
 
                   <div className="space-y-2">
-                    
-                  <div className="flex gap-2 justify-between w-full">
-                    <div className="space-y-2 w-1/2">
-                      <Label htmlFor="newTokenBuyTax">Buy Tax (%)</Label>
-                      <Input
-                        id="newTokenBuyTax"
-                        type="number"
-                        className="w-full"
-                        value={analyzedToken?.buyTax>=0 ? analyzedToken?.buyTax : newTokenBuyTax}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenBuyTax(e.target.value)}
-                        required
-                        min="0"
-                        max="5"
-                        step="0.1"
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                        placeholder="Max 5%"
-                      />
-                      
+                    <div className="flex gap-2 justify-between w-full">
+                      <div className="space-y-2 w-1/2">
+                        <Label htmlFor="newTokenBuyTax">Buy Tax (%)</Label>
+                        <Input
+                          id="newTokenBuyTax"
+                          type="number"
+                          className="w-full"
+                          value={
+                            analyzedToken?.buyTax >= 0
+                              ? analyzedToken?.buyTax
+                              : newTokenBuyTax
+                          }
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setNewTokenBuyTax(e.target.value)
+                          }
+                          required
+                          min="0"
+                          max="5"
+                          step="0.1"
+                          disabled={
+                            deploymentStatusText === 'deploying' ||
+                            deploymentStatusText === 'success'
+                          }
+                          placeholder="Max 5%"
+                        />
+                      </div>
+                      <div className="space-y-2 w-1/2">
+                        <Label htmlFor="newTokenSellTax">Sell Tax (%)</Label>
+                        <Input
+                          id="newTokenSellTax"
+                          type="number"
+                          className="w-full"
+                          value={
+                            analyzedToken?.sellTax >= 0
+                              ? analyzedToken?.sellTax
+                              : newTokenSellTax
+                          }
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setNewTokenSellTax(e.target.value)
+                          }
+                          required
+                          min="0"
+                          max="5"
+                          step="0.1"
+                          placeholder="Max 5%"
+                          disabled={
+                            deploymentStatusText === 'deploying' ||
+                            deploymentStatusText === 'success'
+                          }
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2 w-1/2">
-                      <Label htmlFor="newTokenSellTax">Sell Tax (%)</Label>
-                      <Input
-                        id="newTokenSellTax"
-                        type="number"
-                        className="w-full"
-                        value={analyzedToken?.sellTax>=0 ? analyzedToken?.sellTax : newTokenSellTax}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenSellTax(e.target.value)}
-                        required
-                        min="0"
-                        max="5"
-                        step="0.1"
-                        placeholder="Max 5%"
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Feel free to adjust these values if you have more accurate tax information.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Feel free to adjust these values if you have more accurate
+                      tax information.
+                    </p>
                   </div>
                 </div>
                 <DialogFooter className="mt-4">
-                  <Button onClick={handleCreateProject} disabled={isCreatingProject}>
+                  <Button
+                    onClick={handleCreateProject}
+                    disabled={isCreatingProject}
+                  >
                     {isCreatingProject ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creating Project
                       </>
                     ) : (
-                      "Create Project"
+                      'Create Project'
                     )}
                   </Button>
                 </DialogFooter>
@@ -777,6 +978,5 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         </Tabs>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

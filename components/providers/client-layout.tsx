@@ -1,15 +1,16 @@
-"use client"
+'use client';
 
-import { useProjectSync } from "@/hooks/use-project-sync"
-import { ReactNode } from "react"
+import { ReactNode } from 'react';
+
+import { useProjectSync } from '@/hooks/use-project-sync';
 
 interface ClientLayoutProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 export function ClientLayout({ children }: ClientLayoutProps) {
   // Initialize project sync
-  useProjectSync()
+  useProjectSync();
 
-  return <>{children}</>
-} 
+  return <>{children}</>;
+}

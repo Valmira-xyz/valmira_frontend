@@ -1,9 +1,9 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProjectActionBarProps {
-  project?: any
+  project?: any;
 }
 
 export function ProjectActionBar({ project }: ProjectActionBarProps) {
@@ -18,7 +18,7 @@ export function ProjectActionBar({ project }: ProjectActionBarProps) {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -32,6 +32,5 @@ export function ProjectActionBar({ project }: ProjectActionBarProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
-
