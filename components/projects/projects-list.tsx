@@ -226,11 +226,11 @@ export function ProjectsList({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mt-6 space-y-6">
       <div className="flex flex-col space-y-4">
         {/* Search & Filters */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative flex-1 min-w-[240px]">
+        <div className="flex flex-wrap items-center gap-4 pl-4 md:pl-6">
+          <div className="relative w-full md:max-w-[260px] max-md:pr-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search orders"
@@ -240,40 +240,47 @@ export function ProjectsList({
             />
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="min-w-[180px]">
-                Status: {statusFilter} <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setStatusFilter('All Bots')}>
-                All Bots
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('Active')}>
-                Active
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('Paused')}>
-                Paused
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex gap-3 overflow-x-scroll no-scrollbar">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="min-w-[180px]">
+                  Status: {statusFilter}{' '}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setStatusFilter('All Bots')}>
+                  All Bots
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('Active')}>
+                  Active
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('Paused')}>
+                  Paused
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <DateRangePicker
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
-            className="flex-1 min-w-[240px]"
-          />
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              className="min-w-[260px]"
+            />
 
-          <Button variant="outline" className="ml-auto" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" /> Export
-          </Button>
+            <Button
+              variant="outline"
+              className="ml-auto"
+              onClick={handleExport}
+            >
+              <Download className="mr-2 h-4 w-4" /> Export
+            </Button>
 
-          <CreateProjectButton />
+            <CreateProjectButton />
+          </div>
         </div>
 
         {/* Project Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-4 md:px-6">
           {displayedProjects.map((project) => (
             <ProjectSummaryCard key={project._id} project={project} />
           ))}
@@ -302,7 +309,7 @@ export function ProjectsList({
 
         {/* Empty state */}
         {displayedProjects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12">
+          <div className="flex flex-col items-center justify-center py-12 gap-6 px-4 md:px-6">
             <p className="text-muted-foreground mb-4">No projects found</p>
             <Button onClick={handleCreateNew}>
               <Plus className="mr-2 h-4 w-4" /> Create your first project

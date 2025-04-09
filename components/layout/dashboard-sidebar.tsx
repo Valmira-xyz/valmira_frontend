@@ -121,7 +121,7 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'}>
-      <SidebarHeader className="p-2 relative w-full">
+      <SidebarHeader className="px-2 py-4 relative w-full">
         <div className="flex justify-between items-center h-8">
           {open && (
             <Link href={'/'}>
@@ -131,7 +131,7 @@ export function DashboardSidebar() {
           <SidebarTrigger className="h-9 w-9 flex items-center justify-center" />
         </div>
       </SidebarHeader>
-      <SidebarContent className="flex flex-col h-full pt-5">
+      <SidebarContent className="flex flex-col h-full">
         <div className="px-2">
           <SidebarMenuButton
             onClick={() => router.push('/')}

@@ -5,7 +5,7 @@ import { ProjectsList } from '@/components/projects/projects-list';
 
 export default function PublicProjectsPage() {
   return (
-    <div className="space-y-6 w-[calc(100vw-320px)]">
+    <div className="w-full">
       <PageHeader title="All Projects"></PageHeader>
       <ProjectsList isPublic={true} />
     </div>

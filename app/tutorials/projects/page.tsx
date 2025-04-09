@@ -4,10 +4,10 @@ import { PageHeader } from '@/components/layout/page-header';
 
 export default function ProjectsTutorialPage() {
   return (
-    <div className="container mx-auto py-6">
+    <div className="mx-auto">
       <PageHeader title="Projects Tutorial" />
 
-      <div className="prose dark:prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none px-4 md:px-6 mt-6">
         <h2>Creating and Managing Projects</h2>
         <p>
           This tutorial will guide you through the process of creating and

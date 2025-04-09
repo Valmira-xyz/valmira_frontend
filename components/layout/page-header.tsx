@@ -36,7 +36,7 @@ export function PageHeader({
           <AlignJustify onClick={() => setOpenMobile(!openMobile)} />
         </div>
       )}
-      <div className="flex items-center justify-between px-6 border-b py-4 min-h-12 flex-wrap gap-2">
+      <div className="flex items-center justify-between px-4 md:px-6 border-b py-4 min-h-12 flex-wrap gap-2">
         <div className="flex items-center">
           <h1 className="text-xl font-bold tracking-tight">{title}</h1>
         </div>

@@ -25,7 +25,7 @@ export default function FAQsPage() {
     <div className="">
       <PageHeader title="Frequently Asked Questions" />
 
-      <div className="grid gap-6">
+      <div className="grid gap-6 p-4 md:p-6">
         <Card>
           <CardHeader>
             <CardTitle>General Questions</CardTitle>
