@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
+
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { cn } from '@/lib/utils';
 
 import { Button, ButtonProps } from '@/components/ui/button';
 import {
@@ -12,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface ThemeToggleProps {
   className?: string;

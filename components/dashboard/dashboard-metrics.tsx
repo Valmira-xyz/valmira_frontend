@@ -1,14 +1,16 @@
 'use client';
 
+import { useMemo } from 'react';
+
+import { MetricCard } from './metric-card';
 import {
-  Briefcase,
-  DollarSign,
   BarChart2,
   Bot,
+  Briefcase,
+  DollarSign,
   TrendingUp,
 } from 'lucide-react';
-import { useMemo } from 'react';
-import { MetricCard } from './metric-card';
+
 import { useGetGlobalMetricsQuery } from '@/store/api/project';
 
 export function DashboardMetrics() {

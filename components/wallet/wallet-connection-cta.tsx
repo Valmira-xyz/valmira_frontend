@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
-import { WalletConnectionButton } from '@/components/wallet/wallet-connection-button';
-import { useAccount } from 'wagmi';
-import { StepperCard } from '../stepper/stepper-card';
+
 import { WalletDisplay } from './wallet-display';
+import { useAccount } from 'wagmi';
+
+import { WalletConnectionButton } from '@/components/wallet/wallet-connection-button';
+
+import { StepperCard } from '../stepper/stepper-card';
 
 const welcomeItems = [
   'No upfront payment',

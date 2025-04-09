@@ -1,5 +1,5 @@
-import axios from 'axios';
 import { getAuthHeaders } from './botService';
+import axios from 'axios';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -14,39 +14,53 @@ const api = axios.create({
 
 // Wallet API endpoints
 export const walletApi = {
-  generateWallets: async (projectId: string, countsOfWallets: number, botId: string) => {
-    const response = await api.post('/wallets/multiple', {
-      projectId,
-      countsOfWallets,
-      botId
-    },
-    getAuthHeaders()
-  );
+  generateWallets: async (
+    projectId: string,
+    countsOfWallets: number,
+    botId: string
+  ) => {
+    const response = await api.post(
+      '/wallets/multiple',
+      {
+        projectId,
+        countsOfWallets,
+        botId,
+      },
+      getAuthHeaders()
+    );
     return response.data;
   },
   deleteMultipleWallets: async (walletIds: string[]) => {
     const config = getAuthHeaders();
-    const response = await api.post('/wallets/delete-multiple', { walletIds },
-    config  
-  );
+    const response = await api.post(
+      '/wallets/delete-multiple',
+      { walletIds },
+      config
+    );
     return response.data;
   },
   downloadWalletAsCsv: async (publicKey: string): Promise<Blob> => {
     const config = {
       ...getAuthHeaders(),
-      responseType: 'blob' as 'blob', // Important for file downloads
+      responseType: 'blob' as const, // Important for file downloads
     };
     const response = await api.get(`/wallets/download/${publicKey}`, config);
     return response.data as Blob;
   },
-  downloadAllWalletsAsCsv: async (projectId: string, botId: string): Promise<Blob> => {
+  downloadAllWalletsAsCsv: async (
+    projectId: string,
+    botId: string
+  ): Promise<Blob> => {
     const config = {
       ...getAuthHeaders(),
-      responseType: 'blob' as 'blob', // Important for file downloads
+      responseType: 'blob' as const, // Important for file downloads
     };
-    const response = await api.get(`/wallets/download-all/${projectId}/${botId}`, config);
+    const response = await api.get(
+      `/wallets/download-all/${projectId}/${botId}`,
+      config
+    );
     return response.data as Blob;
-  }
+  },
 };
 
-export default api; 
+export default api;

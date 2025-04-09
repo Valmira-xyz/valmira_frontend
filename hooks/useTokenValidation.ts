@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import { tokenService } from '@/services/tokenService';
 
 export type TokenImportStatus = 'idle' | 'validating' | 'valid' | 'invalid';
@@ -25,7 +26,7 @@ export function useTokenValidation() {
   };
 
   const validateToken = async (address: string) => {
-    setState(prev => ({ ...prev, status: 'validating', error: '' }));
+    setState((prev) => ({ ...prev, status: 'validating', error: '' }));
 
     try {
       const tokenInfo = await tokenService.getTokenInfo(address);
@@ -38,7 +39,8 @@ export function useTokenValidation() {
     } catch (error) {
       setState({
         status: 'invalid',
-        error: error instanceof Error ? error.message : 'Failed to validate token',
+        error:
+          error instanceof Error ? error.message : 'Failed to validate token',
         tokenInfo: null,
       });
       throw error;
@@ -50,4 +52,4 @@ export function useTokenValidation() {
     validateToken,
     initializeState,
   };
-} 
+}

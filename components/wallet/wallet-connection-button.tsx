@@ -1,15 +1,18 @@
 'use client';
 
-import { Wallet } from 'lucide-react';
-import { Button, ButtonProps } from '@/components/ui/button';
-import { web3modal } from '../providers';
-import { useDispatch } from 'react-redux';
-import { setUser } from '@/store/slices/authSlice';
-import { authService } from '@/services/authService';
 import { useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+
+import { Wallet } from 'lucide-react';
 import { useAccount } from 'wagmi';
+
+import { Button, ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { authService } from '@/services/authService';
+import { setUser } from '@/store/slices/authSlice';
 import { AuthResponse } from '@/types';
+
+import { web3modal } from '../providers';
 
 interface WalletConnectionButtonProps {
   variant?: ButtonProps['variant'];

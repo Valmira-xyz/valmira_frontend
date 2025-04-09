@@ -1,6 +1,8 @@
 import React, { ReactNode } from 'react';
-import { cn } from '@/lib/utils'; // Assuming you have a utility for class names
+
 import { Check } from 'lucide-react';
+
+import { cn } from '@/lib/utils'; // Assuming you have a utility for class names
 
 interface StepperCardProps {
   stepNumber: string;
