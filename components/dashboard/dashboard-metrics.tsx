@@ -10,6 +10,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useDispatch } from 'react-redux'
 import { AppDispatch } from '@/store/store'
 import { fetchGlobalMetrics, fetchBnbPrice } from '@/store/slices/projectSlice'
+// import { DashboardCharts } from "./dashboard-charts"
 
 export function DashboardMetrics() {
   const dispatch = useDispatch<AppDispatch>()
@@ -84,6 +85,8 @@ export function DashboardMetrics() {
   ]
 
   return (
+    
+    <div className="space-y-6">
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {metrics.map((metric, index) => (
         <Card key={index} className={`relative overflow-hidden ${loading || isLoading ? 'opacity-60' : ''}`}>
@@ -110,7 +113,9 @@ export function DashboardMetrics() {
             )}
           </CardContent>
         </Card>
-      ))}
+      ))}      
+    </div>
+    {/* <DashboardCharts /> */}
     </div>
   )
 }

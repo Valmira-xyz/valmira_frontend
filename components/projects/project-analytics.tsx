@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { formatNumber, formatCurrency } from "@/lib/utils"
+import {  formatCurrency } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { BotFilter } from "@/components/projects/bot-filter"
@@ -17,13 +17,14 @@ import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSelector, useDispatch } from "react-redux"
-import { fetchBotPerformance, fetchRecentActivity } from "@/store/slices/projectSlice"
 import { RootState } from "@/store/store"
 import type { BotPerformanceHistory, ActivityLog, ProjectStatistics, TimeSeriesDataPoint } from "@/services/projectService"
 import { projectService } from "@/services/projectService"
 import { useParams } from "next/navigation"
+import websocketService, { WebSocketEvents } from "@/services/websocketService"
+import { toast } from "sonner"
 
-type TimePeriod = "24h" | "7d" | "1m" | "1y"
+type TimePeriod = "24h" | "7d" | "1m"
 
 // Utility function to format milliseconds to a readable duration
 const formatUptime = (ms: number): string => {
@@ -91,6 +92,13 @@ const toSafeDate = (value: any): Date | null => {
   }
 };
 
+// Add a helper function to get end-of-day date
+const getEndOfDay = (date: Date): Date => {
+  const endDate = new Date(date);
+  endDate.setHours(23, 59, 59, 999);
+  return endDate;
+};
+
 // Define the imperative handle interface
 export interface ProjectAnalyticsHandle {
   refreshData: () => Promise<void>;
@@ -109,8 +117,8 @@ interface ProjectAnalyticsProps {
 export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyticsProps>(({ project }, ref) => {
   const [volumeTrends, setVolumeTrends] = useState<TimeSeriesDataPoint[]>([])
   const [profitTrends, setProfitTrends] = useState<TimeSeriesDataPoint[]>([])
-  const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>("24h")
-  const [volumeTimePeriod, setVolumeTimePeriod] = useState<TimePeriod>("24h")
+  const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>("1m")
+  const [volumeTimePeriod, setVolumeTimePeriod] = useState<TimePeriod>("1m")
   const { projectStats, loading } = useSelector((state: RootState) => state.projects)
   const dispatch = useDispatch()
   const { id: projectId } = useParams() as { id: string }
@@ -140,25 +148,23 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
   const [isActivityLogExpanded, setActivityLogExpanded] = useState(false)
 
   // Refs to prevent duplicate API calls
-  const botPerformanceFetchInProgress = useRef(false)
-  const recentActivityFetchInProgress = useRef(false)
-  const initialRenderComplete = useRef(false)
+  const initialRenderComplete = useRef(false);
+  const lastActivityFetchParams = useRef<{
+    projectId: string | undefined;
+    timeRange: { start: Date; end: Date } | undefined;
+  }>({
+    projectId: undefined,
+    timeRange: undefined
+  });
   const lastBotPerformanceFetchParams = useRef<{
-    projectId: string | undefined,
-    startDate: Date | undefined,
-    endDate: Date | undefined
+    projectId: string | undefined;
+    startDate: Date | undefined;
+    endDate: Date | undefined;
   }>({
     projectId: undefined,
     startDate: undefined,
     endDate: undefined
-  })
-  const lastActivityFetchParams = useRef<{
-    projectId: string | undefined,
-    limit: number | undefined
-  }>({
-    projectId: undefined,
-    limit: undefined
-  })
+  });
 
   // Refs to prevent duplicate API calls for trending data
   const trendingFetchInProgress = useRef(false)
@@ -173,8 +179,365 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
   })
 
   // Add a new ref to track refresh requests
-  const refreshInProgress = useRef(false);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Memoized function to get date range based on time period
+  const memoizedGetDateRange = useCallback((period: TimePeriod): { start: Date; end: Date } => {
+    const end = new Date()
+    let start: Date
+    
+    switch (period) {
+      case "24h":
+        start = subDays(end, 1)
+        break
+      case "7d":
+        start = subDays(end, 7)
+        break
+      case "1m":
+        start = subMonths(end, 1)
+        break
+      default:
+        start = subDays(end, 1)
+    }
+    
+    return { start, end }
+  }, []);
+
+  // WebSocket integration
+  // Memoize the handlers to prevent recreation on re-renders
+  const handleBotPerformanceUpdate = useCallback((data: any) => {
+    if (data.projectId === projectId && data.botId && data.performance) {
+      console.log(`🤖 [ProjectAnalytics] Received bot performance update:`, {
+        event: WebSocketEvents.BOT_PERFORMANCE_UPDATED,
+        timestamp: new Date().toISOString(),
+        projectId: data.projectId,
+        botId: data.botId,
+        botName: data.performance.botName || `Bot-${data.botId.substring(0, 8)}`,
+        currentDataSize: botPerformanceData.length,
+        performance: {
+          ...data.performance,
+          profit: typeof data.performance.profit === 'number' ? 
+            `${data.performance.profit > 0 ? '+' : ''}${data.performance.profit.toFixed(4)}` : 
+            data.performance.profit
+        }
+      });
+      
+      // Update the bot performance data with the new data
+      setBotPerformanceData(prev => {
+        // Find if this bot already exists in our data
+        const botIndex = prev.findIndex(bot => bot.botId === data.botId);
+        
+        const newPerformanceData = {
+          botId: data.botId,
+          botName: data.performance.botName || `Bot-${data.botId.substring(0, 8)}`,
+          ...data.performance,
+          // Ensure profitContribution is properly transferred from the update data
+          profitContribution: data.performance.profitContribution !== undefined ? data.performance.profitContribution : data.performance.profit,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        // Check if within current date range
+        const inRange = botPerformanceDateRange?.from && botPerformanceDateRange?.to
+          ? isWithinInterval(new Date(), {
+              start: botPerformanceDateRange.from,
+              end: getEndOfDay(botPerformanceDateRange.to)
+            })
+          : true;
+        
+        if (!inRange) {
+          console.log('🤖 [ProjectAnalytics] Bot performance update outside current date range:', {
+            botId: data.botId,
+            dateRange: {
+              from: botPerformanceDateRange?.from?.toISOString(),
+              to: botPerformanceDateRange?.to?.toISOString()
+            },
+            updateTime: new Date().toISOString()
+          });
+        }
+        
+        let updatedData;
+        if (botIndex >= 0) {
+          // Update existing bot data
+          const updatedBots = [...prev];
+          updatedBots[botIndex] = {
+            ...updatedBots[botIndex],
+            ...newPerformanceData
+          };
+          updatedData = updatedBots;
+          console.log('🤖 [ProjectAnalytics] Updated existing bot performance:', {
+            botId: data.botId,
+            oldData: prev[botIndex],
+            newData: updatedBots[botIndex],
+            timestamp: new Date().toISOString()
+          });
+        } else {
+          // Add new bot data
+          updatedData = [...prev, newPerformanceData];
+          console.log('🤖 [ProjectAnalytics] Added new bot performance:', {
+            botId: data.botId,
+            newData: newPerformanceData,
+            timestamp: new Date().toISOString()
+          });
+        }
+        return updatedData.sort((a, b) => 
+          new Date(b.lastUpdated || b.date).getTime() - new Date(a.lastUpdated || a.date).getTime()
+        );
+      });
+      
+      // If this update matches our filter, show a toast notification
+      const botMatches = !selectedBotPerformance || 
+        selectedBotPerformance === data.performance.botName || 
+        selectedBotPerformance === `Bot-${data.botId.substring(0, 8)}`;
+      
+      if (botMatches) {
+        console.log(`🤖 [ProjectAnalytics] Bot performance update matches current filter:`, {
+          botId: data.botId,
+          botName: data.performance.botName || `Bot-${data.botId.substring(0, 8)}`,
+          selectedBot: selectedBotPerformance,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } else {
+      console.warn(`🤖 [ProjectAnalytics] Invalid bot performance data:`, {
+        event: WebSocketEvents.BOT_PERFORMANCE_UPDATED,
+        hasProjectId: !!data.projectId,
+        hasBotId: !!data.botId,
+        hasPerformance: !!data.performance,
+        expectedProjectId: projectId,
+        actualProjectId: data.projectId,
+        data,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [projectId, botPerformanceDateRange, selectedBotPerformance, botPerformanceData.length]);
+  
+  // Handle activity log updates with enhanced logging
+  const handleActivityLogUpdate = useCallback((data: any) => {
+    if (data.projectId === projectId && data.activity) {
+      console.log(`📝 [ProjectAnalytics] Received activity update:`, {
+        event: WebSocketEvents.ACTIVITY_LOG_ADDED,
+        timestamp: new Date().toISOString(),
+        projectId: data.projectId,
+        currentActivitiesCount: activityLogData.length,
+        activity: {
+          ...data.activity,
+          timestamp: data.activity.timestamp || new Date().toISOString(),
+          botName: data.activity.botName || 'Unknown Bot',
+          action: data.activity.action || 'Unknown Action'
+        }
+      });
+      
+      // Ensure the activity has all required fields
+      const normalizedActivity = {
+        ...data.activity,
+        timestamp: data.activity.timestamp || new Date().toISOString(),
+        botName: data.activity.botName || 'Unknown Bot',
+        action: data.activity.action || 'Unknown Action',
+        description: data.activity.description || 'No description provided',
+        volume: data.activity.volume || 0
+      };
+      
+      // Check if activity is within the current date range filter
+      const inRange = activityLogDateRange?.from && activityLogDateRange?.to
+        ? isWithinInterval(new Date(normalizedActivity.timestamp), {
+            start: activityLogDateRange.from,
+            end: getEndOfDay(activityLogDateRange.to)
+          })
+        : true;
+      
+      // Check if activity matches the current bot filter
+      const botMatches = !selectedBot || selectedBot === normalizedActivity.botName;
+      
+      if (!inRange) {
+        console.log('📝 [ProjectAnalytics] Activity outside current date range:', {
+          activity: normalizedActivity,
+          dateRange: {
+            from: activityLogDateRange?.from?.toISOString(),
+            to: activityLogDateRange?.to?.toISOString()
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      if (!botMatches) {
+        console.log('📝 [ProjectAnalytics] Activity does not match current bot filter:', {
+          activityBot: normalizedActivity.botName,
+          selectedBot,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Always update the data regardless of filters to keep it complete
+      setActivityLogData(prev => {
+        const updated = [normalizedActivity, ...prev].slice(0, 100);
+        console.log('📝 [ProjectAnalytics] Updated activity log:', {
+          newActivity: normalizedActivity,
+          totalActivities: updated.length,
+          timestamp: new Date().toISOString()
+        });
+        return updated;
+      });
+      
+      // Show toast notification if the activity matches current filters
+      if (inRange && botMatches) {
+        console.log(`📝 [ProjectAnalytics] Activity update matches current filters:`, {
+          activity: normalizedActivity,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } else {
+      console.warn(`📝 [ProjectAnalytics] Invalid activity data:`, {
+        event: WebSocketEvents.ACTIVITY_LOG_ADDED,
+        hasProjectId: !!data.projectId,
+        hasActivity: !!data.activity,
+        expectedProjectId: projectId,
+        actualProjectId: data.projectId,
+        data,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [projectId, activityLogDateRange, selectedBot, activityLogData.length]);
+  
+  // Handle time series data updates
+  const handleTimeSeriesUpdate = useCallback((data: any) => {
+    if (data.projectId === projectId && data.type && data.dataPoint) {
+      console.log(`📈 [WebSocket] Received TIME_SERIES_UPDATED event:`, {
+        event: WebSocketEvents.TIME_SERIES_UPDATED,
+        timestamp: new Date().toISOString(),
+        projectId: data.projectId,
+        type: data.type,
+        dataPoint: {
+          ...data.dataPoint,
+          timestamp: data.dataPoint.timestamp || new Date().toISOString(),
+          value: typeof data.dataPoint.value === 'number' ? 
+            data.dataPoint.value.toFixed(4) : 
+            data.dataPoint.value
+        }
+      });
+      
+      // Make sure the dataPoint has a timestamp
+      const dataPointWithTimestamp = {
+        ...data.dataPoint,
+        timestamp: data.dataPoint.timestamp || new Date().toISOString(),
+        // Ensure value is a number and use profitContribution for profit data if available
+        value: data.type === 'profit' && data.dataPoint.profitContribution !== undefined
+          ? parseFloat(data.dataPoint.profitContribution.toString())
+          : typeof data.dataPoint.value === 'number'
+            ? data.dataPoint.value
+            : parseFloat(data.dataPoint.value || '0')
+      };
+      
+      // Update the appropriate time series data
+      if (data.type === 'profit') {
+        setProfitTrends(prev => {
+          // Check if datapoint is in the current time period
+          const { start, end } = memoizedGetDateRange(profitTimePeriod);
+          const dataPointDate = new Date(dataPointWithTimestamp.timestamp);
+          const isInCurrentPeriod = dataPointDate >= start && dataPointDate <= getEndOfDay(end);
+          
+          if (!isInCurrentPeriod) {
+            console.log('Data point outside current time period, skipping chart update');
+            return prev;
+          }
+          
+          const existingIndex = prev.findIndex(point => 
+            point.timestamp === dataPointWithTimestamp.timestamp
+          );
+          
+          if (existingIndex >= 0) {
+            // Update existing data point
+            const updated = [...prev];
+            updated[existingIndex] = dataPointWithTimestamp;
+            return updated.sort((a, b) => 
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+          } else {
+            // Add new data point
+            return [...prev, dataPointWithTimestamp].sort((a, b) => 
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+          }
+        });
+        
+        // Force refresh the chart after updating
+        setTimeout(() => {
+          dispatch({ type: 'FORCE_CHART_UPDATE', chartType: 'profit' });
+        }, 100);
+      } else if (data.type === 'volume') {
+        setVolumeTrends(prev => {
+          // Check if datapoint is in the current time period
+          const { start, end } = memoizedGetDateRange(volumeTimePeriod);
+          const dataPointDate = new Date(dataPointWithTimestamp.timestamp);
+          const isInCurrentPeriod = dataPointDate >= start && dataPointDate <= getEndOfDay(end);
+          
+          if (!isInCurrentPeriod) {
+            console.log('Data point outside current time period, skipping chart update');
+            return prev;
+          }
+          
+          const existingIndex = prev.findIndex(point => 
+            point.timestamp === dataPointWithTimestamp.timestamp
+          );
+          
+          if (existingIndex >= 0) {
+            // Update existing data point
+            const updated = [...prev];
+            updated[existingIndex] = dataPointWithTimestamp;
+            return updated.sort((a, b) => 
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+          } else {
+            // Add new data point
+            return [...prev, dataPointWithTimestamp].sort((a, b) => 
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+          }
+        });
+        
+        // Force refresh the chart after updating
+        setTimeout(() => {
+          dispatch({ type: 'FORCE_CHART_UPDATE', chartType: 'volume' });
+        }, 100);
+      } else {
+        console.warn(`📈 [WebSocket] Unknown time series type: ${data.type}`);
+      }
+    } else {
+      console.warn(`📈 [WebSocket] Invalid TIME_SERIES_UPDATED data received:`, {
+        event: WebSocketEvents.TIME_SERIES_UPDATED,
+        hasProjectId: !!data.projectId,
+        hasType: !!data.type,
+        hasDataPoint: !!data.dataPoint,
+        expectedProjectId: projectId,
+        actualProjectId: data.projectId,
+        type: data.type,
+        data
+      });
+    }
+  }, [projectId, profitTimePeriod, volumeTimePeriod, memoizedGetDateRange, dispatch]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    
+    console.log(`🔌 Setting up WebSocket handlers for project ${projectId}`);
+    
+    // Ensure connection and join project room
+    websocketService.connect();
+    websocketService.joinProject(projectId);
+    
+    // Subscribe to WebSocket events
+    websocketService.subscribe(WebSocketEvents.BOT_PERFORMANCE_UPDATED, handleBotPerformanceUpdate);
+    websocketService.subscribe(WebSocketEvents.ACTIVITY_LOG_ADDED, handleActivityLogUpdate);
+    websocketService.subscribe(WebSocketEvents.TIME_SERIES_UPDATED, handleTimeSeriesUpdate);
+    
+    // Cleanup on unmount
+    return () => {
+      console.log(`🔌 Cleaning up WebSocket handlers for project ${projectId}`);
+      websocketService.unsubscribe(WebSocketEvents.BOT_PERFORMANCE_UPDATED, handleBotPerformanceUpdate);
+      websocketService.unsubscribe(WebSocketEvents.ACTIVITY_LOG_ADDED, handleActivityLogUpdate);
+      websocketService.unsubscribe(WebSocketEvents.TIME_SERIES_UPDATED, handleTimeSeriesUpdate);
+      websocketService.leaveProject(projectId);
+    };
+  }, [projectId, handleBotPerformanceUpdate, handleActivityLogUpdate, handleTimeSeriesUpdate]);
 
   // Expose methods to parent component via useImperativeHandle
   useImperativeHandle(ref, () => ({
@@ -208,7 +571,7 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
         const dateInRange = botPerformanceDateRange?.from && botPerformanceDateRange?.to
           ? isWithinInterval(new Date(bot.lastUpdated || bot.date), {
               start: botPerformanceDateRange.from,
-              end: botPerformanceDateRange.to
+              end: getEndOfDay(botPerformanceDateRange.to)
             })
           : true;
         
@@ -227,7 +590,7 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
         const dateInRange = activityLogDateRange?.from && activityLogDateRange?.to
           ? isWithinInterval(new Date(activity.timestamp), {
               start: activityLogDateRange.from,
-              end: activityLogDateRange.to
+              end: getEndOfDay(activityLogDateRange.to)
             })
           : true;
         
@@ -264,10 +627,9 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
 
       const response = await projectService.getBotPerformanceHistory(
         projectId,
-        botPerformanceDateRange.from,
-        botPerformanceDateRange.to
+        newParams.startDate,
+        newParams.endDate
       );
-
       setBotPerformanceData(response.data);
     } catch (error) {
       console.error("Error fetching bot performance:", error);
@@ -280,15 +642,25 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
   const fetchActivityLog = useCallback(async () => {
     if (!projectId || isLoadingActivity) return;
 
+    const newTimeRange = activityLogDateRange ? {
+      start: activityLogDateRange.from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      end: activityLogDateRange.to || new Date()
+    } : {
+      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      end: new Date()
+    };
+
     const newParams = {
       projectId,
-      limit: 100 // Adjust this value based on your needs
+      timeRange: newTimeRange
     };
 
     // Skip if params haven't changed
+    const currentParams = lastActivityFetchParams.current;
     const paramsUnchanged = 
-      lastActivityFetchParams.current.projectId === newParams.projectId &&
-      lastActivityFetchParams.current.limit === newParams.limit;
+      currentParams.projectId === newParams.projectId &&
+      currentParams.timeRange?.start.getTime() === newTimeRange.start.getTime() &&
+      currentParams.timeRange?.end.getTime() === newTimeRange.end.getTime();
 
     if (paramsUnchanged) return;
 
@@ -296,14 +668,17 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
       setIsLoadingActivity(true);
       lastActivityFetchParams.current = newParams;
 
-      const activityData = await projectService.getRecentActivity(projectId, newParams.limit);
+      const activityData = await projectService.getRecentActivity(
+        projectId,
+        newTimeRange
+      );
       setActivityLogData(activityData);
     } catch (error) {
       console.error("Error fetching activity log:", error);
     } finally {
       setIsLoadingActivity(false);
     }
-  }, [projectId]);
+  }, [projectId, activityLogDateRange]);
 
   // Initial data fetch
   useEffect(() => {
@@ -315,6 +690,11 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
   useEffect(() => {
     fetchBotPerformance();
   }, [botPerformanceDateRange, fetchBotPerformance]);
+
+  // Fetch activity log when date range changes
+  useEffect(() => {
+    fetchActivityLog();
+  }, [activityLogDateRange, fetchActivityLog]);
 
   // Initial render optimization - use a lightweight synchronous render first, then update asynchronously
   useEffect(() => {
@@ -396,7 +776,7 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
     onChange,
   }: { currentPeriod: TimePeriod; onChange: (period: TimePeriod) => void }) => (
     <div className="flex justify-start space-x-2 mb-4">
-      {(["24h", "7d", "1m", "1y"] as TimePeriod[]).map((period) => (
+      {(["24h", "7d", "1m"] as TimePeriod[]).map((period) => (
         <Button
           key={period}
           variant={currentPeriod === period ? "default" : "outline"}
@@ -435,31 +815,6 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
     } catch (error) {
       console.error("Error exporting CSV:", error)
     }
-  }
-
-  // Function to get date range based on time period
-  const getDateRangeForPeriod = (period: TimePeriod): { start: Date; end: Date } => {
-    const end = new Date()
-    let start: Date
-    
-    switch (period) {
-      case "24h":
-        start = subDays(end, 1)
-        break
-      case "7d":
-        start = subDays(end, 7)
-        break
-      case "1m":
-        start = subMonths(end, 1)
-        break
-      case "1y":
-        start = subYears(end, 1)
-        break
-      default:
-        start = subDays(end, 1)
-    }
-    
-    return { start, end }
   }
 
   // Update fetchTrendingData to accept a force parameter
@@ -502,8 +857,8 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
         try {
           // Fetch both trending datasets in parallel
           [profitData, volumeData] = await Promise.all([
-            projectService.getProfitTrending(projectId, getDateRangeForPeriod(profitTimePeriod)),
-            projectService.getVolumeTrending(projectId, getDateRangeForPeriod(volumeTimePeriod))
+            projectService.getProfitTrending(projectId, memoizedGetDateRange(profitTimePeriod)),
+            projectService.getVolumeTrending(projectId, memoizedGetDateRange(volumeTimePeriod))
           ]);
           
           // If successful, break out of retry loop
@@ -531,7 +886,7 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
       // Always clear the in-progress flag when done
       trendingFetchInProgress.current = false;
     }
-  }, [projectId, profitTimePeriod, volumeTimePeriod]);
+  }, [projectId, profitTimePeriod, volumeTimePeriod, memoizedGetDateRange]);
 
   // Single effect to handle both trending data fetches
   useEffect(() => {
@@ -631,13 +986,13 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
                 <TableCell>{bot?.action? bot?.action : bot.profit===0? "Snipe" : "Sell"}</TableCell>            
                 <TableCell>{bot.trades}</TableCell>
                 <TableCell>
-                <span className={Number(bot.profit) > 0 ? 'text-green-600' : Number(bot.profit) < 0 ? 'text-red-600' : ""}>
+                <span className={Number(bot.profitContribution || bot.profit) > 0 ? 'text-green-600' : Number(bot.profitContribution || bot.profit) < 0 ? 'text-red-600' : ""}>
                   {
-                  formatCurrency(bot.profit)
+                  formatCurrency(bot.profitContribution || bot.profit)
                   }
                 </span>
                 </TableCell>
-                <TableCell>{format(new Date(bot?.lastUpdated || bot?.date), 'dd/mm/yyyy HH:mm:ss')}</TableCell>
+                <TableCell>{format(new Date(bot?.lastUpdated || bot?.date), 'dd/MM/yyyy HH:mm:ss')}</TableCell>
               </TableRow>
             )
           )}
@@ -681,7 +1036,7 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
                       {Number(activity.impact) > 0 ? '+' : ''}{Number(activity.impact).toFixed(2)}%
                     </span>
                   </TableCell>
-                  <TableCell>{format(new Date(activity.timestamp), 'dd/mm/yyyy HH:mm:ss')}</TableCell>
+                  <TableCell>{format(new Date(activity.timestamp), 'dd/MM/yyyy HH:mm:ss')}</TableCell>
                 </TableRow>
               )
             )}
@@ -878,7 +1233,9 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
                       {format(activityLogDateRange.to, "MMM dd, yyyy")}
                     </>
                   )}
-                  {selectedBot && <> for {extractBaseBotName(availableBots.find((bot) => bot.id === selectedBot)?.name || '')}</>}
+                  {selectedBot && (
+                    <> for {extractBaseBotName(availableBots.find((bot) => bot.id === selectedBot)?.name || '')}</>
+                  )}
                 </span>
               </div>
             )}
@@ -891,4 +1248,3 @@ export const ProjectAnalytics = forwardRef<ProjectAnalyticsHandle, ProjectAnalyt
 
 // Add display name for debugging
 ProjectAnalytics.displayName = "ProjectAnalytics";
-

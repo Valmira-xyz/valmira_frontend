@@ -13,7 +13,6 @@ import {
 import { Config } from "@/lib/deploy-token/config";
 
 const CONTRACT_SERVER_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts`;
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // Rate limiting configuration
 const RATE_LIMIT_DELAY = 1000; // 1 second

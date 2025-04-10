@@ -1,33 +1,59 @@
 import axios from 'axios'
-import type { Project, ApiResponse } from "@/types"
+import type { Project, ApiResponse, MigrationResponse } from "@/types"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const BACKEND_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
 
 // Rate limiting configuration
-const RATE_LIMIT_DELAY = 2000; // Increase to 2 seconds between requests
-const BATCH_DELAY = 5000; // Increase to 5 seconds between batches
-const MAX_CONCURRENT_REQUESTS = 2; // Reduce to 2 concurrent requests
+const RATE_LIMIT_DELAY = 2000; // Increase to 5 seconds between requests (was 2000)
+const BATCH_DELAY = 10000; // Increase to 10 seconds between batches (was 5000)
+const MAX_CONCURRENT_REQUESTS = 5; // Reduce to 1 concurrent request (was 2)
 const ENDPOINT_COOLDOWNS = new Map<string, number>();
 const ENDPOINT_SPECIFIC_DELAYS = new Map<string, number>([
-  ['bnb-price', 10000], // 10 seconds for BNB price
-  ['metrics/global', 15000], // 15 seconds for global metrics
-  ['project-stats', 3000], // 3 seconds for project stats
+  ['bnb-price', 15000], // 15 seconds for BNB price (was 10000)
+  ['metrics/global', 20000], // 20 seconds for global metrics (was 15000)
+  ['project-stats', 5000], // 5 seconds for project stats (was 3000)
+  ['projects/public', 8000], // 8 seconds specifically for public projects
 ]);
 
 let lastRequestTime = 0;
 let activeRequests = 0;
 let requestQueue: Array<() => Promise<any>> = [];
+let queueProcessorRunning = false;
 
 // Retry configuration
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 2000; // 2 seconds before retry
+const MAX_RETRIES = 5; // Increased from 3
+const RETRY_DELAY = 3000; // 3 seconds before retry (was 2000)
+const MAX_RETRY_DELAY = 30000; // Maximum retry delay of 30 seconds
 
 // Helper function to get endpoint from URL
 const getEndpointKey = (url: string): string => {
   if (url.includes('bnb-price')) return 'bnb-price';
   if (url.includes('metrics/global')) return 'metrics/global';
   if (url.includes('project-stats')) return 'project-stats';
+  if (url.includes('projects/public')) return 'projects/public';
   return 'default';
+};
+
+// Process queued requests one by one
+const processQueue = async () => {
+  if (queueProcessorRunning || requestQueue.length === 0) return;
+  
+  queueProcessorRunning = true;
+  console.log(`📋 Processing request queue. Items in queue: ${requestQueue.length}`);
+  
+  try {
+    while (requestQueue.length > 0) {
+      const request = requestQueue.shift();
+      if (request) {
+        await request();
+        // Wait before processing next request
+        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
+      }
+    }
+  } finally {
+    queueProcessorRunning = false;
+    console.log('📋 Queue processing completed');
+  }
 };
 
 // Helper function for rate limiting with queue and endpoint-specific delays
@@ -41,17 +67,22 @@ const waitForRateLimit = async (url: string) => {
 
   // If we have too many active requests, wait
   if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
+    console.log(`⏱️ Waiting for active requests to complete. Current: ${activeRequests}/${MAX_CONCURRENT_REQUESTS}`);
     await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
   }
 
   // If we're making requests too quickly, wait
   if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
-    await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY - timeSinceLastRequest));
+    const waitTime = RATE_LIMIT_DELAY - timeSinceLastRequest;
+    console.log(`⏱️ Rate limiting - waiting ${waitTime}ms before next request`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
   }
 
   // If we're making requests to the same endpoint too quickly, wait
   if (timeSinceEndpointRequest < endpointDelay) {
-    await new Promise(resolve => setTimeout(resolve, endpointDelay - timeSinceEndpointRequest));
+    const waitTime = endpointDelay - timeSinceEndpointRequest;
+    console.log(`⏱️ Endpoint rate limiting for ${endpointKey} - waiting ${waitTime}ms`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
   }
 
   lastRequestTime = Date.now();
@@ -71,6 +102,12 @@ const retryWithBackoff = async <T>(
     }
     const result = await operation();
     activeRequests--;
+    
+    // Start processing the queue if there are requests waiting
+    if (requestQueue.length > 0) {
+      processQueue();
+    }
+    
     return result;
   } catch (error: any) {
     activeRequests--; // Make sure to decrease counter even on error
@@ -82,10 +119,36 @@ const retryWithBackoff = async <T>(
         throw error;
       }
       
-      const backoffDelay = BATCH_DELAY * Math.pow(2, MAX_RETRIES - retries);
-      console.warn(`Rate limit reached. Waiting ${backoffDelay}ms before retry... Retries left: ${retries - 1}`);
+      // Exponential backoff with jitter to prevent synchronized retries
+      const jitter = Math.random() * 1000;
+      const backoffDelay = Math.min(
+        BATCH_DELAY * Math.pow(2, MAX_RETRIES - retries) + jitter, 
+        MAX_RETRY_DELAY
+      );
+      
+      console.warn(`Rate limit reached. Waiting ${Math.round(backoffDelay)}ms before retry... Retries left: ${retries - 1}`);
       await new Promise(resolve => setTimeout(resolve, backoffDelay));
-      return retryWithBackoff(operation, retries - 1, url);
+      
+      // Queue the retry instead of executing immediately
+      return new Promise<T>((resolve, reject) => {
+        const retryRequest = async () => {
+          try {
+            const result = await retryWithBackoff(operation, retries - 1, url);
+            resolve(result);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        
+        // For the last retry, execute immediately to avoid queue delay
+        if (retries === 1) {
+          retryRequest();
+        } else {
+          // Add to queue for better spacing
+          requestQueue.push(retryRequest);
+          processQueue();
+        }
+      });
     }
     
     if (retries === 0) {
@@ -93,8 +156,13 @@ const retryWithBackoff = async <T>(
       throw error;
     }
     
-    const retryDelay = RETRY_DELAY * Math.pow(2, MAX_RETRIES - retries);
-    console.warn(`Operation failed. Retrying in ${retryDelay}ms... Retries left: ${retries - 1}`);
+    const jitter = Math.random() * 500;
+    const retryDelay = Math.min(
+      RETRY_DELAY * Math.pow(2, MAX_RETRIES - retries) + jitter,
+      MAX_RETRY_DELAY
+    );
+    
+    console.warn(`Operation failed. Retrying in ${Math.round(retryDelay)}ms... Retries left: ${retries - 1}`);
     await new Promise(resolve => setTimeout(resolve, retryDelay));
     return retryWithBackoff(operation, retries - 1, url);
   }
@@ -311,12 +379,21 @@ export const projectService = {
     }
   },
 
-  getRecentActivity: async (projectId: string, limit: number = 50): Promise<ActivityLog[]> => {
+  getRecentActivity: async (
+    projectId: string, 
+    timeRange: { start: Date; end: Date }
+  ): Promise<ActivityLog[]> => {
     try {
-      await waitForRateLimit(`${BACKEND_URL}/project-stats/${projectId}/activity?limit=${limit}`);
+      await waitForRateLimit(`${BACKEND_URL}/project-stats/${projectId}/activity`);
       return await retryWithBackoff(async () => {
         const response = await axios.get<ApiResponse<ActivityLog[]>>(
-          `${BACKEND_URL}/project-stats/${projectId}/activity?limit=${limit}`,
+          `${BACKEND_URL}/project-stats/${projectId}/activity`,
+          {
+            params: {
+              startDate: timeRange.start.toISOString(),
+              endDate: timeRange.end.toISOString()
+            }
+          }
         );
         return response.data.data;
       });
@@ -435,11 +512,12 @@ export const projectService = {
    * Log LP addition activity
    */
   logLPAddition: async (projectId: string, tokenAmount: number, bnbAmount: number): Promise<void> => {
+    const bnbPrice = await projectService.fetchBnbPrice();
     return projectService.addActivityLog(projectId, {
       timestamp: new Date(),
       botName: 'SnipeBot',
       action: 'Add LP',
-      volume: bnbAmount,
+      volume: bnbAmount * bnbPrice, // Convert to USD value
       impact: 0, // Calculate impact if needed
       tokenAmount,
       bnbAmount
@@ -450,11 +528,12 @@ export const projectService = {
    * Log LP removal activity
    */
   logLPRemoval: async (projectId: string, tokenAmount: number, bnbAmount: number, lpTokenAmount: number): Promise<void> => {
+    const bnbPrice = await projectService.fetchBnbPrice();
     return projectService.addActivityLog(projectId, {
       timestamp: new Date(),
       botName: 'SnipeBot',
       action: 'Remove LP',
-      volume: lpTokenAmount,
+      volume: bnbAmount * bnbPrice, // Convert to USD value
       impact: 0, // Calculate impact if needed
       tokenAmount,
       bnbAmount
@@ -499,6 +578,28 @@ export const projectService = {
     } catch (error) {
       console.error('Failed to fetch BNB price:', error);
       return 300; // Fallback value on error
+    }
+  },
+
+  /**
+   * Migrate sniping wallets to AutoSellBot
+   * @param projectId - The ID of the project
+   * @returns Updated project with migrated wallets
+   */
+  migrateSnipingWallets: async (projectId: string): Promise<MigrationResponse> => {
+    try {
+      await waitForRateLimit(`${BACKEND_URL}/projects/${projectId}/migrate-sniping-wallets`);
+      return await retryWithBackoff(async () => {
+        const response = await axios.post<MigrationResponse>(
+          `${BACKEND_URL}/projects/${projectId}/migrate-sniping-wallets`,
+          {},
+          getAuthHeaders()
+        );
+        return response.data;
+      });
+    } catch (error) {
+      console.error('Error migrating sniping wallets:', error);
+      throw error;
     }
   }
 } 

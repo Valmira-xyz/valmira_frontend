@@ -85,12 +85,55 @@ interface PoolInfo {
   bnbAddress: string;
 }
 
+// Define stablecoins by network
+const STABLECOINS: Record<Network, string[]> = {
+  mainnet: [
+    BSC_TOKENS.mainnet.BUSD,
+    BSC_TOKENS.mainnet.USDT,
+    BSC_TOKENS.mainnet.USDC
+  ],
+  testnet: [
+    BSC_TOKENS.testnet.BUSD,
+    BSC_TOKENS.testnet.USDT,
+    BSC_TOKENS.testnet.USDC
+  ]
+};
+
+// Cache for BNB price to avoid multiple API calls
+let bnbPriceCache: { price: number; timestamp: number } | null = null;
+
+/**
+ * Gets the current BNB price in USD from Binance API
+ * @returns The current BNB price in USD
+ */
+async function getBnbPriceInUsd(): Promise<number> {
+  try {
+    // Return cached price if it's less than 5 minutes old
+    if (bnbPriceCache && Date.now() - bnbPriceCache.timestamp < 5 * 60 * 1000) {
+      return bnbPriceCache.price;
+    }
+
+    // Fetch from Binance API
+    const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT');
+    const data = await response.json();
+    const price = parseFloat(data.price);
+
+    // Update cache
+    bnbPriceCache = { price, timestamp: Date.now() };
+    return price;
+  } catch (error) {
+    console.error('Failed to get BNB price:', error);
+    // Return last cached price if available, otherwise a fallback price
+    return bnbPriceCache?.price || 200; // Fallback to reasonable estimate if API fails
+  }
+}
+
 /**
  * Gets token decimals
  * @param tokenAddress The token contract address
  * @returns Token decimals
  */
-async function getTokenDecimals(tokenAddress: string): Promise<number> {
+export async function getTokenDecimals(tokenAddress: string): Promise<number> {
   try {
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
     return await tokenContract.decimals();
@@ -646,6 +689,129 @@ export async function removeLiquidity(
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error removing liquidity'
     };
+  }
+}
+
+/**
+ * Gets the current token price in USD
+ * @param tokenAddress The token contract address
+ * @param pairAddress Optional pair address for the token (if known)
+ * @returns The current token price in USD, or null if the price cannot be determined
+ */
+export async function getTokenPrice(
+  tokenAddress: string,
+  pairAddress?: string
+): Promise<number | null> {
+  try {
+    // Get BNB price in USD for converting BNB pairs to USD value
+    const bnbPrice = await getBnbPriceInUsd();
+    console.debug('Current BNB price in USD:', bnbPrice);
+
+    // If no pair address is specified, try to find the pair
+    if (!pairAddress) {
+      const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
+      const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+      const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
+      const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
+      
+      // Try to find pair with WBNB first
+      const wbnbAddress = await router.WETH();
+      pairAddress = await factory.getPair(tokenAddress, wbnbAddress);
+      
+      // If no WBNB pair, try to find pair with stablecoins
+      if (pairAddress === ethers.ZeroAddress) {
+        for (const stablecoin of STABLECOINS[network]) {
+          pairAddress = await factory.getPair(tokenAddress, stablecoin);
+          if (pairAddress !== ethers.ZeroAddress) break;
+        }
+      }
+      
+      // If still no pair found, return null
+      if (pairAddress === ethers.ZeroAddress) {
+        console.debug('No trading pair found for token:', tokenAddress);
+        return null;
+      }
+    }
+
+    // If pairAddress is still undefined or ZeroAddress, return null
+    if (!pairAddress || pairAddress === ethers.ZeroAddress) {
+      console.debug('No valid pair address:', tokenAddress);
+      return null;
+    }
+
+    // Get pair contract
+    const pairContract = new ethers.Contract(pairAddress, PAIR_ABI, provider);
+    const [reserves, token0, token1] = await Promise.all([
+      pairContract.getReserves(),
+      pairContract.token0(),
+      pairContract.token1()
+    ]);
+    const [reserve0, reserve1] = reserves;
+
+    // Get token contract and decimals
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+    const [tokenDecimals, pairedTokenDecimals] = await Promise.all([
+      tokenContract.decimals(),
+      getTokenDecimals(token0.toLowerCase() === tokenAddress.toLowerCase() ? token1 : token0)
+    ]);
+
+    // Check if paired token is a stablecoin
+    const pairedTokenAddress = token0.toLowerCase() === tokenAddress.toLowerCase() ? token1 : token0;
+    const isPairedWithStablecoin = STABLECOINS[network].some(
+      stablecoin => stablecoin.toLowerCase() === pairedTokenAddress.toLowerCase()
+    );
+
+    // Convert BigInt reserves to numbers with proper decimal adjustment
+    const reserve0Adjusted = Number(ethers.formatUnits(reserve0, token0.toLowerCase() === tokenAddress.toLowerCase() ? tokenDecimals : pairedTokenDecimals));
+    const reserve1Adjusted = Number(ethers.formatUnits(reserve1, token1.toLowerCase() === tokenAddress.toLowerCase() ? tokenDecimals : pairedTokenDecimals));
+
+    // Calculate price based on pair type
+    let price: number | null = null;
+    
+    if (token0.toLowerCase() === tokenAddress.toLowerCase()) {
+      // Token is token0
+      if (isPairedWithStablecoin) {
+        // Token/Stablecoin pair (stablecoin is token1)
+        price = reserve1Adjusted / reserve0Adjusted;
+      } else if (pairedTokenAddress.toLowerCase() === BSC_TOKENS[network].WBNB.toLowerCase()) {
+        // Token/WBNB pair (WBNB is token1)
+        price = (reserve1Adjusted / reserve0Adjusted) * bnbPrice;
+      } else {
+        // Token/Other pair - try to find the other token's price
+        const otherTokenPrice = await getTokenPrice(pairedTokenAddress);
+        price = otherTokenPrice ? (reserve1Adjusted / reserve0Adjusted) * otherTokenPrice : null;
+      }
+    } else {
+      // Token is token1
+      if (isPairedWithStablecoin) {
+        // Stablecoin/Token pair (stablecoin is token0)
+        price = reserve0Adjusted / reserve1Adjusted;
+      } else if (pairedTokenAddress.toLowerCase() === BSC_TOKENS[network].WBNB.toLowerCase()) {
+        // WBNB/Token pair (WBNB is token0)
+        price = (reserve0Adjusted / reserve1Adjusted) * bnbPrice;
+      } else {
+        // Other/Token pair - try to find the other token's price
+        const otherTokenPrice = await getTokenPrice(pairedTokenAddress);
+        price = otherTokenPrice ? (reserve0Adjusted / reserve1Adjusted) * otherTokenPrice : null;
+      }
+    }
+
+    console.debug('Token price calculated:', {
+      tokenAddress,
+      pairAddress,
+      price,
+      pairedWith: pairedTokenAddress,
+      isPairedWithStablecoin
+    });
+
+    return price;
+  } catch (error) {
+    console.error('Failed to get token price:', {
+      tokenAddress,
+      pairAddress,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    return null;
   }
 }
 

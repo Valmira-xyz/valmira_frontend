@@ -43,21 +43,29 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
   const isFirstRender = useRef(true)
   const fetchInProgress = useRef(false)
   const lastFetchParams = useRef({ isPublic, currentPage, pageSize })
+  const fetchDelayTimer = useRef<NodeJS.Timeout | null>(null)
 
   // Debounced fetch function to prevent multiple API calls
   const loadProjects = useCallback(async () => {
     // Skip if a fetch is already in progress or if parameters haven't changed
-    if (fetchInProgress.current) return
+    if (fetchInProgress.current) {
+      console.log('Fetch already in progress, skipping duplicate request');
+      return;
+    }
     
     const paramsChanged = 
       lastFetchParams.current.isPublic !== isPublic || 
       lastFetchParams.current.currentPage !== currentPage ||
       lastFetchParams.current.pageSize !== pageSize
       
-    if (!isFirstRender.current && !paramsChanged) return
+    if (!isFirstRender.current && !paramsChanged) {
+      console.log('Parameters have not changed, using existing data');
+      return;
+    }
     
     try {
-      fetchInProgress.current = true
+      fetchInProgress.current = true;
+      console.log(`Loading projects: isPublic=${isPublic}, page=${currentPage}, size=${pageSize}`);
       
       // Update last fetch parameters
       lastFetchParams.current = { isPublic, currentPage, pageSize }
@@ -68,20 +76,33 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
         await dispatch(fetchProjects() as any)
       }
       
-      isFirstRender.current = false
+      isFirstRender.current = false;
     } finally {
-      fetchInProgress.current = false
+      fetchInProgress.current = false;
     }
   }, [dispatch, isPublic, currentPage, pageSize])
 
+  // Clear any existing timer when parameters change
   useEffect(() => {
-    // Small delay to prevent rapid consecutive API calls
-    const timer = setTimeout(() => {
-      loadProjects()
-    }, 100)
+    if (fetchDelayTimer.current) {
+      clearTimeout(fetchDelayTimer.current);
+      fetchDelayTimer.current = null;
+    }
     
-    return () => clearTimeout(timer)
-  }, [loadProjects])
+    // Use longer delay for initial page load to avoid rate limiting
+    const delay = isFirstRender.current ? 1500 : 800;
+    console.log(`Scheduling data fetch with ${delay}ms delay`);
+    
+    fetchDelayTimer.current = setTimeout(() => {
+      loadProjects();
+    }, delay);
+    
+    return () => {
+      if (fetchDelayTimer.current) {
+        clearTimeout(fetchDelayTimer.current);
+      }
+    };
+  }, [loadProjects]);
 
   useEffect(() => {
     if (error && !isPublic) {
@@ -195,6 +216,19 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
     }
   }
   
+  // Pagination handlers with debounce
+  const handlePreviousPage = useCallback(() => {
+    if (currentPage > 0) {
+      setCurrentPage(prev => Math.max(0, prev - 1));
+    }
+  }, [currentPage]);
+
+  const handleNextPage = useCallback(() => {
+    if (!loading && displayedProjects.length >= pageSize) {
+      setCurrentPage(prev => prev + 1);
+    }
+  }, [loading, displayedProjects?.length, pageSize]);
+
   return (
     <div className="space-y-6">
       
@@ -249,16 +283,16 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
           <div className="flex justify-center items-center mt-4 gap-2">
             <Button
               variant="outline"
-              onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
-              disabled={currentPage === 0}
+              onClick={handlePreviousPage}
+              disabled={currentPage === 0 || loading}
             >
               Previous
             </Button>
             <span className="mx-2">Page {currentPage + 1}</span>
             <Button
               variant="outline"
-              onClick={() => setCurrentPage(prev => prev + 1)}
-              disabled={displayedProjects.length < pageSize}
+              onClick={handleNextPage}
+              disabled={displayedProjects.length < pageSize || loading}
             >
               Next
             </Button>
@@ -268,10 +302,8 @@ export function ProjectsList({ limit, isPublic = false, pageSize = 10 }: Project
         {/* Empty state */}
         {displayedProjects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">No projects found</p>
-            <Button onClick={handleCreateNew}>
-              <Plus className="mr-2 h-4 w-4" /> Create your first project
-            </Button>
+            <p className="text-muted-foreground mb-4">No projects found</p>       
+             Create your first project by clicking the button "Create New Project"       
           </div>
         )}
       </div>

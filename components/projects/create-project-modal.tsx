@@ -282,7 +282,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     }
 
     setIsCreatingProject(true)
-    
+    console.log("analyzedToken", analyzedToken)
     try {
       const projectData = {
         name: activeTab === "deploy" ? newTokenName : analyzedToken?.name || "",
@@ -309,6 +309,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
           templateNumber: activeTab === "deploy" ? parseInt(tokenTemplate) : 0
         }
       }
+
+      console.log("projectData", projectData)
 
       const resultAction = await dispatch(createProject(projectData) as any)
       

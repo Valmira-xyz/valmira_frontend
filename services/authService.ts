@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { User, ApiResponse, AuthResponse, NonceResponse, VerifyResponse } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const API_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
 
 class AuthService {
   private token: string | null = null;
@@ -44,12 +44,12 @@ class AuthService {
     }
   }
 
-  async verifySignature(walletAddress: string, signature: string, nonce: string): Promise<VerifyResponse> {
+  async verifySignature(walletAddress: string, verificationToken: string, nonce: string): Promise<VerifyResponse> {
     try {
       const response = await axios.post<ApiResponse<VerifyResponse>>(`${API_URL}/users/verify-signature`, 
         {
         walletAddress,
-        signature,
+        verificationToken,
         nonce,
       },
       {
@@ -75,7 +75,7 @@ class AuthService {
         token
       };
     } catch (error) {
-      throw new Error('Failed to verify signature');
+      throw new Error('Failed to verify authentication');
     }
   }
 

@@ -199,6 +199,7 @@ export interface User {
   
   // Project related types
   export interface Project {
+    addons: any;
     _id: string;
     name: string;
     description?: string;
@@ -216,6 +217,12 @@ export interface User {
     };
   }
   
+  export interface MigrationResponse {
+    status: string;
+    message?: string;
+    data?: Project | ProjectWithAddons | any;
+  }
+
   // Wallet related types
   export interface Wallet {
     _id: string;
@@ -266,6 +273,7 @@ export interface User {
   }
   
   export interface ProjectWithAddons {
+    tokenDecimals: number;
     _id: string
     name: string
     tokenAddress: string
@@ -288,30 +296,52 @@ export interface User {
     } | string,
     addons: {
       SnipeBot: {
+        generatedHolders: number | undefined;
+        generatedVolume: number | undefined;
         _id?: string
         isEnabled?: boolean
         status?: string
         depositWalletId: {
+          _id: string;
           publicKey: string
         },
         subWalletIds: {
+          role: string;
+          _id: string;
           publicKey: string
         }[]
       },
       VolumeBot: {
+        generatedVolume: number | undefined;
         _id?: string
         isEnabled?: boolean
         depositWalletId: {
           publicKey: string
         }
       },
-      HolderBot: {      
+      HolderBot: {
+        generatedHolders: number | undefined;      
         _id?: string
         isEnabled?: boolean
         depositWalletId: {
           publicKey: string
         }
-      }
+      },
+      AutoSellBot?: {
+        countsOfActivaveWallets: number | undefined;
+        _id?: string
+        isEnabled?: boolean
+        status?: string
+        depositWalletId: {
+          _id: string;
+          publicKey: string
+        },
+        subWalletIds: {
+          role: string;
+          _id: string;
+          publicKey: string
+        }[]
+      },
     },
     createdAt: string
     updatedAt: string
@@ -330,7 +360,7 @@ export interface User {
   }
   
   // Bot related types
-  export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot';
+  export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot' | 'AutoSellBot';
   export type BotStatus = 'ready_to_simulation' 
     | "simulating" | "simulation_failed" | "simulation_succeeded" 
     | "sniping" |  'snipe_succeeded' | 'snipe_failed' 

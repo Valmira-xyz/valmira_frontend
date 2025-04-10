@@ -32,7 +32,6 @@ export function DateRangePicker({ className, dateRange, onDateRangeChange }: Dat
   const presets = [
     { name: "Last 7 days", range: { from: subDays(today, 7), to: today } },
     { name: "Last 30 days", range: { from: subDays(today, 30), to: today } },
-    { name: "Last 90 days", range: { from: subDays(today, 90), to: today } },
     {
       name: "This month",
       range: {

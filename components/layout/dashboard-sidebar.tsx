@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   LayoutDashboard,
   FolderKanban,
@@ -19,6 +19,7 @@ import Image from "next/image"
 import { useTheme } from "next-themes"
 import { useAccount } from "wagmi"
 import { WalletDisplay } from "../wallet/wallet-display"
+import websocketService, { WebSocketEvents } from "@/services/websocketService"
 
 import {
   Sidebar,
@@ -40,10 +41,17 @@ export function DashboardSidebar() {
   const [openProjects, setOpenProjects] = useState(true)
   const [openKnowledge, setOpenKnowledge] = useState(false)
   const { theme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  const [updatedTotalProfit, setUpdatedTotalProfit] = useState<number | null>(null)
 
   // Get auth state from Redux store
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth)
   const { projects, loading: projectsLoading } = useSelector((state: RootState) => state.projects)
+
+  // Set mounted state to true after component mounts
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Fetch projects when component mounts
   useEffect(() => {
@@ -92,19 +100,88 @@ export function DashboardSidebar() {
   const activeProjects = userProjects.filter(project => project.status === 'active');
   const avatarColor = generateAvatarColor(user?.walletAddress || "")
 
+  // Calculate total profit based on all user projects
+  const totalProfit = updatedTotalProfit !== null ? 
+    updatedTotalProfit : 
+    userProjects?.reduce((total, project) => total + (project.metrics?.cumulativeProfit || 0), 0);
+
+  // Handle project metrics updates from WebSocket
+  const handleMetricsUpdate = useCallback((data: any) => {
+    if (data.projectId && data.metrics && userProjects.length > 0) {
+      // Find the updated project in the user's projects
+      const projectIndex = userProjects.findIndex(p => p._id === data.projectId);
+      
+      if (projectIndex !== -1) {
+        // Create a copy of user projects
+        const updatedProjects = [...userProjects];
+        
+        // Update the metrics for the specific project
+        updatedProjects[projectIndex] = {
+          ...updatedProjects[projectIndex],
+          metrics: {
+            ...updatedProjects[projectIndex].metrics,
+            cumulativeProfit: data.metrics.cumulativeProfit || updatedProjects[projectIndex].metrics?.cumulativeProfit || 0,
+            volume24h: data.metrics.volume24h || updatedProjects[projectIndex].metrics?.volume24h || 0,
+            activeBots: data.metrics.activeBots || updatedProjects[projectIndex].metrics?.activeBots || 0,
+            lastUpdate: data.metrics.lastUpdate || updatedProjects[projectIndex].metrics?.lastUpdate || new Date().toISOString()
+          }
+        };
+        
+        // Recalculate total profit
+        const newTotalProfit = updatedProjects.reduce(
+          (total, project) => total + (project.metrics?.cumulativeProfit || 0), 
+          0
+        );
+        
+        // Update the state with the new total profit
+        setUpdatedTotalProfit(newTotalProfit);
+      }
+    }
+  }, [userProjects]);
+
+  // Setup WebSocket connections and subscriptions for all user projects
+  useEffect(() => {
+    if (!isAuthenticated || !isConnected || !userProjects.length) return;
+    
+    // Ensure WebSocket is connected
+    websocketService.connect();
+    
+    // Join rooms for all user projects
+    userProjects.forEach(project => {
+      websocketService.joinProject(project._id);
+    });
+    
+    // Subscribe to metrics updates
+    websocketService.subscribe(WebSocketEvents.PROJECT_METRICS_UPDATED, handleMetricsUpdate);
+    
+    // Cleanup on unmount
+    return () => {
+      websocketService.unsubscribe(WebSocketEvents.PROJECT_METRICS_UPDATED, handleMetricsUpdate);
+      
+      // Leave project rooms
+      userProjects.forEach(project => {
+        websocketService.leaveProject(project._id);
+      });
+    };
+  }, [isAuthenticated, isConnected, userProjects, handleMetricsUpdate]);
 
   return (
     <Sidebar>
       <SidebarHeader className="p-4 relative w-full">
         <div className="flex justify-start items-center h-8">
-          <Image
-            src={resolvedTheme === "dark" ? "/sidebar/gray_logo.png" : "/sidebar/black_logo.png"}
-            alt="Valmira Logo"
-            width={136}
-            height={32}
-            priority
-            className="object-contain"
-          />
+          {mounted ? (
+            <Image
+              src={resolvedTheme === "dark" ? "/sidebar/gray_logo.png" : "/sidebar/black_logo.png"}
+              alt="Valmira Logo"
+              width={136}
+              height={32}
+              priority
+              className="object-contain"
+            />
+          ) : (
+            // Placeholder with same dimensions during SSR
+            <div className="w-[136px] h-[32px]" />
+          )}
         </div>
       </SidebarHeader>
       <SidebarContent className="flex flex-col h-full">
@@ -264,7 +341,7 @@ export function DashboardSidebar() {
                 <div className="flex flex-col">
                   <span className="text-muted-foreground">Total Profit</span>
                   <span className="font-medium">
-                    ${ Number(userProjects?.reduce((total, project) => total + (project.metrics?.cumulativeProfit || 0), 0)).toFixed(2)}
+                    ${ Number(totalProfit).toFixed(2)}
                   </span>
                 </div>
               </div>
