@@ -76,50 +76,52 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
       className="overflow-hidden border border-base-border hover:border-primary/20 hover:bg-muted/10 transition-all duration-200 cursor-pointer"
       onClick={handleCardClick}
     >
-      <CardHeader className="pb-2 space-y-0">
-        <div className="flex items-center justify-between">
-          <Avatar className="h-12 w-12">
-            <AvatarFallback
-              style={{
-                backgroundColor: generateAvatarColor(
-                  typeof project.owner === 'string'
-                    ? project.owner
-                    : project.owner.walletAddress
-                ),
-              }}
-            >
-              {typeof project.owner === 'string'
-                ? project.owner.slice(2, 4).toUpperCase()
-                : project.owner.walletAddress.slice(2, 4).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col items-center space-x-1">
-            <CardTitle className="text-lg">{project.name}</CardTitle>
+      <CardHeader className="pb-4 space-y-0">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex gap-3 items-center">
+            <Avatar className="h-12 w-12">
+              <AvatarFallback
+                style={{
+                  backgroundColor: generateAvatarColor(
+                    typeof project.owner === 'string'
+                      ? project.owner
+                      : project.owner.walletAddress
+                  ),
+                }}
+              >
+                {typeof project.owner === 'string'
+                  ? project.owner.slice(2, 4).toUpperCase()
+                  : project.owner.walletAddress.slice(2, 4).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <CardTitle className="text-lg">{project.name}</CardTitle>
 
-            <div className="text-sm text-muted-foreground flex items-center space-x-1 mt-1 py-2">
-              <span>
-                {project.tokenAddress
-                  ? `${project.tokenAddress.slice(0, 6)}...${project.tokenAddress.slice(-4)}`
-                  : 'No Address'}
-              </span>
-              {project.tokenAddress && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 ml-1 -mr-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <a
-                    href={`https://etherscan.io/address/${project.tokenAddress}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={handleExplorerClick}
+              <div className="text-sm text-muted-foreground flex items-center">
+                <span>
+                  {project.tokenAddress
+                    ? `${project.tokenAddress.slice(0, 6)}...${project.tokenAddress.slice(-4)}`
+                    : 'No Address'}
+                </span>
+                {project.tokenAddress && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 ml-1 -mr-1"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <ExternalLink className="h-3 w-3" />
-                    <span className="sr-only">View on Explorer</span>
-                  </a>
-                </Button>
-              )}
+                    <a
+                      href={`https://etherscan.io/address/${project.tokenAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={handleExplorerClick}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      <span className="sr-only">View on Explorer</span>
+                    </a>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
           <Badge

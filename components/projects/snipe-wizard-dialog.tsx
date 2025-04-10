@@ -435,7 +435,7 @@ export function SnipeWizardDialog({
           <div className="border rounded-lg p-4">
             <h3 className="text-base font-medium mb-3">Sniping Wallets</h3>
 
-            <div className="flex items-center gap-4 mb-4">
+            <div className="flex items-center gap-4 mb-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <Label
                   htmlFor="walletCount"
@@ -493,7 +493,7 @@ export function SnipeWizardDialog({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 ml-auto"
+                className="h-8"
                 onClick={() => {
                   const allAddresses = [
                     ...(project?.addons.SnipeBot.depositWalletId?.publicKey
@@ -1575,34 +1575,38 @@ export function SnipeWizardDialog({
               Distribute Extra BNB (Optional)
             </h3>
 
-            <div className="flex items-center gap-3">
-              <Label htmlFor="distributeAmount" className="whitespace-nowrap">
-                Amount per wallet:
-              </Label>
-              <Input
-                id="distributeAmount"
-                type="number"
-                value={distributeAmount}
-                onChange={(e) => setDistributeAmount(Number(e.target.value))}
-                step="0.01"
-                min="0"
-                className="w-32"
-              />
-              <span className="text-sm">BNB</span>
-              <Button
-                variant="outline"
-                onClick={() => setShowDistributeDialog(true)}
-                disabled={
-                  isEstimatingFees ||
-                  !wallets.filter(
-                    (wallet: WalletInfo) => wallet.role !== 'botmain'
-                  ).length ||
-                  isDistributingBNBs ||
-                  distributeAmount <= 0
-                }
-              >
-                Distribute Extra BNB
-              </Button>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3">
+                <Label htmlFor="distributeAmount" className="whitespace-nowrap">
+                  Amount per wallet:
+                </Label>
+                <Input
+                  id="distributeAmount"
+                  type="number"
+                  value={distributeAmount}
+                  onChange={(e) => setDistributeAmount(Number(e.target.value))}
+                  step="0.01"
+                  min="0"
+                  className="max-w-32"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm">BNB</span>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDistributeDialog(true)}
+                  disabled={
+                    isEstimatingFees ||
+                    !wallets.filter(
+                      (wallet: WalletInfo) => wallet.role !== 'botmain'
+                    ).length ||
+                    isDistributingBNBs ||
+                    distributeAmount <= 0
+                  }
+                >
+                  Distribute Extra BNB
+                </Button>
+              </div>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-4 text-blue-700 text-sm">
@@ -2327,7 +2331,7 @@ export function SnipeWizardDialog({
       <CardContent className="px-0 sm:px-6">
         <div className="space-y-4 sm:space-y-6">
           {/* Wallet Management Section */}
-          <div className="border rounded-lg p-2 sm:p-4">
+          <div className="border rounded-lg p-2 sm:p-4 w-full">
             <h3 className="text-base font-medium mb-2 sm:mb-3">
               Wallet Management
             </h3>
@@ -2336,8 +2340,8 @@ export function SnipeWizardDialog({
             </p>
 
             {/* Wallet Table */}
-            <div className="overflow-x-auto">
-              <div className="border rounded-lg">
+            <div className="relative h-[115px]">
+              <div className="border rounded-lg w-full absolute">
                 <Table>
                   <TableHeader>
                     <TableRow>

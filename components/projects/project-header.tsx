@@ -1,5 +1,6 @@
 import { Copy, ExternalLink } from 'lucide-react';
 
+import { ProjectRefreshButton } from '@/components/projects/project-refresh-button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +11,11 @@ import { ProjectHeaderProps } from '@/types';
 
 import { Button } from '../ui/button';
 
-export function ProjectHeader({ project }: ProjectHeaderProps) {
+export function ProjectHeader({
+  project,
+  projectId,
+  onRefresh,
+}: ProjectHeaderProps) {
   const { toast } = useToast();
   if (!project) {
     return (
@@ -46,7 +51,7 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
   return (
     <Card>
       <CardContent className="p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center space-x-4">
             <Avatar className="h-12 w-12">
               <AvatarFallback
@@ -75,11 +80,13 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
                     className="h-4 w-4"
                   />
                 )}
-                <span>{project.tokenAddress || 'No token address'}</span>
+                <span className="break-all">
+                  {project.tokenAddress || 'No token address'}
+                </span>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-4"
                   onClick={() =>
                     copyToClipboard(project.tokenAddress || 'No token address')
                   }
@@ -88,7 +95,7 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
                   <span className="sr-only">Copy address</span>
                 </Button>
 
-                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-4" asChild>
                   <a
                     href={`https://bscscan.com/address/${project.tokenAddress || 'No token address'}`}
                     target="_blank"
@@ -101,12 +108,15 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
               </div>
             </div>
           </div>
-          <Badge
-            variant={getBadgeVariant(project.status)}
-            className="font-medium text-sm px-3 py-1 rounded-full"
-          >
-            {project.status}
-          </Badge>
+          <div className="flex gap-4 items-center">
+            <ProjectRefreshButton projectId={projectId} onRefresh={onRefresh} />
+            <Badge
+              variant={getBadgeVariant(project.status)}
+              className="font-medium text-sm px-3 py-1 rounded-full"
+            >
+              {project.status}
+            </Badge>
+          </div>
         </div>
         <div className="mt-4 flex justify-between text-sm text-muted-foreground">
           {/* <span>Connected Wallet: {walletAddress || "Not connected"}</span> */}

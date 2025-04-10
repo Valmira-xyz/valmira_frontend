@@ -14,7 +14,6 @@ import {
 import { ProjectDangerZone } from '@/components/projects/project-danger-zone';
 import { ProjectHeader } from '@/components/projects/project-header';
 import { ProjectMetrics } from '@/components/projects/project-metrics';
-import { ProjectRefreshButton } from '@/components/projects/project-refresh-button';
 import { useToast } from '@/components/ui/use-toast';
 import {
   clearCurrentProject,
@@ -136,18 +135,20 @@ export default function ProjectDetailPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <PageHeader title={`Project ${project?.name}`}>
-        <ProjectRefreshButton projectId={projectId} onRefresh={handleRefresh} />
-      </PageHeader>
-      <ProjectHeader
-        project={projectWithAddons}
-        walletAddress={projectWithAddons?.tokenAddress}
-      />
-      {projectWithAddons && <ProjectMetrics project={projectWithAddons} />}
-      <ProjectAnalytics project={project} ref={analyticsRef} />
-      <ProjectAddOns project={projectWithAddons} />
-      {projectWithAddons && <ProjectDangerZone project={projectWithAddons} />}
+    <div className="overflow-x-hidden w-full">
+      <PageHeader title={`Project ${project?.name}`} />
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+        <ProjectHeader
+          project={projectWithAddons}
+          walletAddress={projectWithAddons?.tokenAddress}
+          projectId={projectId}
+          onRefresh={handleRefresh}
+        />
+        {projectWithAddons && <ProjectMetrics project={projectWithAddons} />}
+        <ProjectAnalytics project={project} ref={analyticsRef} />
+        <ProjectAddOns project={projectWithAddons} />
+        {projectWithAddons && <ProjectDangerZone project={projectWithAddons} />}
+      </div>
     </div>
   );
 }

@@ -48,7 +48,7 @@ class AuthService {
 
   async verifySignature(
     walletAddress: string,
-    signature: string,
+    verificationToken: string,
     nonce: string
   ): Promise<VerifyResponse> {
     try {
@@ -56,7 +56,7 @@ class AuthService {
         `${API_URL}/users/verify-signature`,
         {
           walletAddress,
-          signature,
+          verificationToken,
           nonce,
         },
         {

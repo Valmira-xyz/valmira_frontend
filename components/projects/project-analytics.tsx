@@ -943,9 +943,9 @@ export const ProjectAnalytics = forwardRef<
         className="w-full"
       >
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center flex-wrap gap-4 justify-between">
             <CardTitle>Bot Performance</CardTitle>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 overflow-x-scroll no-scrollbar">
               <BotFilter
                 bots={availableBots}
                 selectedBot={selectedBotPerformance}
@@ -964,6 +964,7 @@ export const ProjectAnalytics = forwardRef<
                   <Button
                     variant="outline"
                     size="icon"
+                    className="min-w-[40px]"
                     disabled={isLoadingBotPerformance}
                   >
                     <Download className="h-4 w-4" />
@@ -1034,9 +1035,9 @@ export const ProjectAnalytics = forwardRef<
         className="w-full"
       >
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
             <CardTitle>Recent Activity</CardTitle>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 overflow-x-scroll no-scrollbar">
               <BotFilter
                 bots={availableBots}
                 selectedBot={selectedBot}
@@ -1055,6 +1056,7 @@ export const ProjectAnalytics = forwardRef<
                   <Button
                     variant="outline"
                     size="icon"
+                    className="min-w-[40px]"
                     disabled={isLoadingActivity}
                   >
                     <Download className="h-4 w-4" />

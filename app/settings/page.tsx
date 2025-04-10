@@ -34,9 +34,9 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className=" mx-auto py-6 w-[calc(100vw-320px)]">
+    <div className="w-full">
       <PageHeader title="Settings" />
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 md:p-6">
         <Card>
           <CardHeader>
             <CardTitle>Profile Overview</CardTitle>

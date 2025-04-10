@@ -4,10 +4,10 @@ import { PageHeader } from '@/components/layout/page-header';
 
 export default function HolderBotTutorialPage() {
   return (
-    <div className="container mx-auto py-6">
+    <>
       <PageHeader title="Holder Bot Tutorial" />
 
-      <div className="prose dark:prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none p-4 md:p-6">
         <p className="text-lg">
           Need to create a diverse holder base for your token? Our Holder Bot
           creates a natural-looking distribution pattern across multiple
@@ -162,6 +162,6 @@ export default function HolderBotTutorialPage() {
           activity.
         </p>
       </div>
-    </div>
+    </>
   );
 }

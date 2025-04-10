@@ -36,7 +36,9 @@ export default function FAQsPage() {
           <CardContent>
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="what-is-valmira">
-                <AccordionTrigger>What is Valmira?</AccordionTrigger>
+                <AccordionTrigger className="text-start">
+                  What is Valmira?
+                </AccordionTrigger>
                 <AccordionContent>
                   Valmira is a comprehensive platform for managing crypto
                   projects and trading bots. Our platform provides tools for
@@ -46,7 +48,7 @@ export default function FAQsPage() {
               </AccordionItem>
 
               <AccordionItem value="how-to-start">
-                <AccordionTrigger>
+                <AccordionTrigger className="text-start">
                   How do I get started with Valmira?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -59,7 +61,7 @@ export default function FAQsPage() {
               </AccordionItem>
 
               <AccordionItem value="supported-chains">
-                <AccordionTrigger>
+                <AccordionTrigger className="text-start">
                   Which blockchain networks are supported?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -82,7 +84,7 @@ export default function FAQsPage() {
           <CardContent>
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="bot-types">
-                <AccordionTrigger>
+                <AccordionTrigger className="text-start">
                   What types of trading bots are available?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -94,7 +96,7 @@ export default function FAQsPage() {
               </AccordionItem>
 
               <AccordionItem value="bot-security">
-                <AccordionTrigger>
+                <AccordionTrigger className="text-start">
                   How secure are the trading bots?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -106,7 +108,7 @@ export default function FAQsPage() {
               </AccordionItem>
 
               <AccordionItem value="bot-fees">
-                <AccordionTrigger>
+                <AccordionTrigger className="text-start">
                   What are the fees for using trading bots?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -119,7 +121,7 @@ export default function FAQsPage() {
               </AccordionItem>
 
               <AccordionItem value="bot-performance">
-                <AccordionTrigger>
+                <AccordionTrigger className="text-start">
                   How can I track my bot's performance?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -143,7 +145,7 @@ export default function FAQsPage() {
           <CardContent>
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="wallet-types">
-                <AccordionTrigger>
+                <AccordionTrigger className="text-start">
                   Which wallets are supported?
                 </AccordionTrigger>
                 <AccordionContent>
@@ -154,7 +156,9 @@ export default function FAQsPage() {
               </AccordionItem>
 
               <AccordionItem value="account-security">
-                <AccordionTrigger>How is my account secured?</AccordionTrigger>
+                <AccordionTrigger className="text-start">
+                  How is my account secured?
+                </AccordionTrigger>
                 <AccordionContent>
                   Your account is secured through blockchain authentication. We
                   never store your private keys or seed phrases. For additional
@@ -164,7 +168,7 @@ export default function FAQsPage() {
               </AccordionItem>
 
               <AccordionItem value="disconnect-wallet">
-                <AccordionTrigger>
+                <AccordionTrigger className="text-start">
                   How do I disconnect my wallet?
                 </AccordionTrigger>
                 <AccordionContent>

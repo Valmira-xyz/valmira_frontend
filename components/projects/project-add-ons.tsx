@@ -540,7 +540,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
               {isRefreshingBalances ? 'Refreshing...' : 'Refresh Balances'}
             </Button>
           </div>
-          <div className="flex flex-row gap-6 overflow-x-auto pb-4">
+          <div className="flex flex-col lg:flex-row gap-6 pb-4">
             {addOns.map((addon) => (
               <Card key={addon.botType} className="w-full">
                 <CardHeader>

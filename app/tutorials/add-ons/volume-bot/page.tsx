@@ -4,10 +4,10 @@ import { PageHeader } from '@/components/layout/page-header';
 
 export default function VolumeBotTutorialPage() {
   return (
-    <div className="container mx-auto py-6">
+    <>
       <PageHeader title="Volume Bot Tutorial" />
 
-      <div className="prose dark:prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none p-4 md:p-6">
         <p className="text-lg">
           Trying to get your token trending or just need some volume on the
           cheap? We got you.
@@ -75,6 +75,6 @@ export default function VolumeBotTutorialPage() {
           </p>
         </div>
       </div>
-    </div>
+    </>
   );
 }
