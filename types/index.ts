@@ -196,6 +196,7 @@ export interface VerifyResponse {
 
 // Project related types
 export interface Project {
+  addons: any;
   _id: string;
   name: string;
   description?: string;
@@ -211,6 +212,12 @@ export interface Project {
     activeBots: number;
     lastUpdate: string;
   };
+}
+
+export interface MigrationResponse {
+  status: string;
+  message?: string;
+  data?: Project | ProjectWithAddons | any;
 }
 
 // Wallet related types
@@ -263,6 +270,7 @@ export interface BalancesResponse {
 }
 
 export interface ProjectWithAddons {
+  tokenDecimals: number;
   _id: string;
   name: string;
   tokenAddress: string;
@@ -287,17 +295,23 @@ export interface ProjectWithAddons {
     | string;
   addons: {
     SnipeBot: {
+      generatedHolders: number | undefined;
+      generatedVolume: number | undefined;
       _id?: string;
       isEnabled?: boolean;
       status?: string;
       depositWalletId: {
+        _id: string;
         publicKey: string;
       };
       subWalletIds: {
+        role: string;
+        _id: string;
         publicKey: string;
       }[];
     };
     VolumeBot: {
+      generatedVolume: number | undefined;
       _id?: string;
       isEnabled?: boolean;
       depositWalletId: {
@@ -305,11 +319,27 @@ export interface ProjectWithAddons {
       };
     };
     HolderBot: {
+      generatedHolders: number | undefined;
       _id?: string;
       isEnabled?: boolean;
       depositWalletId: {
         publicKey: string;
       };
+    };
+    AutoSellBot?: {
+      countsOfActivaveWallets: number | undefined;
+      _id?: string;
+      isEnabled?: boolean;
+      status?: string;
+      depositWalletId: {
+        _id: string;
+        publicKey: string;
+      };
+      subWalletIds: {
+        role: string;
+        _id: string;
+        publicKey: string;
+      }[];
     };
   };
   createdAt: string;
@@ -331,7 +361,7 @@ export interface ProjectHeaderProps {
 }
 
 // Bot related types
-export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot';
+export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot' | 'AutoSellBot';
 export type BotStatus =
   | 'ready_to_simulation'
   | 'simulating'

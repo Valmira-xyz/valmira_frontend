@@ -1,7 +1,8 @@
 import { getAuthHeaders } from './botService';
 import axios from 'axios';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const BACKEND_URL =
+  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
 
 // Configure axios instance
 const api = axios.create({
@@ -30,11 +31,11 @@ export const walletApi = {
     );
     return response.data;
   },
-  deleteMultipleWallets: async (walletIds: string[]) => {
+  deleteMultipleWallets: async (botId: string, walletAddresses: string[]) => {
     const config = getAuthHeaders();
     const response = await api.post(
       '/wallets/delete-multiple',
-      { walletIds },
+      { botId, walletAddresses },
       config
     );
     return response.data;

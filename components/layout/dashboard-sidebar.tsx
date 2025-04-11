@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import {
@@ -35,6 +35,7 @@ import {
 import { generateAvatarColor, getBadgeVariant } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import Logo from '@/public/sidebar/logo.svg';
+import websocketService, { WebSocketEvents } from '@/services/websocketService';
 import { fetchProjects } from '@/store/slices/projectSlice';
 import { RootState } from '@/store/store';
 
@@ -46,6 +47,10 @@ export function DashboardSidebar() {
   const [openKnowledge, setOpenKnowledge] = useState(false);
   const { theme, resolvedTheme } = useTheme();
   const { open, setOpen, isMobile } = useSidebar();
+  const [mounted, setMounted] = useState(false);
+  const [updatedTotalProfit, setUpdatedTotalProfit] = useState<number | null>(
+    null
+  );
 
   // Get auth state from Redux store
   const { user, isAuthenticated } = useSelector(
@@ -54,6 +59,11 @@ export function DashboardSidebar() {
   const { projects, loading: projectsLoading } = useSelector(
     (state: RootState) => state.projects
   );
+
+  // Set mounted state to true after component mounts
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch projects when component mounts
   useEffect(() => {
@@ -119,15 +129,111 @@ export function DashboardSidebar() {
   );
   const avatarColor = generateAvatarColor(user?.walletAddress || '');
 
+  // Calculate total profit based on all user projects
+  const totalProfit =
+    updatedTotalProfit !== null
+      ? updatedTotalProfit
+      : userProjects?.reduce(
+          (total, project) => total + (project.metrics?.cumulativeProfit || 0),
+          0
+        );
+
+  // Handle project metrics updates from WebSocket
+  const handleMetricsUpdate = useCallback(
+    (data: any) => {
+      if (data.projectId && data.metrics && userProjects.length > 0) {
+        // Find the updated project in the user's projects
+        const projectIndex = userProjects.findIndex(
+          (p) => p._id === data.projectId
+        );
+
+        if (projectIndex !== -1) {
+          // Create a copy of user projects
+          const updatedProjects = [...userProjects];
+
+          // Update the metrics for the specific project
+          updatedProjects[projectIndex] = {
+            ...updatedProjects[projectIndex],
+            metrics: {
+              ...updatedProjects[projectIndex].metrics,
+              cumulativeProfit:
+                data.metrics.cumulativeProfit ||
+                updatedProjects[projectIndex].metrics?.cumulativeProfit ||
+                0,
+              volume24h:
+                data.metrics.volume24h ||
+                updatedProjects[projectIndex].metrics?.volume24h ||
+                0,
+              activeBots:
+                data.metrics.activeBots ||
+                updatedProjects[projectIndex].metrics?.activeBots ||
+                0,
+              lastUpdate:
+                data.metrics.lastUpdate ||
+                updatedProjects[projectIndex].metrics?.lastUpdate ||
+                new Date().toISOString(),
+            },
+          };
+
+          // Recalculate total profit
+          const newTotalProfit = updatedProjects.reduce(
+            (total, project) =>
+              total + (project.metrics?.cumulativeProfit || 0),
+            0
+          );
+
+          // Update the state with the new total profit
+          setUpdatedTotalProfit(newTotalProfit);
+        }
+      }
+    },
+    [userProjects]
+  );
+
+  // Setup WebSocket connections and subscriptions for all user projects
+  useEffect(() => {
+    if (!isAuthenticated || !isConnected || !userProjects.length) return;
+
+    // Ensure WebSocket is connected
+    websocketService.connect();
+
+    // Join rooms for all user projects
+    userProjects.forEach((project) => {
+      websocketService.joinProject(project._id);
+    });
+
+    // Subscribe to metrics updates
+    websocketService.subscribe(
+      WebSocketEvents.PROJECT_METRICS_UPDATED,
+      handleMetricsUpdate
+    );
+
+    // Cleanup on unmount
+    return () => {
+      websocketService.unsubscribe(
+        WebSocketEvents.PROJECT_METRICS_UPDATED,
+        handleMetricsUpdate
+      );
+
+      // Leave project rooms
+      userProjects.forEach((project) => {
+        websocketService.leaveProject(project._id);
+      });
+    };
+  }, [isAuthenticated, isConnected, userProjects, handleMetricsUpdate]);
+
   return (
     <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'}>
       <SidebarHeader className="px-2 py-4 relative w-full">
         <div className="flex justify-between items-center h-8">
-          {open && (
-            <Link href={'/'}>
-              <Logo />
-            </Link>
-          )}
+          {open &&
+            (mounted ? (
+              <Link href="/">
+                <Logo />
+              </Link>
+            ) : (
+              <div className="w-[136px] h-[32px]" />
+            ))}
           <SidebarTrigger className="h-9 w-9 flex items-center justify-center" />
         </div>
       </SidebarHeader>
@@ -333,14 +439,7 @@ export function DashboardSidebar() {
                 <div className="flex flex-col">
                   <span className="text-muted-foreground">Total Profit</span>
                   <span className="font-medium">
-                    $
-                    {Number(
-                      userProjects?.reduce(
-                        (total, project) =>
-                          total + (project.metrics?.cumulativeProfit || 0),
-                        0
-                      )
-                    ).toFixed(2)}
+                    ${Number(totalProfit).toFixed(2)}
                   </span>
                 </div>
               </div>

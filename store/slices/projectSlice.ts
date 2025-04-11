@@ -139,11 +139,23 @@ export const fetchProjectStats = createAsyncThunk(
 export const fetchRecentActivity = createAsyncThunk(
   'projects/fetchRecentActivity',
   async (
-    { projectId, limit }: { projectId: string; limit?: number },
+    {
+      projectId,
+      timeRange = {
+        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        end: new Date(),
+      },
+    }: {
+      projectId: string;
+      timeRange?: {
+        start: Date;
+        end: Date;
+      };
+    },
     { rejectWithValue }
   ) => {
     try {
-      return await projectService.getRecentActivity(projectId, limit);
+      return await projectService.getRecentActivity(projectId, timeRange);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message);
     }
@@ -183,7 +195,7 @@ export const fetchBnbPrice = createAsyncThunk(
           symbol: string;
           currency: string;
         };
-      }>(`${process.env.NEXT_PUBLIC_BACKEND_URL}/web3/bnb-price`);
+      }>(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/web3/bnb-price`);
 
       if (response.data.success && response.data.data.price) {
         return response.data.data.price;

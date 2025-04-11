@@ -2,7 +2,8 @@ import axios from 'axios';
 
 import type { ApiResponse, NonceResponse, User, VerifyResponse } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const API_URL =
+  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
 
 class AuthService {
   private token: string | null = null;
@@ -82,7 +83,7 @@ class AuthService {
         token,
       };
     } catch (error) {
-      throw new Error('Failed to verify signature');
+      throw new Error('Failed to verify authentication');
     }
   }
 

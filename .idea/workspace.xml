@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="89dcbfa0-12bf-4314-ac8a-a83151c5d5d2" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/app/websocket-provider.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/components/dashboard/dashboard-charts.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/components/projects/auto-sell-notification.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/components/projects/auto-sell-wizard-dialog.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/components/projects/volume-bot-wizard-dialog.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/services/websocketService.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/styles/globals.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tailwind.config.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/types/project.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.eslintignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.eslintrc.json" beforeDir="false" afterPath="$PROJECT_DIR$/.eslintrc.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/valmira-frontend.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.prettierignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/dashboard/dashboard-metrics.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/dashboard-metrics.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/layout/dashboard-sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/layout/dashboard-sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/projects/create-project-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/create-project-modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/projects/project-add-ons.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/project-add-ons.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/projects/project-analytics.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/project-analytics.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/projects/project-header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/project-header.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/projects/project-metrics.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/project-metrics.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/projects/projects-list.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/projects-list.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/projects/snipe-wizard-dialog.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/snipe-wizard-dialog.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/providers/client-layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/providers/client-layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/ui/date-range-picker.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/ui/date-range-picker.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/ui/table.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/ui/table.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/use-web3-auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/use-web3-auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/sidebar/logo.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/authService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/authService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/botService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/botService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/deployTokenService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/deployTokenService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/projectService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/projectService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/tokenService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/tokenService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/walletApi.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/walletApi.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/web3Utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/web3Utils.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/store/slices/botSlice.ts" beforeDir="false" afterPath="$PROJECT_DIR$/store/slices/botSlice.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/store/slices/projectSlice.ts" beforeDir="false" afterPath="$PROJECT_DIR$/store/slices/projectSlice.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/types/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/types/index.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="2vUC6geSl78fRrcjI3xEMHT13c1" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "Merging fix/ui",
+    "js.linters.configure.manually.selectedeslint": "true",
+    "last_opened_file_path": "D:/Projects/Rely/valmira-frontend/public/sidebar",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.standard": "true",
+    "node.js.selected.package.eslint": "D:\\Projects\\Rely\\valmira-frontend\\node_modules\\eslint",
+    "node.js.selected.package.standard": "",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "npm.format.executor": "Run",
+    "npm.lint:fix.executor": "Run",
+    "prettierjs.PrettierConfiguration.Package": "D:\\Projects\\Rely\\valmira-frontend\\node_modules\\prettier",
+    "settings.editor.selected.configurable": "actions.on.save",
+    "ts.external.directory.path": "D:\\Projects\\Rely\\valmira-frontend\\node_modules\\typescript\\lib",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Projects\Rely\valmira-frontend\public\sidebar" />
+    </key>
+  </component>
+  <component name="RunManager" selected="npm.lint:fix">
+    <configuration name="format" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="format" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <configuration name="lint:fix" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="lint:fix" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="npm.lint:fix" />
+        <item itemvalue="npm.format" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-410509235cf1-JavaScript-WS-242.20224.342" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="89dcbfa0-12bf-4314-ac8a-a83151c5d5d2" name="Changes" comment="" />
+      <created>1744190092409</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1744190092409</updated>
+      <workItem from="1744190094195" duration="3417000" />
+      <workItem from="1744193554131" duration="13915000" />
+      <workItem from="1744275974685" duration="16075000" />
+      <workItem from="1744364484809" duration="667000" />
+      <workItem from="1744365172188" duration="4408000" />
+      <workItem from="1744370430415" duration="15128000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+    <option name="exactExcludedFiles">
+      <list>
+        <option value="$PROJECT_DIR$/tailwind.config.js" />
+      </list>
+    </option>
+  </component>
+</project>

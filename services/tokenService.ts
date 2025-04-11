@@ -22,7 +22,7 @@ interface ApiResponse<T> {
 }
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000/api';
+  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
 
 export const tokenService = {
   /**

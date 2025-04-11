@@ -1,4 +1,4 @@
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy, ExternalLink, LineChart } from 'lucide-react';
 
 import { ProjectRefreshButton } from '@/components/projects/project-refresh-button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -103,6 +103,17 @@ export function ProjectHeader({
                   >
                     <ExternalLink className="h-4 w-4" />
                     <span className="sr-only">View on Explorer</span>
+                  </a>
+                </Button>
+
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <a
+                    href={`https://dexscreener.com/bsc/${project.tokenAddress || 'No token address'}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <LineChart className="h-4 w-4" />
+                    <span className="sr-only">View on Dexscreener</span>
                   </a>
                 </Button>
               </div>

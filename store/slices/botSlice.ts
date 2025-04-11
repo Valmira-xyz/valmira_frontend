@@ -4,7 +4,7 @@ import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { BotResponse, BotService } from '@/services/botService';
 
 // Define types
-export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot';
+export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot' | 'AutoSellBot';
 export type LiquidationSnipeBotStatus =
   | 'ready_to_simulation'
   | 'simulating'
@@ -12,7 +12,9 @@ export type LiquidationSnipeBotStatus =
   | 'simulation_succeeded'
   | 'sniping'
   | 'snipe_succeeded'
-  | 'snipe_failed'
+  | 'snipe_failed';
+export type AutoSellBotStatus =
+  | 'ready_to_autosell'
   | 'auto_selling'
   | 'selling'
   | 'sell_failed'
@@ -26,7 +28,9 @@ export type BotStatus =
   | LiquidationSnipeBotStatus
   | VolumeBotStatus
   | HolderBotStatus
-  | 'Inactive';
+  | AutoSellBotStatus
+  | 'insufficient_funds'
+  | 'Error';
 
 export interface AutoSellConfig {
   enabled: boolean;
@@ -58,6 +62,11 @@ export interface BotConfig {
   tokenBalance?: number;
   generatedVolume?: number;
   generatedHolders?: number;
+  lastError?: {
+    type: string;
+    message: string;
+    details: string;
+  };
 }
 
 export interface BotsState {
@@ -79,17 +88,13 @@ export const toggleBot = createAsyncThunk(
   async (
     {
       projectId,
-      botType,
+      botId,
       enabled,
-    }: { projectId: string; botType: BotType; enabled: boolean },
+    }: { projectId: string; botId: string; enabled: boolean },
     { rejectWithValue, dispatch }
   ) => {
     try {
-      const data = await BotService.toggleOrCreateBot(
-        projectId,
-        botType,
-        enabled
-      );
+      const data = await BotService.toggleOrCreateBot(botId, enabled);
 
       // Dispatch fetchProject action to update project data immediately after successful toggle
       setTimeout(() => {
@@ -99,7 +104,7 @@ export const toggleBot = createAsyncThunk(
 
       return {
         projectId,
-        botType,
+        botId,
         data,
       };
     } catch (error: any) {
@@ -151,6 +156,8 @@ const botSlice = createSlice({
       if (!state.bots[projectId][botType]) {
         state.bots[projectId][botType] = {
           enabled: false,
+          status: 'Inactive',
+          lastError: undefined,
         };
       }
 
@@ -159,6 +166,28 @@ const botSlice = createSlice({
         ...state.bots[projectId][botType],
         ...config,
       };
+    },
+    updateVolumeGeneration: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        botId: string;
+        generatedVolume: number;
+      }>
+    ) => {
+      const { projectId, botId, generatedVolume } = action.payload;
+
+      // Find the bot by ID in the project's bots
+      if (state.bots[projectId]) {
+        Object.entries(state.bots[projectId]).forEach(([botType, bot]) => {
+          if (bot._id === botId) {
+            state.bots[projectId][botType as BotType] = {
+              ...bot,
+              generatedVolume: (bot.generatedVolume || 0) + generatedVolume,
+            };
+          }
+        });
+      }
     },
   },
   extraReducers: (builder) => {
@@ -169,7 +198,7 @@ const botSlice = createSlice({
         state.error = null;
       })
       .addCase(toggleBot.fulfilled, (state, action) => {
-        const { projectId, botType, data } = action.payload;
+        const { projectId, botId, data } = action.payload;
 
         // Ensure the project exists in state
         if (!state.bots[projectId]) {
@@ -177,8 +206,8 @@ const botSlice = createSlice({
         }
 
         // Update the bot config with the response data
-        state.bots[projectId][botType] = {
-          ...state.bots[projectId][botType],
+        state.bots[projectId][botId] = {
+          ...state.bots[projectId][botId],
           _id: data._id,
           enabled: data.isEnabled,
           status: (data.status as BotStatus) || 'Inactive',
@@ -232,5 +261,5 @@ const botSlice = createSlice({
   },
 });
 
-export const { updateBotConfig } = botSlice.actions;
+export const { updateBotConfig, updateVolumeGeneration } = botSlice.actions;
 export default botSlice.reducer;

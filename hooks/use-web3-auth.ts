@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
+import CryptoJS from 'crypto-js';
 import { jwtDecode } from 'jwt-decode';
-import { useAccount, useDisconnect, useSignMessage } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
 
 import { web3modal } from '@/components/providers';
 import { authService } from '@/services/authService';
@@ -25,7 +26,6 @@ interface JwtPayload {
 export const useWeb3Auth = () => {
   const dispatch = useDispatch();
   const { address, isConnected, isDisconnected } = useAccount();
-  const { signMessageAsync } = useSignMessage();
   const { disconnect } = useDisconnect();
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -40,6 +40,11 @@ export const useWeb3Auth = () => {
     addressRef.current = address;
     isConnectedRef.current = isConnected;
     userRef.current = user;
+
+    // Reset isAuthenticatingRef when component unmounts or when connection changes
+    return () => {
+      isAuthenticatingRef.current = false;
+    };
   }, [address, isConnected, user]);
 
   const handleLogout = useCallback(() => {
@@ -106,9 +111,20 @@ export const useWeb3Auth = () => {
     }
   }, [dispatch]);
 
+  const checkMetaMaskLockStatus = useCallback(async () => {
+    try {
+      // Use Wagmi's connection status which works across all wallet types
+      return !isConnected;
+    } catch (error: any) {
+      console.error('Error checking wallet connection:', error);
+      return true; // If we can't check connection, assume locked
+    }
+  }, [isConnected]);
+
   const handleAuthentication = useCallback(async () => {
+    // Reset isAuthenticatingRef if it's been stuck for too long
     if (isAuthenticatingRef.current) {
-      return;
+      isAuthenticatingRef.current = false;
     }
 
     const currentAddress = addressRef.current;
@@ -116,6 +132,16 @@ export const useWeb3Auth = () => {
     const currentUser = userRef.current;
 
     if (!currentAddress || !currentIsConnected) {
+      return;
+    }
+
+    // Check if MetaMask is locked
+    const isLocked = await checkMetaMaskLockStatus();
+    if (isLocked) {
+      dispatch(
+        setError('Please unlock your wallet to continue authentication')
+      );
+      alert('Please unlock your wallet to continue.');
       return;
     }
 
@@ -143,31 +169,34 @@ export const useWeb3Auth = () => {
 
       // Get nonce from backend
       const nonceResponse = await authService.getNonce(currentAddress);
-      const messageToSign = `Sign this message to verify your wallet ownership & login to Valmira. Nonce: ${nonceResponse.nonce}`;
+
+      console.log('handleAuthentication - Starting authentication process');
+      console.log('handleAuthentication - Current address:', currentAddress);
 
       try {
-        // Sign message
-        const signature = await signMessageAsync({
-          message: messageToSign,
-        });
+        // Create verification token using MD5 hash of wallet address + nonce
+        const walletAddress = currentAddress.toLowerCase();
+        const nonce = nonceResponse.nonce;
+        const verificationToken = CryptoJS.MD5(
+          `${walletAddress}-${nonce}`
+        ).toString();
 
-        if (!signature) {
-          throw new Error('Failed to get signature');
-        }
+        console.log('handleAuthentication - Verification token generated');
 
-        // Verify signature with backend
+        // Verify with backend
         const response = await authService.verifySignature(
-          currentAddress,
-          signature,
-          nonceResponse.nonce
+          walletAddress,
+          verificationToken,
+          nonce
         );
         dispatch(setUser(response.user));
-      } catch (signError: any) {
-        console.error('Signing error:', signError);
-        if (signError?.code === 4001) {
-          throw new Error('User rejected signature request');
-        }
-        throw signError;
+        console.log('handleAuthentication - Authentication successful');
+      } catch (verificationError: any) {
+        console.error(
+          'handleAuthentication - Error during verification:',
+          verificationError
+        );
+        throw verificationError;
       }
     } catch (error: any) {
       console.error('Authentication error:', error);
@@ -183,9 +212,9 @@ export const useWeb3Auth = () => {
   }, [
     dispatch,
     handleLogout,
-    signMessageAsync,
     validateExistingToken,
     loadUserProfile,
+    checkMetaMaskLockStatus,
   ]);
 
   // Handle initial connection and address changes
