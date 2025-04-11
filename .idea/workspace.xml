@@ -5,49 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="89dcbfa0-12bf-4314-ac8a-a83151c5d5d2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/app/websocket-provider.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/components/dashboard/dashboard-charts.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/components/projects/auto-sell-notification.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/components/projects/auto-sell-wizard-dialog.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/components/projects/volume-bot-wizard-dialog.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/services/websocketService.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/styles/globals.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tailwind.config.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/types/project.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.eslintignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.eslintrc.json" beforeDir="false" afterPath="$PROJECT_DIR$/.eslintrc.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/valmira-frontend.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.prettierignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/dashboard/dashboard-metrics.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/dashboard-metrics.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/layout/dashboard-sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/layout/dashboard-sidebar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/projects/create-project-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/create-project-modal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/projects/project-add-ons.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/project-add-ons.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/projects/project-analytics.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/project-analytics.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/projects/project-header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/project-header.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/projects/project-metrics.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/project-metrics.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/projects/projects-list.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/projects-list.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/projects/snipe-wizard-dialog.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/projects/snipe-wizard-dialog.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/providers/client-layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/providers/client-layout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/ui/date-range-picker.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/ui/date-range-picker.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/ui/table.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/ui/table.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/use-web3-auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/use-web3-auth.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/loading.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/loading.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/sidebar/logo.svg" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/authService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/authService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/botService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/botService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/deployTokenService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/deployTokenService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/projectService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/projectService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/tokenService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/tokenService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/walletApi.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/walletApi.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/web3Utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/services/web3Utils.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/store/slices/botSlice.ts" beforeDir="false" afterPath="$PROJECT_DIR$/store/slices/botSlice.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/store/slices/projectSlice.ts" beforeDir="false" afterPath="$PROJECT_DIR$/store/slices/projectSlice.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/types/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/types/index.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -68,7 +29,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "Merging fix/ui",
+    "git-widget-placeholder": "fix/ui",
     "js.linters.configure.manually.selectedeslint": "true",
     "last_opened_file_path": "D:/Projects/Rely/valmira-frontend/public/sidebar",
     "node.js.detected.package.eslint": "true",
