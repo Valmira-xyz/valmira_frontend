@@ -99,7 +99,6 @@ export default tseslint.config(
           argsIgnorePattern: '^_',
         },
       ],
-      'jsx-a11y/anchor-has-content': 'off',
     },
   },
 
