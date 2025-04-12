@@ -6,9 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="89dcbfa0-12bf-4314-ac8a-a83151c5d5d2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/loading.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/loading.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,15 +31,16 @@
     "last_opened_file_path": "D:/Projects/Rely/valmira-frontend/public/sidebar",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.standard": "true",
-    "node.js.selected.package.eslint": "D:\\Projects\\Rely\\valmira-frontend\\node_modules\\eslint",
+    "node.js.selected.package.eslint": "D:/Projects/Rely/valmira-frontend/node_modules/eslint",
     "node.js.selected.package.standard": "",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "npm.dev.executor": "Run",
     "npm.format.executor": "Run",
     "npm.lint:fix.executor": "Run",
     "prettierjs.PrettierConfiguration.Package": "D:\\Projects\\Rely\\valmira-frontend\\node_modules\\prettier",
     "settings.editor.selected.configurable": "actions.on.save",
-    "ts.external.directory.path": "D:\\Projects\\Rely\\valmira-frontend\\node_modules\\typescript\\lib",
+    "ts.external.directory.path": "/Users/michaeldory/Documents/projects/rely-misha/valmira_frontend/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
