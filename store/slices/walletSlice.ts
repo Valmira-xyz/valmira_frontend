@@ -1,31 +1,33 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import type { 
-  Wallet, 
-  WalletState, 
-  WalletBalance, 
-  ApiResponse,
-  WalletsResponse,
-  BalancesResponse 
-} from '@/types';
-import { walletApi } from '@/services/walletApi';
 import { fetchProject } from './projectSlice';
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+
+import { walletApi } from '@/services/walletApi';
 import { getWalletBalances as getWeb3WalletBalances } from '@/services/web3Utils';
-import { formatBalance } from '@/services/web3Utils';
+import type {
+  ApiResponse,
+  Wallet,
+  WalletBalance,
+  WalletsResponse,
+  WalletState,
+} from '@/types';
 
 // Add missing thunks
 export const sellTokens = createAsyncThunk(
   'wallets/sellTokens',
-  async ({ 
-    projectId, 
-    walletAddress,
-    tokenAddress, 
-    percentage 
-  }: { 
-    projectId: string; 
-    walletAddress: string;
-    tokenAddress: string;
-    percentage: number 
-  }, { rejectWithValue }) => {
+  async (
+    {
+      projectId,
+      walletAddress,
+      tokenAddress,
+      percentage,
+    }: {
+      projectId: string;
+      walletAddress: string;
+      tokenAddress: string;
+      percentage: number;
+    },
+    { rejectWithValue }
+  ) => {
     try {
       // Implementation would go here
       return { success: true, error: null };
@@ -40,15 +42,18 @@ export const sellTokens = createAsyncThunk(
 
 export const multiSellTokens = createAsyncThunk(
   'wallets/multiSellTokens',
-  async ({ 
-    projectId,
-    tokenAddress,
-    walletAddresses
-  }: { 
-    projectId: string;
-    tokenAddress: string;
-    walletAddresses: { publicKey: string; percentage: number }[]
-  }, { rejectWithValue }) => {
+  async (
+    {
+      projectId,
+      tokenAddress,
+      walletAddresses,
+    }: {
+      projectId: string;
+      tokenAddress: string;
+      walletAddresses: { publicKey: string; percentage: number }[];
+    },
+    { rejectWithValue }
+  ) => {
     try {
       // Implementation would go here
       return { success: true, error: null };
@@ -63,15 +68,18 @@ export const multiSellTokens = createAsyncThunk(
 
 export const collectBnb = createAsyncThunk(
   'wallets/collectBnb',
-  async ({ 
-    projectId, 
-    sourceWalletAddresses,
-    destinationWalletAddress
-  }: { 
-    projectId: string; 
-    sourceWalletAddresses: string[];
-    destinationWalletAddress: string;
-  }, { rejectWithValue }) => {
+  async (
+    {
+      projectId,
+      sourceWalletAddresses,
+      destinationWalletAddress,
+    }: {
+      projectId: string;
+      sourceWalletAddresses: string[];
+      destinationWalletAddress: string;
+    },
+    { rejectWithValue }
+  ) => {
     try {
       // Implementation would go here
       return { success: true, error: null };
@@ -88,15 +96,26 @@ const initialState: WalletState = {
   wallets: [],
   loading: false,
   error: null,
-  selectedWallet: null
+  selectedWallet: null,
 };
 
 // Async thunks
 export const generateWallets = createAsyncThunk(
   'wallets/generate',
-  async ({ projectId, count, botId }: { projectId: string; count: number; botId: string }, { rejectWithValue, dispatch }) => {
+  async (
+    {
+      projectId,
+      count,
+      botId,
+    }: { projectId: string; count: number; botId: string },
+    { rejectWithValue, dispatch }
+  ) => {
     try {
-      const response = await walletApi.generateWallets(projectId, count, botId) as ApiResponse<WalletsResponse>;
+      const response = (await walletApi.generateWallets(
+        projectId,
+        count,
+        botId
+      )) as ApiResponse<WalletsResponse>;
       setTimeout(() => {
         dispatch(fetchProject(projectId));
       }, 500);
@@ -112,7 +131,10 @@ export const generateWallets = createAsyncThunk(
 
 export const deleteMultipleWallets = createAsyncThunk(
   'wallets/deleteMultiple',
-  async ({ projectId, walletIds }: { projectId: string; walletIds: string[] }, { rejectWithValue, dispatch }) => {
+  async (
+    { projectId, walletIds }: { projectId: string; walletIds: string[] },
+    { rejectWithValue, dispatch }
+  ) => {
     try {
       await walletApi.deleteMultipleWallets(walletIds);
       setTimeout(() => {
@@ -130,10 +152,19 @@ export const deleteMultipleWallets = createAsyncThunk(
 
 export const getWalletBalances = createAsyncThunk(
   'wallets/getBalances',
-  async ({ tokenAddress, walletAddresses }: { tokenAddress: string; walletAddresses: string[] }, { rejectWithValue }) => {
+  async (
+    {
+      tokenAddress,
+      walletAddresses,
+    }: { tokenAddress: string; walletAddresses: string[] },
+    { rejectWithValue }
+  ) => {
     try {
-      const balances = await getWeb3WalletBalances(walletAddresses, tokenAddress);
-      
+      const balances = await getWeb3WalletBalances(
+        walletAddresses,
+        tokenAddress
+      );
+
       // Convert string balances to numbers and map to expected format
       return balances;
     } catch (error) {
@@ -149,22 +180,25 @@ const walletSlice = createSlice({
   name: 'wallets',
   initialState,
   reducers: {
-    setWalletBnbToSpend: (state, action: PayloadAction<{ walletId: string; amount: number }>) => {
+    setWalletBnbToSpend: (
+      state,
+      action: PayloadAction<{ walletId: string; amount: number }>
+    ) => {
       const { walletId, amount } = action.payload;
-      const wallet = state.wallets.find(w => w._id === walletId);
+      const wallet = state.wallets.find((w) => w._id === walletId);
       if (wallet) {
         wallet.bnbToSpend = amount;
       }
     },
     setAllWalletsBnbToSpend: (state, action: PayloadAction<number>) => {
       const amountPerWallet = action.payload;
-      state.wallets.forEach(wallet => {
+      state.wallets.forEach((wallet) => {
         wallet.bnbToSpend = amountPerWallet;
       });
     },
     clearWallets: (state) => {
       state.wallets = [];
-    }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -172,15 +206,18 @@ const walletSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(generateWallets.fulfilled, (state, action: PayloadAction<Wallet[]>) => {
-        state.loading = false;
-        state.wallets = action.payload.map(wallet => ({
-          ...wallet,
-          bnbBalance: 0,
-          tokenAmount: Math.random() * 1000000, // Placeholder until real data is fetched
-          bnbToSpend: 0,
-        }));
-      })
+      .addCase(
+        generateWallets.fulfilled,
+        (state, action: PayloadAction<Wallet[]>) => {
+          state.loading = false;
+          state.wallets = action.payload.map((wallet) => ({
+            ...wallet,
+            bnbBalance: 0,
+            tokenAmount: Math.random() * 1000000, // Placeholder until real data is fetched
+            bnbToSpend: 0,
+          }));
+        }
+      )
       .addCase(generateWallets.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
@@ -189,18 +226,25 @@ const walletSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(deleteMultipleWallets.fulfilled, (state, action: PayloadAction<string[]>) => {
-        state.loading = false;
-        state.wallets = state.wallets.filter(wallet => !action.payload.includes(wallet._id));
-      })
+      .addCase(
+        deleteMultipleWallets.fulfilled,
+        (state, action: PayloadAction<string[]>) => {
+          state.loading = false;
+          state.wallets = state.wallets.filter(
+            (wallet) => !action.payload.includes(wallet._id)
+          );
+        }
+      )
       .addCase(deleteMultipleWallets.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
       .addCase(getWalletBalances.fulfilled, (state, action) => {
         const balances = action.payload;
-        state.wallets = state.wallets.map(wallet => {
-          const balance = balances.find((b: WalletBalance) => b.address === wallet.publicKey);
+        state.wallets = state.wallets.map((wallet) => {
+          const balance = balances.find(
+            (b: WalletBalance) => b.address === wallet.publicKey
+          );
           if (balance) {
             return {
               ...wallet,
@@ -214,5 +258,6 @@ const walletSlice = createSlice({
   },
 });
 
-export const { setWalletBnbToSpend, setAllWalletsBnbToSpend, clearWallets } = walletSlice.actions;
-export default walletSlice.reducer; 
+export const { setWalletBnbToSpend, setAllWalletsBnbToSpend, clearWallets } =
+  walletSlice.actions;
+export default walletSlice.reducer;

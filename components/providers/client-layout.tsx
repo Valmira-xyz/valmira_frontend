@@ -1,20 +1,17 @@
-"use client"
+'use client';
 
-import { useProjectSync } from "@/hooks/use-project-sync"
-import { ReactNode } from "react"
-import WebSocketProvider from "@/app/websocket-provider"
+import { ReactNode } from 'react';
+
+import WebSocketProvider from '@/app/websocket-provider';
+import { useProjectSync } from '@/hooks/use-project-sync';
 
 interface ClientLayoutProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 export function ClientLayout({ children }: ClientLayoutProps) {
   // Initialize project sync
-  useProjectSync()
+  useProjectSync();
 
-  return (
-    <WebSocketProvider>
-      {children}
-    </WebSocketProvider>
-  )
-} 
+  return <WebSocketProvider>{children}</WebSocketProvider>;
+}

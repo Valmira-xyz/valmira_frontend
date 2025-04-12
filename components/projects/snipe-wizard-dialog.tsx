@@ -1,48 +1,70 @@
-"use client"
+'use client';
 
-import { useState, useEffect, useRef, useCallback } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useEffect, useRef, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+
 import {
+  ArrowRightLeft,
+  CheckCircle,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CheckCircle,
-  Info,
   Copy,
   Download,
-  Loader2,
-  ShoppingCart,
   ExternalLink,
-  RefreshCw,
   Flame,
-  ArrowRightLeft,
-  Plus,
-  CheckCircle2
-} from "lucide-react"
-import { useDispatch, useSelector } from "react-redux"
-import { generateWallets, getWalletBalances, sellTokens, multiSellTokens, collectBnb } from "@/store/slices/walletSlice"
-import type { AppDispatch, RootState } from "@/store/store"
-import type { Project, ProjectWithAddons } from "@/types"
-import { BotService } from "@/services/botService"
-import { ethers } from "ethers"
-import { useEthersSigner } from "@/lib/ether-adapter"
-import { useChainId, useAccount } from "wagmi"
-import { getTokenOwner, isTokenTradingEnabled, calculateSnipeAmount as calculatePoolSnipeAmount, getPoolInfo, getWalletBalances as getWeb3WalletBalances, getLPTokenBalance, burnLiquidity, removeLiquidity } from "@/services/web3Utils"
-import { ApproveAndAddLiquidityButtons } from "@/components/projects/ApproveAndAddLiquidityButtons"
-import { Checkbox } from "@/components/ui/checkbox"
-import { projectService } from "@/services/projectService"
-import { Slider } from "@/components/ui/slider"
-import { Progress } from "@/components/ui/progress"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import type { ProjectState } from '@/types'
-import { useParams } from "next/navigation"
-import { walletApi } from "@/services/walletApi"
+  Info,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { useAccount, useChainId } from 'wagmi';
+
+import { ApproveAndAddLiquidityButtons } from '@/components/projects/ApproveAndAddLiquidityButtons';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Slider } from '@/components/ui/slider';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { useToast } from '@/components/ui/use-toast';
+import { useEthersSigner } from '@/lib/ether-adapter';
+import { BotService } from '@/services/botService';
+import { projectService } from '@/services/projectService';
+import { walletApi } from '@/services/walletApi';
+import {
+  burnLiquidity,
+  calculateSnipeAmount as calculatePoolSnipeAmount,
+  getLPTokenBalance,
+  getPoolInfo,
+  getWalletBalances as getWeb3WalletBalances,
+  removeLiquidity,
+} from '@/services/web3Utils';
+import { generateWallets, getWalletBalances } from '@/store/slices/walletSlice';
+import type { AppDispatch, RootState } from '@/store/store';
+import type { Project, ProjectWithAddons } from '@/types';
+import type { ProjectState } from '@/types';
 
 // Types from the original component
 interface SubWallet {
@@ -77,36 +99,36 @@ interface LiquidationSnipeBotAddon {
 }
 
 type FeeEstimationResult = {
-  bnbForDistribution: number
-  wallets: WalletInfo[]
-  totalBnbNeeded: number
-  addLiquidityBnb?: number
-  snipingBnb: number
-  tipBnb?: number
-  gasCost?: number
-  currentBnbBalance: number
-  currentTokenBalance: number
-  tokenAmountRequired?: number
-  sufficientBalance: boolean
+  bnbForDistribution: number;
+  wallets: WalletInfo[];
+  totalBnbNeeded: number;
+  addLiquidityBnb?: number;
+  snipingBnb: number;
+  tipBnb?: number;
+  gasCost?: number;
+  currentBnbBalance: number;
+  currentTokenBalance: number;
+  tokenAmountRequired?: number;
+  sufficientBalance: boolean;
   gasDetails?: {
-    tipTransactionGas?: number
-    addLiquidityGas?: number
-    openTradingGas?: number
-    snipeGas?: number
-    distributionGas?: number
-  }
+    tipTransactionGas?: number;
+    addLiquidityGas?: number;
+    openTradingGas?: number;
+    snipeGas?: number;
+    distributionGas?: number;
+  };
   poolSimulation?: {
     initialReserves?: {
-      bnb: number
-      token: number
-    }
+      bnb: number;
+      token: number;
+    };
     finalReserves?: {
-      bnb: number
-      token: number
-    }
-    priceImpact?: number
-  }
-}
+      bnb: number;
+      token: number;
+    };
+    priceImpact?: number;
+  };
+};
 
 interface ExtendedProject extends Project {
   addons: {
@@ -121,7 +143,9 @@ interface ExtendedProject extends Project {
 }
 
 // Add type guard function
-function isProjectWithAddons(project: Project | ProjectWithAddons): project is ProjectWithAddons {
+function isProjectWithAddons(
+  project: Project | ProjectWithAddons
+): project is ProjectWithAddons {
   return 'addons' in project;
 }
 
@@ -162,9 +186,9 @@ interface MultiSellResult {
 }
 
 type SnipeWizardDialogProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
 
 // Define the wizard steps
 enum WizardStep {
@@ -175,22 +199,26 @@ enum WizardStep {
   FEE_DISTRIBUTION = 4,
   SIMULATION = 5,
   EXECUTION = 6,
-  POST_OPERATION = 7
+  POST_OPERATION = 7,
 }
 
 export function SnipeWizardDialog({
   open,
-  onOpenChange
+  onOpenChange,
 }: SnipeWizardDialogProps) {
   // then read project id from url
-  const { id:projectId } = useParams();
+  const { id: projectId } = useParams();
   // Track the current wizard step
-  const [currentStep, setCurrentStep] = useState<WizardStep>(WizardStep.INTRODUCTION);
-  
+  const [currentStep, setCurrentStep] = useState<WizardStep>(
+    WizardStep.INTRODUCTION
+  );
+
   // State from the original component (we'll maintain the same state variables)
-  const dispatch = useDispatch<AppDispatch>()
-  const { currentProject, loading: isProjectLoading } = useSelector((state: RootState) => state.projects as ProjectState)
-  
+  const dispatch = useDispatch<AppDispatch>();
+  const { currentProject, loading: isProjectLoading } = useSelector(
+    (state: RootState) => state.projects as ProjectState
+  );
+
   // Initialize project state
   const [project, setProject] = useState<ExtendedProject | null>(null);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
@@ -203,19 +231,17 @@ export function SnipeWizardDialog({
     } catch (error) {
       console.error('Error fetching project:', error);
       toast({
-        title: "Error",
-        description: "Failed to load project data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load project data',
+        variant: 'destructive',
       });
     } finally {
       setIsLoadingProject(false);
     }
-  }
+  };
 
   // Effect to update project when currentProject changes
   useEffect(() => {
-    
-
     if (!currentProject) return;
 
     try {
@@ -226,33 +252,39 @@ export function SnipeWizardDialog({
       const convertedProject: ExtendedProject = {
         ...currentProject,
         userId: '',
-        status: currentProject.status === "active" ? "active" : "inactive",
+        status: currentProject.status === 'active' ? 'active' : 'inactive',
         addons: {
           SnipeBot: {
             _id: currentProject.addons.SnipeBot?._id || '',
-            subWalletIds: (currentProject.addons.SnipeBot?.subWalletIds || []).map(w => ({
+            subWalletIds: (
+              currentProject.addons.SnipeBot?.subWalletIds || []
+            ).map((w) => ({
               _id: w?._id || '',
               publicKey: w.publicKey || '',
-              role: w?.role || 'botsub'
+              role: w?.role || 'botsub',
             })),
-            depositWalletId: currentProject.addons.SnipeBot?.depositWalletId ? {
-              _id: currentProject.addons.SnipeBot.depositWalletId._id || '',
-              publicKey: currentProject.addons.SnipeBot.depositWalletId.publicKey || ''
-            } : undefined
-          }
+            depositWalletId: currentProject.addons.SnipeBot?.depositWalletId
+              ? {
+                  _id: currentProject.addons.SnipeBot.depositWalletId._id || '',
+                  publicKey:
+                    currentProject.addons.SnipeBot.depositWalletId.publicKey ||
+                    '',
+                }
+              : undefined,
+          },
         },
         tokenAddress: currentProject.tokenAddress || '',
         symbol: currentProject.symbol || '',
-        totalSupply: currentProject.totalSupply?.toString()
+        totalSupply: currentProject.totalSupply?.toString(),
       } as ExtendedProject;
 
       setProject(convertedProject);
     } catch (error) {
       console.error('Error converting project:', error);
       toast({
-        title: "Error",
-        description: "Failed to load project data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load project data',
+        variant: 'destructive',
       });
     }
   }, [currentProject]);
@@ -260,47 +292,53 @@ export function SnipeWizardDialog({
   // Helper function to safely get token address
   const getTokenAddress = (): string => {
     if (isLoadingProject) {
-      throw new Error("Project data is still loading");
+      throw new Error('Project data is still loading');
     }
     if (!project) {
-      throw new Error("Project not found");
+      throw new Error('Project not found');
     }
     if (!project.tokenAddress) {
-      throw new Error("Token address is required");
+      throw new Error('Token address is required');
     }
     return project.tokenAddress;
   };
 
-
-  const [wallets, setWallets] = useState<WalletInfo[]>([])
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [walletCount, setWalletCount] = useState(String(project?.addons?.SnipeBot?.subWalletIds?.length || 5)); // Add string type for walletCount
-  const [snipePercentage, setSnipePercentage] = useState(50)
-  const [isBnbDistributed, setIsBnbDistributed] = useState(false)
-  const [feeEstimationResult, setFeeEstimationResult] = useState<FeeEstimationResult | null>(null)
-  const [simulationResult, setSimulationResult] = useState<any | null>(null)
-  const [isLoadingBalances, setIsLoadingBalances] = useState(false)
-  const [doAddLiquidity, setDoAddLiquidity] = useState(true)
-  const [liquidityBnbAmount, setLiquidityBnbAmount] = useState(0)
-  const [liquidityTokenAmount, setLiquidityTokenAmount] = useState(0)
-  const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null)
-  const [isLoadingPoolInfo, setIsLoadingPoolInfo] = useState(false)
-  const { toast } = useToast()
-  const balanceUpdateTimeoutRef = useRef<NodeJS.Timeout>()
-  const lastBalanceUpdateRef = useRef<number>(0)
-  const MIN_BALANCE_UPDATE_INTERVAL = 5000 // Minimum 5 seconds between balance updates
-  const [isEstimatingFees, setIsEstimatingFees] = useState(false)
-  const [isDistributingBNBs, setIsDistributingBNBs] = useState(false)
-  const [distributeAmount, setDistributeAmount] = useState<number>(0.001)
-  const [isSimulating, setIsSimulating] = useState(false)
-  const [isExecuting, setIsExecuting] = useState(false)
-  const [estimationResult, setEstimationResult] = useState<any>(null)
-  const [executionSuccess, setExecutionSuccess] = useState(false)
+  const [wallets, setWallets] = useState<WalletInfo[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [walletCount, setWalletCount] = useState(
+    String(project?.addons?.SnipeBot?.subWalletIds?.length || 5)
+  ); // Add string type for walletCount
+  const [snipePercentage, setSnipePercentage] = useState(50);
+  const [isBnbDistributed, setIsBnbDistributed] = useState(false);
+  const [feeEstimationResult, setFeeEstimationResult] =
+    useState<FeeEstimationResult | null>(null);
+  const [simulationResult, setSimulationResult] = useState<any | null>(null);
+  const [isLoadingBalances, setIsLoadingBalances] = useState(false);
+  const [doAddLiquidity, setDoAddLiquidity] = useState(true);
+  const [liquidityBnbAmount, setLiquidityBnbAmount] = useState(0);
+  const [liquidityTokenAmount, setLiquidityTokenAmount] = useState(0);
+  const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null);
+  const [isLoadingPoolInfo, setIsLoadingPoolInfo] = useState(false);
+  const { toast } = useToast();
+  const balanceUpdateTimeoutRef = useRef<NodeJS.Timeout>();
+  const lastBalanceUpdateRef = useRef<number>(0);
+  const MIN_BALANCE_UPDATE_INTERVAL = 5000; // Minimum 5 seconds between balance updates
+  const [isEstimatingFees, setIsEstimatingFees] = useState(false);
+  const [isDistributingBNBs, setIsDistributingBNBs] = useState(false);
+  const [distributeAmount, setDistributeAmount] = useState<number>(0.001);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [estimationResult, setEstimationResult] = useState<any>(null);
+  const [executionSuccess, setExecutionSuccess] = useState(false);
   const chainId = useChainId();
   const signer = useEthersSigner({ chainId: chainId || 56 });
   const { address } = useAccount();
-  const [connectedWalletBalance, setConnectedWalletBalance] = useState<{ bnb: number; token: number }>({ bnb: 0, token: 0 });
-  const [isLoadingConnectedWalletBalance, setIsLoadingConnectedWalletBalance] = useState(false);
+  const [connectedWalletBalance, setConnectedWalletBalance] = useState<{
+    bnb: number;
+    token: number;
+  }>({ bnb: 0, token: 0 });
+  const [isLoadingConnectedWalletBalance, setIsLoadingConnectedWalletBalance] =
+    useState(false);
   const [lpTokenBalance, setLpTokenBalance] = useState<number>(0);
   const [isLoadingLpBalance, setIsLoadingLpBalance] = useState(false);
   const [isBurningLiquidity, setIsBurningLiquidity] = useState(false);
@@ -313,13 +351,17 @@ export function SnipeWizardDialog({
     requiredBnb: number;
     missingBnb: number;
   } | null>(null);
-  const [executingSingleSells, setExecutingSingleSells] = useState<Record<string, boolean>>({});
+  const [executingSingleSells, setExecutingSingleSells] = useState<
+    Record<string, boolean>
+  >({});
   const [isExecutingMultiSell, setIsExecutingMultiSell] = useState(false);
   const [slippageTolerance, setSlippageTolerance] = useState(99);
   const [isCollectingBnb, setIsCollectingBnb] = useState(false);
   const balanceFetchInProgressRef = useRef(false);
   const lpTokenFetchInProgressRef = useRef(false);
-  const [executingSingleBuys, setExecutingSingleBuys] = useState<Record<string, boolean>>({});
+  const [executingSingleBuys, setExecutingSingleBuys] = useState<
+    Record<string, boolean>
+  >({});
   const [isExecutingMultiBuy, setIsExecutingMultiBuy] = useState(false);
 
   const [generatingWallets, setGeneratingWallets] = useState(false);
@@ -334,26 +376,27 @@ export function SnipeWizardDialog({
 
   useEffect(() => {
     if (open) {
-      
-      if (open ===true && (!project || project?.addons.SnipeBot.subWalletIds.length === 0)) {      
-      if (!projectId || Array.isArray(projectId)) return;
+      if (
+        open === true &&
+        (!project || project?.addons.SnipeBot.subWalletIds.length === 0)
+      ) {
+        if (!projectId || Array.isArray(projectId)) return;
         fetchAndFillDetailedProejct(projectId as string);
         return;
       }
-
     }
   }, [open, project]);
 
   // Step navigation functions
   const goToNextStep = () => {
     if (currentStep < WizardStep.POST_OPERATION) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
   const goToPreviousStep = () => {
     if (currentStep > WizardStep.INTRODUCTION) {
-      setCurrentStep(prev => prev - 1);
+      setCurrentStep((prev) => prev - 1);
     }
   };
 
@@ -387,21 +430,38 @@ export function SnipeWizardDialog({
       <CardHeader>
         <CardTitle>Welcome to the Snipe Wizard</CardTitle>
         <CardDescription>
-          This wizard will guide you through the process of setting up and executing a token snipe operation.
+          This wizard will guide you through the process of setting up and
+          executing a token snipe operation.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <p>The wizard consists of the following steps:</p>
           <ol className="list-decimal pl-6 space-y-2">
-            <li className="font-medium">Introduction - Overview of the process</li>
-            <li className="font-medium">Liquidity Management - Add or remove liquidity (optional)</li>
-            <li className="font-medium">Wallet Setup - Manage your sniping wallets</li>
-            <li className="font-medium">Snipe Configuration - Configure your snipe parameters</li>
-            <li className="font-medium">Fee Distribution - Distribute BNB to your sniping wallets</li>
-            <li className="font-medium">Simulation - Simulate the snipe before execution</li>
-            <li className="font-medium">Execution - Execute the snipe operation</li>
-            <li className="font-medium">Post-Operation - Sell tokens and collect BNB</li>
+            <li className="font-medium">
+              Introduction - Overview of the process
+            </li>
+            <li className="font-medium">
+              Liquidity Management - Add or remove liquidity (optional)
+            </li>
+            <li className="font-medium">
+              Wallet Setup - Manage your sniping wallets
+            </li>
+            <li className="font-medium">
+              Snipe Configuration - Configure your snipe parameters
+            </li>
+            <li className="font-medium">
+              Fee Distribution - Distribute BNB to your sniping wallets
+            </li>
+            <li className="font-medium">
+              Simulation - Simulate the snipe before execution
+            </li>
+            <li className="font-medium">
+              Execution - Execute the snipe operation
+            </li>
+            <li className="font-medium">
+              Post-Operation - Sell tokens and collect BNB
+            </li>
           </ol>
           <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
             <h4 className="text-amber-800 font-medium">Before you start:</h4>
@@ -421,7 +481,8 @@ export function SnipeWizardDialog({
       <CardHeader>
         <CardTitle>Wallet Setup</CardTitle>
         <CardDescription>
-          Configure and manage the wallets that will be used for sniping operations.
+          Configure and manage the wallets that will be used for sniping
+          operations.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -432,14 +493,23 @@ export function SnipeWizardDialog({
               <h3 className="text-base font-medium mb-2">Deposit Wallet</h3>
               <div className="flex items-center gap-2 mb-3">
                 <code className="text-sm font-mono bg-muted/30 p-1 rounded">
-                  {project?.addons.SnipeBot.depositWalletId.publicKey.slice(0, 6)}...
+                  {project?.addons.SnipeBot.depositWalletId.publicKey.slice(
+                    0,
+                    6
+                  )}
+                  ...
                   {project?.addons.SnipeBot.depositWalletId.publicKey.slice(-4)}
                 </code>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => project?.addons.SnipeBot.depositWalletId && copyToClipboard(project?.addons.SnipeBot.depositWalletId.publicKey)}
+                  onClick={() =>
+                    project?.addons.SnipeBot.depositWalletId &&
+                    copyToClipboard(
+                      project?.addons.SnipeBot.depositWalletId.publicKey
+                    )
+                  }
                 >
                   <Copy className="h-4 w-4" />
                   <span className="sr-only">Copy address</span>
@@ -457,20 +527,34 @@ export function SnipeWizardDialog({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">BNB Balance:</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    BNB Balance:
+                  </p>
                   <p className="font-medium">
-                    {wallets.find(w => w.role === 'botmain')?.bnbBalance?.toFixed(4) || '0.0000'} BNB
+                    {wallets
+                      .find((w) => w.role === 'botmain')
+                      ?.bnbBalance?.toFixed(4) || '0.0000'}{' '}
+                    BNB
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Token Balance:</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Token Balance:
+                  </p>
                   <p className="font-medium">
-                    {wallets.find(w => w.role === 'botmain')?.tokenBalance?.toFixed(4) || '0.0000'} {project?.symbol || 'tokens'}
+                    {wallets
+                      .find((w) => w.role === 'botmain')
+                      ?.tokenBalance?.toFixed(4) || '0.0000'}{' '}
+                    {project?.symbol || 'tokens'}
                   </p>
                 </div>
               </div>
               <div className="bg-blue-50 border border-blue-100 rounded-md p-3 mt-4 text-blue-700 text-sm">
-                <p>💡 The deposit wallet is the main wallet that holds your funds. BNB from this wallet will be distributed to your sniping wallets.</p>
+                <p>
+                  💡 The deposit wallet is the main wallet that holds your
+                  funds. BNB from this wallet will be distributed to your
+                  sniping wallets.
+                </p>
               </div>
             </div>
           )}
@@ -478,10 +562,13 @@ export function SnipeWizardDialog({
           {/* Wallet Management Section */}
           <div className="border rounded-lg p-4">
             <h3 className="text-base font-medium mb-3">Sniping Wallets</h3>
-            
-            <div className="flex items-center gap-4 mb-4">
+
+            <div className="flex items-center gap-4 mb-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <Label htmlFor="walletCount" className="text-sm whitespace-nowrap">
+                <Label
+                  htmlFor="walletCount"
+                  className="text-sm whitespace-nowrap"
+                >
                   Number of wallets:
                 </Label>
                 <Input
@@ -493,11 +580,12 @@ export function SnipeWizardDialog({
                     const value = parseInt(e.target.value, 10);
                     if (value > 50) {
                       toast({
-                        title: "Maximum Wallet Count Exceeded",
-                        description: "The maximum number of wallets allowed is 50.",
-                        variant: "destructive",
+                        title: 'Maximum Wallet Count Exceeded',
+                        description:
+                          'The maximum number of wallets allowed is 50.',
+                        variant: 'destructive',
                       });
-                      setWalletCount("50");
+                      setWalletCount('50');
                       return;
                     }
                     setWalletCount(e.target.value);
@@ -507,7 +595,7 @@ export function SnipeWizardDialog({
                   max="50"
                 />
               </div>
-              
+
               <Button
                 onClick={() => handleGenerateWallets()}
                 disabled={isGenerating || isProjectLoading}
@@ -517,23 +605,31 @@ export function SnipeWizardDialog({
                 {isGenerating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {project?.addons?.SnipeBot?.subWalletIds?.length ? "Updating..." : "Creating..."}
+                    {project?.addons?.SnipeBot?.subWalletIds?.length
+                      ? 'Updating...'
+                      : 'Creating...'}
                   </>
                 ) : (
                   <>
-                    {project?.addons?.SnipeBot?.subWalletIds?.length ? "Update Wallets" : "Create Wallets"}
+                    {project?.addons?.SnipeBot?.subWalletIds?.length
+                      ? 'Update Wallets'
+                      : 'Create Wallets'}
                   </>
                 )}
               </Button>
-              
+
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 ml-auto"
+                className="h-8"
                 onClick={() => {
                   const allAddresses = [
-                    ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
-                    ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+                    ...(project?.addons.SnipeBot.depositWalletId?.publicKey
+                      ? [project?.addons.SnipeBot.depositWalletId.publicKey]
+                      : []),
+                    ...wallets
+                      .filter((w) => w.role !== 'botmain')
+                      .map((w) => w.publicKey),
                   ];
                   fetchBalances(allAddresses);
                 }}
@@ -547,11 +643,12 @@ export function SnipeWizardDialog({
                 Refresh Balances
               </Button>
             </div>
-            
+
             <div className="text-xs text-muted-foreground mb-4">
-              You can create up to 50 sniping wallets. Each wallet will be used to snipe tokens during execution.
+              You can create up to 50 sniping wallets. Each wallet will be used
+              to snipe tokens during execution.
             </div>
-            
+
             {/* Wallets Table */}
             <div className="overflow-x-auto border rounded-lg">
               <div className="min-w-[600px]">
@@ -565,27 +662,37 @@ export function SnipeWizardDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {wallets.filter(w => w.role !== 'botmain').map((wallet, index) => (
-                      <TableRow key={wallet.publicKey}>
-                        <TableCell className="text-left">{index + 1}</TableCell>
-                        <TableCell className="font-mono">
-                          <div className="flex items-center gap-1">
-                            {wallet.publicKey.slice(0, 6)}...{wallet.publicKey.slice(-4)}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => copyToClipboard(wallet.publicKey)}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">{(wallet.bnbBalance || 0).toFixed(4)}</TableCell>
-                        <TableCell className="text-right">{(wallet.tokenBalance || 0).toLocaleString()}</TableCell>
-
-                      </TableRow>
-                    ))}
+                    {wallets
+                      .filter((w) => w.role !== 'botmain')
+                      .map((wallet, index) => (
+                        <TableRow key={wallet.publicKey}>
+                          <TableCell className="text-left">
+                            {index + 1}
+                          </TableCell>
+                          <TableCell className="font-mono">
+                            <div className="flex items-center gap-1">
+                              {wallet.publicKey.slice(0, 6)}...
+                              {wallet.publicKey.slice(-4)}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() =>
+                                  copyToClipboard(wallet.publicKey)
+                                }
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {(wallet.bnbBalance || 0).toFixed(4)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {(wallet.tokenBalance || 0).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
                   </TableBody>
                 </Table>
               </div>
@@ -596,10 +703,22 @@ export function SnipeWizardDialog({
           <div className="bg-muted/20 rounded-lg p-4">
             <h3 className="text-base font-medium mb-2">How it works</h3>
             <ol className="list-decimal ml-5 space-y-2 text-sm">
-              <li>Create multiple sniping wallets to distribute your sniping operation</li>
-              <li>Later, you'll distribute BNB from your deposit wallet to these sniping wallets</li>
-              <li>During the sniping operation, each wallet will buy tokens independently</li>
-              <li>Using multiple wallets helps avoid large price impacts and makes your operation more stealthy</li>
+              <li>
+                Create multiple sniping wallets to distribute your sniping
+                operation
+              </li>
+              <li>
+                Later, you'll distribute BNB from your deposit wallet to these
+                sniping wallets
+              </li>
+              <li>
+                During the sniping operation, each wallet will buy tokens
+                independently
+              </li>
+              <li>
+                Using multiple wallets helps avoid large price impacts and makes
+                your operation more stealthy
+              </li>
             </ol>
           </div>
         </div>
@@ -626,7 +745,9 @@ export function SnipeWizardDialog({
         <Card className="border-none shadow-none">
           <CardContent className="py-8">
             <div className="text-center">
-              <p className="text-muted-foreground">Project data not found or token address is missing.</p>
+              <p className="text-muted-foreground">
+                Project data not found or token address is missing.
+              </p>
               <Button
                 variant="outline"
                 size="sm"
@@ -667,7 +788,9 @@ export function SnipeWizardDialog({
                       fetchConnectedWalletBalance();
                       fetchLpTokenBalance();
                     }}
-                    disabled={isLoadingConnectedWalletBalance || isLoadingLpBalance}
+                    disabled={
+                      isLoadingConnectedWalletBalance || isLoadingLpBalance
+                    }
                     className="h-6 px-2"
                   >
                     {isLoadingConnectedWalletBalance || isLoadingLpBalance ? (
@@ -680,20 +803,35 @@ export function SnipeWizardDialog({
                 </div>
                 <div className="grid grid-cols-3 gap-4 mb-3">
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">BNB Balance:</span>
-                    <span className="font-medium">{connectedWalletBalance.bnb.toFixed(4)} BNB</span>
+                    <span className="text-xs text-muted-foreground">
+                      BNB Balance:
+                    </span>
+                    <span className="font-medium">
+                      {connectedWalletBalance.bnb.toFixed(4)} BNB
+                    </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">Token Balance:</span>
-                    <span className="font-medium">{connectedWalletBalance.token.toLocaleString()} {project?.symbol}</span>
+                    <span className="text-xs text-muted-foreground">
+                      Token Balance:
+                    </span>
+                    <span className="font-medium">
+                      {connectedWalletBalance.token.toLocaleString()}{' '}
+                      {project?.symbol}
+                    </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">LP Token Balance:</span>
-                    <span className="font-medium">{lpTokenBalance.toLocaleString()} LP</span>
+                    <span className="text-xs text-muted-foreground">
+                      LP Token Balance:
+                    </span>
+                    <span className="font-medium">
+                      {lpTokenBalance.toLocaleString()} LP
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground">Address:</span>
+                  <span className="text-xs text-muted-foreground">
+                    Address:
+                  </span>
                   <code className="text-xs font-mono bg-muted/20 px-1 py-0.5 rounded">
                     {address.slice(0, 6)}...{address.slice(-4)}
                   </code>
@@ -733,12 +871,21 @@ export function SnipeWizardDialog({
               {poolInfo ? (
                 <div className="grid grid-cols-2 gap-4 mb-2 p-3 bg-muted/10 rounded-md">
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">BNB in Pool:</span>
-                    <span className="font-medium">{poolInfo?.bnbReserve?.toFixed(4)} BNB</span>
+                    <span className="text-xs text-muted-foreground">
+                      BNB in Pool:
+                    </span>
+                    <span className="font-medium">
+                      {poolInfo?.bnbReserve?.toFixed(4)} BNB
+                    </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">Tokens in Pool:</span>
-                    <span className="font-medium">{poolInfo?.tokenReserve?.toLocaleString()} {project?.symbol}</span>
+                    <span className="text-xs text-muted-foreground">
+                      Tokens in Pool:
+                    </span>
+                    <span className="font-medium">
+                      {poolInfo?.tokenReserve?.toLocaleString()}{' '}
+                      {project?.symbol}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -746,11 +893,15 @@ export function SnipeWizardDialog({
                   {isLoadingPoolInfo ? (
                     <div className="flex items-center justify-center">
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      <span className="text-sm">Loading pool information...</span>
+                      <span className="text-sm">
+                        Loading pool information...
+                      </span>
                     </div>
                   ) : (
                     <span className="text-sm text-muted-foreground">
-                      {project?.tokenAddress ? "No liquidity pool found. You can add initial liquidity below." : "Connect a token to view pool information."}
+                      {project?.tokenAddress
+                        ? 'No liquidity pool found. You can add initial liquidity below.'
+                        : 'Connect a token to view pool information.'}
                     </span>
                   )}
                 </div>
@@ -761,7 +912,8 @@ export function SnipeWizardDialog({
             <div className="border rounded-lg p-4">
               <h3 className="text-base font-medium mb-2">Add Liquidity</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Adding liquidity creates a trading pair for your token on PancakeSwap, allowing users to trade it.
+                Adding liquidity creates a trading pair for your token on
+                PancakeSwap, allowing users to trade it.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -778,7 +930,9 @@ export function SnipeWizardDialog({
                         className="h-5 text-xs px-1.5"
                         onClick={() => {
                           const maxBnb = connectedWalletBalance.bnb;
-                          setLiquidityBnbAmount(Number((maxBnb * 0.1).toFixed(4)));
+                          setLiquidityBnbAmount(
+                            Number((maxBnb * 0.1).toFixed(4))
+                          );
                         }}
                       >
                         10%
@@ -789,7 +943,9 @@ export function SnipeWizardDialog({
                         className="h-5 text-xs px-1.5"
                         onClick={() => {
                           const maxBnb = connectedWalletBalance.bnb;
-                          setLiquidityBnbAmount(Number((maxBnb * 0.5).toFixed(4)));
+                          setLiquidityBnbAmount(
+                            Number((maxBnb * 0.5).toFixed(4))
+                          );
                         }}
                       >
                         50%
@@ -801,7 +957,9 @@ export function SnipeWizardDialog({
                         onClick={() => {
                           const maxBnb = connectedWalletBalance.bnb;
                           // Leave a small amount for gas
-                          setLiquidityBnbAmount(Number((maxBnb * 0.95).toFixed(4)));
+                          setLiquidityBnbAmount(
+                            Number((maxBnb * 0.95).toFixed(4))
+                          );
                         }}
                       >
                         Max
@@ -812,7 +970,9 @@ export function SnipeWizardDialog({
                     id="bnbAmount"
                     type="number"
                     value={liquidityBnbAmount}
-                    onChange={(e) => setLiquidityBnbAmount(Number(e.target.value))}
+                    onChange={(e) =>
+                      setLiquidityBnbAmount(Number(e.target.value))
+                    }
                     placeholder="0.0"
                     step="0.1"
                     min="0"
@@ -823,8 +983,11 @@ export function SnipeWizardDialog({
                 {/* Token Amount */}
                 <div>
                   <div className="flex w-full justify-between items-center mb-1">
-                    <Label htmlFor="tokenAmount" className="text-xs font-medium">
-                      {project?.symbol || "Token"} Amount
+                    <Label
+                      htmlFor="tokenAmount"
+                      className="text-xs font-medium"
+                    >
+                      {project?.symbol || 'Token'} Amount
                     </Label>
                     <div className="flex gap-1">
                       <Button
@@ -833,7 +996,9 @@ export function SnipeWizardDialog({
                         className="h-5 text-xs px-1.5"
                         onClick={() => {
                           const maxToken = connectedWalletBalance.token;
-                          setLiquidityTokenAmount(Number((maxToken * 0.1).toFixed(0)));
+                          setLiquidityTokenAmount(
+                            Number((maxToken * 0.1).toFixed(0))
+                          );
                         }}
                       >
                         10%
@@ -844,7 +1009,9 @@ export function SnipeWizardDialog({
                         className="h-5 text-xs px-1.5"
                         onClick={() => {
                           const maxToken = connectedWalletBalance.token;
-                          setLiquidityTokenAmount(Number((maxToken * 0.5).toFixed(0)));
+                          setLiquidityTokenAmount(
+                            Number((maxToken * 0.5).toFixed(0))
+                          );
                         }}
                       >
                         50%
@@ -866,7 +1033,9 @@ export function SnipeWizardDialog({
                     id="tokenAmount"
                     type="number"
                     value={liquidityTokenAmount}
-                    onChange={(e) => setLiquidityTokenAmount(Number(e.target.value))}
+                    onChange={(e) =>
+                      setLiquidityTokenAmount(Number(e.target.value))
+                    }
                     placeholder="0"
                     min="0"
                     className="w-full"
@@ -883,21 +1052,29 @@ export function SnipeWizardDialog({
                   onSuccess={() => {
                     if (project?._id) {
                       try {
-                        projectService.logLPAddition(
-                          project._id,
-                          Number(liquidityTokenAmount),
-                          Number(liquidityBnbAmount)
-                        ).catch(error => {
-                          console.error('Failed to log LP addition activity:', error);
-                        });
+                        projectService
+                          .logLPAddition(
+                            project._id,
+                            Number(liquidityTokenAmount),
+                            Number(liquidityBnbAmount)
+                          )
+                          .catch((error) => {
+                            console.error(
+                              'Failed to log LP addition activity:',
+                              error
+                            );
+                          });
                       } catch (error) {
-                        console.error('Failed to log LP addition activity:', error);
+                        console.error(
+                          'Failed to log LP addition activity:',
+                          error
+                        );
                       }
                     }
 
                     toast({
-                      title: "Success",
-                      description: "Liquidity added successfully",
+                      title: 'Success',
+                      description: 'Liquidity added successfully',
                     });
                     setLiquidityTokenAmount(0);
                     setLiquidityBnbAmount(0);
@@ -913,7 +1090,8 @@ export function SnipeWizardDialog({
             <div className="border rounded-lg p-4">
               <h3 className="text-base font-medium mb-2">Remove Liquidity</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                You can remove some or all of your liquidity to get back your BNB and tokens.
+                You can remove some or all of your liquidity to get back your
+                BNB and tokens.
               </p>
 
               {lpTokenBalance > 0 ? (
@@ -921,7 +1099,9 @@ export function SnipeWizardDialog({
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <Label className="text-xs">Remove percentage:</Label>
-                      <span className="text-xs font-medium">{removePercentage}%</span>
+                      <span className="text-xs font-medium">
+                        {removePercentage}%
+                      </span>
                     </div>
                     <Slider
                       defaultValue={[100]}
@@ -929,7 +1109,9 @@ export function SnipeWizardDialog({
                       step={1}
                       value={[removePercentage]}
                       onValueChange={(values) => setRemovePercentage(values[0])}
-                      disabled={!signer || lpTokenBalance <= 0 || isRemovingLiquidity}
+                      disabled={
+                        !signer || lpTokenBalance <= 0 || isRemovingLiquidity
+                      }
                       className="mb-2"
                     />
                   </div>
@@ -938,7 +1120,9 @@ export function SnipeWizardDialog({
                     <Button
                       variant="outline"
                       className="flex-1"
-                      disabled={!signer || lpTokenBalance <= 0 || isBurningLiquidity}
+                      disabled={
+                        !signer || lpTokenBalance <= 0 || isBurningLiquidity
+                      }
                       onClick={handleRemoveLiquidity}
                     >
                       {isRemovingLiquidity ? (
@@ -951,7 +1135,9 @@ export function SnipeWizardDialog({
 
                     <Button
                       variant="destructive"
-                      disabled={!signer || lpTokenBalance <= 0 || isBurningLiquidity}
+                      disabled={
+                        !signer || lpTokenBalance <= 0 || isBurningLiquidity
+                      }
                       onClick={handleBurnLiquidity}
                     >
                       {isBurningLiquidity ? (
@@ -976,11 +1162,25 @@ export function SnipeWizardDialog({
             <div className="bg-muted/20 rounded-lg p-4">
               <h3 className="text-base font-medium mb-2">Information</h3>
               <ul className="list-disc ml-5 space-y-2 text-sm">
-                <li>Adding liquidity is optional but necessary if no liquidity pool exists yet.</li>
-                <li>When you add liquidity, you receive LP tokens representing your share of the pool.</li>
-                <li>You can remove your liquidity at any time to get back your BNB and tokens.</li>
-                <li>Burning liquidity means removing 100% of your LP tokens.</li>
-                <li>Approve tokens first if this is your first time adding this token to a liquidity pool.</li>
+                <li>
+                  Adding liquidity is optional but necessary if no liquidity
+                  pool exists yet.
+                </li>
+                <li>
+                  When you add liquidity, you receive LP tokens representing
+                  your share of the pool.
+                </li>
+                <li>
+                  You can remove your liquidity at any time to get back your BNB
+                  and tokens.
+                </li>
+                <li>
+                  Burning liquidity means removing 100% of your LP tokens.
+                </li>
+                <li>
+                  Approve tokens first if this is your first time adding this
+                  token to a liquidity pool.
+                </li>
               </ul>
             </div>
           </div>
@@ -994,7 +1194,8 @@ export function SnipeWizardDialog({
       <CardHeader className="px-0 pt-0 pb-2 sm:px-6 sm:pb-4">
         <CardTitle>Snipe Configuration</CardTitle>
         <CardDescription>
-          Configure how much of the token you want to snipe and distribute amounts across your wallets.
+          Configure how much of the token you want to snipe and distribute
+          amounts across your wallets.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 sm:px-6">
@@ -1004,7 +1205,9 @@ export function SnipeWizardDialog({
             <h3 className="text-base font-medium mb-2">Token Information</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Token Address:</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Token Address:
+                </p>
                 <div className="flex items-center gap-2">
                   <code className="text-xs font-mono bg-muted/20 px-1 py-0.5 rounded truncate max-w-[150px] sm:max-w-[200px]">
                     {project?.tokenAddress}
@@ -1013,7 +1216,10 @@ export function SnipeWizardDialog({
                     variant="ghost"
                     size="icon"
                     className="h-5 w-5"
-                    onClick={() => project?.tokenAddress && copyToClipboard(project?.tokenAddress)}
+                    onClick={() =>
+                      project?.tokenAddress &&
+                      copyToClipboard(project?.tokenAddress)
+                    }
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
@@ -1021,17 +1227,26 @@ export function SnipeWizardDialog({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Symbol:</p>
-                <p className="font-medium">{project?.symbol || "N/A"}</p>
+                <p className="font-medium">{project?.symbol || 'N/A'}</p>
               </div>
               {poolInfo && (
                 <>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Pool Size:</p>
-                    <p className="font-medium">{poolInfo?.tokenReserve?.toLocaleString() || "0"} {project?.symbol}</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Pool Size:
+                    </p>
+                    <p className="font-medium">
+                      {poolInfo?.tokenReserve?.toLocaleString() || '0'}{' '}
+                      {project?.symbol}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Pool Value:</p>
-                    <p className="font-medium">{poolInfo?.bnbReserve?.toFixed(4) || "0"} BNB</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Pool Value:
+                    </p>
+                    <p className="font-medium">
+                      {poolInfo?.bnbReserve?.toFixed(4) || '0'} BNB
+                    </p>
                   </div>
                 </>
               )}
@@ -1042,15 +1257,24 @@ export function SnipeWizardDialog({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             {/* Snipe Percentage Configuration */}
             <div className="border rounded-lg p-2 sm:p-4">
-              <h3 className="text-base font-medium mb-2 sm:mb-3">Snipe Percentage</h3>
+              <h3 className="text-base font-medium mb-2 sm:mb-3">
+                Snipe Percentage
+              </h3>
               <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
-                Determine what percentage of the token supply in the pool you want to snipe. This amount will be distributed across your sniping wallets.
+                Determine what percentage of the token supply in the pool you
+                want to snipe. This amount will be distributed across your
+                sniping wallets.
               </p>
 
               <div className="space-y-3 sm:space-y-4">
                 <div className="pb-2">
                   <div className="flex items-center justify-between mb-1">
-                    <Label htmlFor="snipePercentage" className="text-xs sm:text-sm">Percentage of pool to snipe:</Label>
+                    <Label
+                      htmlFor="snipePercentage"
+                      className="text-xs sm:text-sm"
+                    >
+                      Percentage of pool to snipe:
+                    </Label>
                     <span className="font-medium">{snipePercentage}%</span>
                   </div>
                   <Slider
@@ -1081,9 +1305,13 @@ export function SnipeWizardDialog({
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 rounded-md p-2 sm:p-3 text-amber-800 text-xs sm:text-sm">
-                  <p className="font-medium mb-1">⚠️ Snipe Percentage Warning</p>
+                  <p className="font-medium mb-1">
+                    ⚠️ Snipe Percentage Warning
+                  </p>
                   <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-xs">
-                    <li>Higher percentages can cause significant price impact</li>
+                    <li>
+                      Higher percentages can cause significant price impact
+                    </li>
                     <li>Recommended range is 5-25% for most tokens</li>
                     <li>Values over 50% may cause extreme slippage</li>
                   </ul>
@@ -1097,42 +1325,54 @@ export function SnipeWizardDialog({
                       snipePercentage,
                       doAddLiquidity,
                       doAddLiquidity ? liquidityTokenAmount : 0
-                    ).then(totalSnipeAmount => {
-                      // Calculate amounts with random variation for each wallet
-                      const baseAmountPerWallet = totalSnipeAmount / parseInt(walletCount, 10);
+                    )
+                      .then((totalSnipeAmount) => {
+                        // Calculate amounts with random variation for each wallet
+                        const baseAmountPerWallet =
+                          totalSnipeAmount / parseInt(walletCount, 10);
 
-                      // Update wallets with new amounts
-                      setWallets(prevWallets =>
-                        prevWallets.map(wallet => {
-                          if (wallet.role === 'botmain') return { ...wallet, tokenAmount: 0 };
+                        // Update wallets with new amounts
+                        setWallets((prevWallets) =>
+                          prevWallets.map((wallet) => {
+                            if (wallet.role === 'botmain')
+                              return { ...wallet, tokenAmount: 0 };
 
-                          // Generate random variation between -15% to +15%
-                          const variation = (Math.random() * 0.3) - 0.15; // -0.15 to +0.15
-                          const variationMultiplier = 1 + variation;
-                          const adjustedAmount = baseAmountPerWallet * variationMultiplier;
+                            // Generate random variation between -15% to +15%
+                            const variation = Math.random() * 0.3 - 0.15; // -0.15 to +0.15
+                            const variationMultiplier = 1 + variation;
+                            const adjustedAmount =
+                              baseAmountPerWallet * variationMultiplier;
 
-                          return {
-                            ...wallet,
-                            tokenAmount: Math.floor(adjustedAmount) // Round down to ensure integer amounts
-                          };
-                        })
-                      );
-                      // Reset BNB distribution state when token amounts are reassigned
-                      setIsBnbDistributed(false);
+                            return {
+                              ...wallet,
+                              tokenAmount: Math.floor(adjustedAmount), // Round down to ensure integer amounts
+                            };
+                          })
+                        );
+                        // Reset BNB distribution state when token amounts are reassigned
+                        setIsBnbDistributed(false);
 
-                      toast({
-                        title: "Success",
-                        description: "Snipe amounts calculated based on pool liquidity",
+                        toast({
+                          title: 'Success',
+                          description:
+                            'Snipe amounts calculated based on pool liquidity',
+                        });
+                      })
+                      .catch((error) => {
+                        toast({
+                          title: 'Error',
+                          description:
+                            error.message ||
+                            'Failed to calculate snipe amounts',
+                          variant: 'destructive',
+                        });
                       });
-                    }).catch(error => {
-                      toast({
-                        title: "Error",
-                        description: error.message || "Failed to calculate snipe amounts",
-                        variant: "destructive",
-                      });
-                    });
                   }}
-                  disabled={!poolInfo || !wallets.length || wallets.filter(w => w.role !== 'botmain').length === 0}
+                  disabled={
+                    !poolInfo ||
+                    !wallets.length ||
+                    wallets.filter((w) => w.role !== 'botmain').length === 0
+                  }
                   className="w-full mt-2"
                 >
                   Calculate Token Amounts
@@ -1142,12 +1382,15 @@ export function SnipeWizardDialog({
 
             {/* Wallet Distribution Table */}
             <div className="border rounded-lg p-2 sm:p-4">
-              <h3 className="text-base font-medium mb-2 sm:mb-3">Token Distribution</h3>
+              <h3 className="text-base font-medium mb-2 sm:mb-3">
+                Token Distribution
+              </h3>
               <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
-                Review how tokens will be distributed across your sniping wallets. You can adjust individual amounts manually if needed.
+                Review how tokens will be distributed across your sniping
+                wallets. You can adjust individual amounts manually if needed.
               </p>
 
-              {wallets.filter(w => w.role !== 'botmain').length > 0 ? (
+              {wallets.filter((w) => w.role !== 'botmain').length > 0 ? (
                 <div className="overflow-x-auto border rounded-md">
                   <div className="max-w-[800px]">
                     <Table>
@@ -1155,50 +1398,71 @@ export function SnipeWizardDialog({
                         <TableRow>
                           <TableHead className="w-[8%]">No</TableHead>
                           <TableHead className="w-[20%]">Wallet</TableHead>
-                          <TableHead className="text-left">Token Amount</TableHead>
+                          <TableHead className="text-left">
+                            Token Amount
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {wallets.filter(w => w.role !== 'botmain').map((wallet, index) => {
-                          const totalAmount = wallets
-                            .filter(w => w.role !== 'botmain')
-                            .reduce((sum, w) => sum + (w.tokenAmount || 0), 0);
-                                                    
-                          return (
-                            <TableRow key={wallet.publicKey}>
-                              <TableCell className="text-left">{index + 1}</TableCell>
-                              <TableCell className="font-mono text-xs">
-                                <span className="hidden sm:inline">{wallet.publicKey.slice(0, 4)}...{wallet.publicKey.slice(-4)}</span>
-                              </TableCell>
-                              <TableCell className="text-left">
-                                <Input
-                                  type="number"
-                                  value={wallet.tokenAmount || 0}
-                                  onChange={(e) => {
-                                    setWallets(prevWallets =>
-                                      prevWallets.map(w =>
-                                        w.publicKey === wallet.publicKey
-                                          ? { ...w, tokenAmount: Number(e.target.value) }
-                                          : w
-                                      )
-                                    );
-                                    // Reset BNB distribution state when amounts change
-                                    setIsBnbDistributed(false);
-                                  }}
-                                  className="h-7 w-20 sm:w-32 ml-auto"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
+                        {wallets
+                          .filter((w) => w.role !== 'botmain')
+                          .map((wallet, index) => {
+                            const totalAmount = wallets
+                              .filter((w) => w.role !== 'botmain')
+                              .reduce(
+                                (sum, w) => sum + (w.tokenAmount || 0),
+                                0
+                              );
+
+                            return (
+                              <TableRow key={wallet.publicKey}>
+                                <TableCell className="text-left">
+                                  {index + 1}
+                                </TableCell>
+                                <TableCell className="font-mono text-xs">
+                                  <span className="hidden sm:inline">
+                                    {wallet.publicKey.slice(0, 4)}...
+                                    {wallet.publicKey.slice(-4)}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-left">
+                                  <Input
+                                    type="number"
+                                    value={wallet.tokenAmount || 0}
+                                    onChange={(e) => {
+                                      setWallets((prevWallets) =>
+                                        prevWallets.map((w) =>
+                                          w.publicKey === wallet.publicKey
+                                            ? {
+                                                ...w,
+                                                tokenAmount: Number(
+                                                  e.target.value
+                                                ),
+                                              }
+                                            : w
+                                        )
+                                      );
+                                      // Reset BNB distribution state when amounts change
+                                      setIsBnbDistributed(false);
+                                    }}
+                                    className="h-7 w-20 sm:w-32 ml-auto"
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         <TableRow className="bg-muted/20 font-medium">
                           <TableCell>Total</TableCell>
                           <TableCell className="text-left">
                             {wallets
-                              .filter(w => w.role !== 'botmain')
-                              .reduce((sum, wallet) => sum + (wallet.tokenAmount || 0), 0)
+                              .filter((w) => w.role !== 'botmain')
+                              .reduce(
+                                (sum, wallet) =>
+                                  sum + (wallet.tokenAmount || 0),
+                                0
+                              )
                               .toLocaleString()}
-                              ({snipePercentage}% of pool)
+                            ({snipePercentage}% of pool)
                           </TableCell>
                         </TableRow>
                       </TableBody>
@@ -1207,8 +1471,12 @@ export function SnipeWizardDialog({
                 </div>
               ) : (
                 <div className="text-center py-4 sm:py-6 bg-muted/10 rounded-md">
-                  <p className="text-muted-foreground">No sniping wallets available</p>
-                  <p className="text-xs mt-2">Please go back to the Wallet Setup step to create wallets</p>
+                  <p className="text-muted-foreground">
+                    No sniping wallets available
+                  </p>
+                  <p className="text-xs mt-2">
+                    Please go back to the Wallet Setup step to create wallets
+                  </p>
                 </div>
               )}
             </div>
@@ -1218,10 +1486,21 @@ export function SnipeWizardDialog({
           <div className="bg-muted/20 rounded-lg p-2 sm:p-4">
             <h3 className="text-base font-medium mb-2">Tips</h3>
             <ul className="list-disc ml-4 sm:ml-5 space-y-1 sm:space-y-2 text-xs sm:text-sm">
-              <li>Using multiple wallets helps distribute your snipe to reduce price impact</li>
-              <li>Token amounts are distributed with slight random variations to make the snipe more natural</li>
-              <li>You can manually adjust individual wallet amounts if needed</li>
-              <li>Consider how much of the pool you want to snipe - higher percentages will have larger price impacts</li>
+              <li>
+                Using multiple wallets helps distribute your snipe to reduce
+                price impact
+              </li>
+              <li>
+                Token amounts are distributed with slight random variations to
+                make the snipe more natural
+              </li>
+              <li>
+                You can manually adjust individual wallet amounts if needed
+              </li>
+              <li>
+                Consider how much of the pool you want to snipe - higher
+                percentages will have larger price impacts
+              </li>
             </ul>
           </div>
         </div>
@@ -1242,16 +1521,20 @@ export function SnipeWizardDialog({
           {/* Deposit Wallet Balance */}
           <div className="border rounded-lg p-2 sm:p-4 bg-muted/10">
             <div className="flex items-center justify-between">
-            <h3 className="text-base font-medium mb-2">Deposit Wallet</h3>
-            
-            <Button
+              <h3 className="text-base font-medium mb-2">Deposit Wallet</h3>
+
+              <Button
                 variant="outline"
                 size="sm"
                 className="h-8 ml-auto"
                 onClick={() => {
                   const allAddresses = [
-                    ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
-                    ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+                    ...(project?.addons.SnipeBot.depositWalletId?.publicKey
+                      ? [project?.addons.SnipeBot.depositWalletId.publicKey]
+                      : []),
+                    ...wallets
+                      .filter((w) => w.role !== 'botmain')
+                      .map((w) => w.publicKey),
                   ];
                   fetchBalances(allAddresses);
                 }}
@@ -1270,23 +1553,39 @@ export function SnipeWizardDialog({
                 <p className="text-xs text-muted-foreground mb-1">Address:</p>
                 <div className="flex items-center gap-2">
                   <code className="text-xs font-mono bg-muted/20 px-1 py-0.5 rounded truncate max-w-[150px] sm:max-w-[200px]">
-                    {project?.addons.SnipeBot.depositWalletId?.publicKey.slice(0, 6)}...
-                    {project?.addons.SnipeBot.depositWalletId?.publicKey.slice(-4)}
+                    {project?.addons.SnipeBot.depositWalletId?.publicKey.slice(
+                      0,
+                      6
+                    )}
+                    ...
+                    {project?.addons.SnipeBot.depositWalletId?.publicKey.slice(
+                      -4
+                    )}
                   </code>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-5 w-5"
-                    onClick={() => project?.addons.SnipeBot.depositWalletId && copyToClipboard(project?.addons.SnipeBot.depositWalletId.publicKey)}
+                    onClick={() =>
+                      project?.addons.SnipeBot.depositWalletId &&
+                      copyToClipboard(
+                        project?.addons.SnipeBot.depositWalletId.publicKey
+                      )
+                    }
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
                 </div>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-1">BNB Balance:</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  BNB Balance:
+                </p>
                 <p className="font-medium">
-                  {wallets.find(w => w.role === 'botmain')?.bnbBalance?.toFixed(4) || '0.0000'} BNB
+                  {wallets
+                    .find((w) => w.role === 'botmain')
+                    ?.bnbBalance?.toFixed(4) || '0.0000'}{' '}
+                  BNB
                 </p>
               </div>
             </div>
@@ -1296,14 +1595,20 @@ export function SnipeWizardDialog({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             {/* Fee Estimation Section */}
             <div className="border rounded-lg p-2 sm:p-4">
-              <h3 className="text-base font-medium mb-2 sm:mb-3">Fee Estimation</h3>
+              <h3 className="text-base font-medium mb-2 sm:mb-3">
+                Fee Estimation
+              </h3>
               <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
-                Calculate the estimated gas fees and BNB required for the sniping operation.
+                Calculate the estimated gas fees and BNB required for the
+                sniping operation.
               </p>
 
               <Button
                 onClick={handleEstimateFees}
-                disabled={isEstimatingFees || wallets.filter(w => w.role !== 'botmain').length === 0}
+                disabled={
+                  isEstimatingFees ||
+                  wallets.filter((w) => w.role !== 'botmain').length === 0
+                }
                 className="w-full mb-4"
               >
                 {isEstimatingFees ? (
@@ -1312,7 +1617,7 @@ export function SnipeWizardDialog({
                     Estimating...
                   </>
                 ) : (
-                  "Estimate Fees"
+                  'Estimate Fees'
                 )}
               </Button>
 
@@ -1320,30 +1625,46 @@ export function SnipeWizardDialog({
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div className="bg-muted/20 p-3 rounded-md">
-                      <p className="text-xs text-muted-foreground mb-1">BNB for Sniping:</p>
-                      <p className="font-medium">{feeEstimationResult.snipingBnb.toFixed(6)} BNB</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        BNB for Sniping:
+                      </p>
+                      <p className="font-medium">
+                        {feeEstimationResult.snipingBnb.toFixed(6)} BNB
+                      </p>
                     </div>
                     <div className="bg-muted/20 p-3 rounded-md">
-                      <p className="text-xs text-muted-foreground mb-1">Gas Cost:</p>
-                      <p className="font-medium">{feeEstimationResult.gasCost?.toFixed(6) || "0.000000"} BNB</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Gas Cost:
+                      </p>
+                      <p className="font-medium">
+                        {feeEstimationResult.gasCost?.toFixed(6) || '0.000000'}{' '}
+                        BNB
+                      </p>
                     </div>
                     <div className="bg-muted/20 p-3 rounded-md">
-                      <p className="text-xs text-muted-foreground mb-1">BNB should be distributed to sniping wallets:</p>
-                      <p className="font-medium">{feeEstimationResult.bnbForDistribution.toFixed(6)} BNB</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        BNB should be distributed to sniping wallets:
+                      </p>
+                      <p className="font-medium">
+                        {feeEstimationResult.bnbForDistribution.toFixed(6)} BNB
+                      </p>
                     </div>
                   </div>
-
                 </div>
               ) : (
                 <div className="text-center py-4 bg-muted/10 rounded-md">
-                  <p className="text-muted-foreground">Run fee estimation to see details</p>
+                  <p className="text-muted-foreground">
+                    Run fee estimation to see details
+                  </p>
                 </div>
               )}
             </div>
 
             {/* BNB Distribution Section */}
             <div className="border rounded-lg p-2 sm:p-4">
-              <h3 className="text-base font-medium mb-2 sm:mb-3">BNB Distribution to sniping wallets</h3>
+              <h3 className="text-base font-medium mb-2 sm:mb-3">
+                BNB Distribution to sniping wallets
+              </h3>
               <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
                 Distribute BNB from your deposit wallet to your sniping wallets.
               </p>
@@ -1351,20 +1672,40 @@ export function SnipeWizardDialog({
               <div className="space-y-4">
                 <Button
                   onClick={handleDistributeBnb}
-                  className={
-                    `w-full ${                    
-                      feeEstimationResult &&
-                      (wallets.find(w => w.publicKey === project?.addons?.SnipeBot?.depositWalletId?.publicKey)?.bnbBalance || 0) <
-                      (feeEstimationResult.bnbForDistribution + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))
-                      ? "border-2 border-red-500 hover:border-red-600"
-                      : feeEstimationResult && (feeEstimationResult.bnbForDistribution + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0)))>0?
-                      "border-2 border-amber-500 hover:border-amber-600"
-                      : ""
-                    } `
-                  }
+                  className={`w-full ${
+                    feeEstimationResult &&
+                    (wallets.find(
+                      (w) =>
+                        w.publicKey ===
+                        project?.addons?.SnipeBot?.depositWalletId?.publicKey
+                    )?.bnbBalance || 0) <
+                      feeEstimationResult.bnbForDistribution +
+                        wallets
+                          .filter((w) => w.role !== 'botmain')
+                          .reduce(
+                            (sum, wallet) =>
+                              sum + (wallet.insufficientBnb || 0),
+                            0
+                          )
+                      ? 'border-2 border-red-500 hover:border-red-600'
+                      : feeEstimationResult &&
+                          feeEstimationResult.bnbForDistribution +
+                            wallets
+                              .filter((w) => w.role !== 'botmain')
+                              .reduce(
+                                (sum, wallet) =>
+                                  sum + (wallet.insufficientBnb || 0),
+                                0
+                              ) >
+                            0
+                        ? 'border-2 border-amber-500 hover:border-amber-600'
+                        : ''
+                  } `}
                   disabled={
                     isEstimatingFees ||
-                    !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||
+                    !wallets.filter(
+                      (wallet: WalletInfo) => wallet.role !== 'botmain'
+                    ).length ||
                     isDistributingBNBs ||
                     !feeEstimationResult
                   }
@@ -1375,32 +1716,34 @@ export function SnipeWizardDialog({
                       Distributing...
                     </>
                   ) : !feeEstimationResult ? (
-                    "Estimate Fees First"
+                    'Estimate Fees First'
                   ) : (
-                    "Distribute BNB"
+                    'Distribute BNB'
                   )}
                 </Button>
-
-
               </div>
-                  {
-                    feeEstimationResult && feeEstimationResult.bnbForDistribution > 0 && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        You need to distribute {feeEstimationResult.bnbForDistribution.toFixed(6)} BNB to your sniping wallets.
-                      </p>
-                    )
-                  }
+              {feeEstimationResult &&
+                feeEstimationResult.bnbForDistribution > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    You need to distribute{' '}
+                    {feeEstimationResult.bnbForDistribution.toFixed(6)} BNB to
+                    your sniping wallets.
+                  </p>
+                )}
             </div>
           </div>
 
           {/* Extra BNB Distribution */}
           <div className="border rounded-lg p-4">
-            <h3 className="text-base font-medium mb-3">Distribute Extra BNB (Recommended)</h3>
+            <h3 className="text-base font-medium mb-3">
+              Distribute Extra BNB (Recommended)
+            </h3>
 
-
-            <div className="flex justify-between items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="distributeAmount" className="whitespace-nowrap">Amount per wallet:</Label>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3">
+                <Label htmlFor="distributeAmount" className="whitespace-nowrap">
+                  Amount per wallet:
+                </Label>
                 <Input
                   id="distributeAmount"
                   type="number"
@@ -1408,118 +1751,223 @@ export function SnipeWizardDialog({
                   onChange={(e) => setDistributeAmount(Number(e.target.value))}
                   step="0.01"
                   min="0"
-                  className="w-32"
+                  className="max-w-32"
                 />
-                <span className="text-sm">BNB</span>
               </div>
-              <Button
-              className="bg-green-500 hover:bg-green-600"
-                onClick={() => {
-                  handleDistributeExtraBnb()}
-                }
-                disabled={
-                  isEstimatingFees ||
-                  !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||
-                  isDistributingBNBs
-                }
-              >
-                {
-                  isDistributingBNBs ? 
-                    "Distributing..."
-                    :
-                    "Distribute Extra BNB"                  
-                }
-              </Button>
+              <div className="flex items-center gap-3">
+                <span className="text-sm">BNB</span>
+                <Button
+                  className="bg-green-500 hover:bg-green-600"
+                  onClick={() => {
+                    handleDistributeExtraBnb();
+                  }}
+                  disabled={
+                    isEstimatingFees ||
+                    !wallets.filter(
+                      (wallet: WalletInfo) => wallet.role !== 'botmain'
+                    ).length ||
+                    isDistributingBNBs
+                  }
+                >
+                  {isDistributingBNBs
+                    ? 'Distributing...'
+                    : 'Distribute Extra BNB'}
+                </Button>
+              </div>
             </div>
 
             <div className="border border-green-400 rounded-md p-3 mt-4 text-green-700 text-sm">
-              <p>💡 This is useful for providing BNB to wallets for later operations like selling tokens.</p>
+              <p>
+                💡 This is useful for providing BNB to wallets for later
+                operations like selling tokens.
+              </p>
             </div>
           </div>
           {/* Fee Estimation Results (only show if simulation result exists) */}
           {feeEstimationResult && (
             <div className="border rounded-lg p-2 sm:p-4">
-              <h3 className="text-base font-medium mb-2 sm:mb-3">Sniping Fee Estimation Results</h3>
+              <h3 className="text-base font-medium mb-2 sm:mb-3">
+                Sniping Fee Estimation Results
+              </h3>
               <div className="text-sm space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
                   <p>
-                    <span className="text-muted-foreground">Deposit Wallet BNB Balance:</span>{' '}
-                    {wallets.find(w => w.publicKey === project?.addons.SnipeBot.depositWalletId?.publicKey)?.bnbBalance?.toFixed(4) || '0.0000'} BNB
+                    <span className="text-muted-foreground">
+                      Deposit Wallet BNB Balance:
+                    </span>{' '}
+                    {wallets
+                      .find(
+                        (w) =>
+                          w.publicKey ===
+                          project?.addons.SnipeBot.depositWalletId?.publicKey
+                      )
+                      ?.bnbBalance?.toFixed(4) || '0.0000'}{' '}
+                    BNB
                   </p>
                   {feeEstimationResult.addLiquidityBnb !== undefined && (
                     <p>
-                      <span className="text-muted-foreground">BNB for Adding Liquidity:</span>{' '}
+                      <span className="text-muted-foreground">
+                        BNB for Adding Liquidity:
+                      </span>{' '}
                       {feeEstimationResult.addLiquidityBnb.toFixed(4)} BNB
                     </p>
                   )}
                   <p>
-                    <span className="text-muted-foreground">BNB will be send for Sniping:</span>{' '}
+                    <span className="text-muted-foreground">
+                      BNB will be send for Sniping:
+                    </span>{' '}
                     {feeEstimationResult.snipingBnb.toFixed(6)} BNB
                   </p>
                   {feeEstimationResult.tipBnb !== undefined && (
                     <p>
-                      <span className="text-muted-foreground">BNB for Bundle Tip:</span>{' '}
+                      <span className="text-muted-foreground">
+                        BNB for Bundle Tip:
+                      </span>{' '}
                       {feeEstimationResult.tipBnb.toFixed(4)} BNB
                     </p>
                   )}
                 </div>
 
                 {feeEstimationResult.gasCost !== undefined && (
-                  <p><span className="text-muted-foreground">Gas Cost:</span> {feeEstimationResult.gasCost.toFixed(6)} BNB</p>
+                  <p>
+                    <span className="text-muted-foreground">Gas Cost:</span>{' '}
+                    {feeEstimationResult.gasCost.toFixed(6)} BNB
+                  </p>
                 )}
-                <p><span className="text-muted-foreground">Total BNB to be distributed:</span> {feeEstimationResult.bnbForDistribution.toFixed(6)} BNB</p>
+                <p>
+                  <span className="text-muted-foreground">
+                    Total BNB to be distributed:
+                  </span>{' '}
+                  {feeEstimationResult.bnbForDistribution.toFixed(6)} BNB
+                </p>
 
-                {feeEstimationResult.poolSimulation && feeEstimationResult.poolSimulation.initialReserves && (
-                  <div className="mt-3 p-2 rounded border bg-background">
-                    <h4 className="font-medium mb-1">Pool Simulation</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
-                      <p><span className="text-muted-foreground">Initial BNB:</span> {feeEstimationResult.poolSimulation.initialReserves.bnb.toFixed(4)} BNB</p>
-                      <p><span className="text-muted-foreground">Initial Tokens:</span> {feeEstimationResult.poolSimulation.initialReserves.token.toLocaleString()} Tokens</p>
-                      {feeEstimationResult.poolSimulation.finalReserves && (
-                        <>
-                          <p><span className="text-muted-foreground">Final BNB:</span> {feeEstimationResult.poolSimulation.finalReserves.bnb.toFixed(4)} BNB</p>
-                          <p><span className="text-muted-foreground">Final Tokens:</span> {feeEstimationResult.poolSimulation.finalReserves.token.toLocaleString()} Tokens</p>
-                        </>
-                      )}
-                      {feeEstimationResult.poolSimulation.priceImpact !== undefined && (
-                        <p><span className="text-muted-foreground">Price Impact:</span> {(feeEstimationResult.poolSimulation.priceImpact * 100).toFixed(2)}%</p>
-                      )}
+                {feeEstimationResult.poolSimulation &&
+                  feeEstimationResult.poolSimulation.initialReserves && (
+                    <div className="mt-3 p-2 rounded border bg-background">
+                      <h4 className="font-medium mb-1">Pool Simulation</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
+                        <p>
+                          <span className="text-muted-foreground">
+                            Initial BNB:
+                          </span>{' '}
+                          {feeEstimationResult.poolSimulation.initialReserves.bnb.toFixed(
+                            4
+                          )}{' '}
+                          BNB
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">
+                            Initial Tokens:
+                          </span>{' '}
+                          {feeEstimationResult.poolSimulation.initialReserves.token.toLocaleString()}{' '}
+                          Tokens
+                        </p>
+                        {feeEstimationResult.poolSimulation.finalReserves && (
+                          <>
+                            <p>
+                              <span className="text-muted-foreground">
+                                Final BNB:
+                              </span>{' '}
+                              {feeEstimationResult.poolSimulation.finalReserves.bnb.toFixed(
+                                4
+                              )}{' '}
+                              BNB
+                            </p>
+                            <p>
+                              <span className="text-muted-foreground">
+                                Final Tokens:
+                              </span>{' '}
+                              {feeEstimationResult.poolSimulation.finalReserves.token.toLocaleString()}{' '}
+                              Tokens
+                            </p>
+                          </>
+                        )}
+                        {feeEstimationResult.poolSimulation.priceImpact !==
+                          undefined && (
+                          <p>
+                            <span className="text-muted-foreground">
+                              Price Impact:
+                            </span>{' '}
+                            {(
+                              feeEstimationResult.poolSimulation.priceImpact *
+                              100
+                            ).toFixed(2)}
+                            %
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 <div className="mt-3 p-2 rounded border bg-background">
-                <p className={
-                    feeEstimationResult.sufficientBalance
-                      ? (Number(feeEstimationResult.bnbForDistribution) + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))) > 0
-                        ? "text-amber-500 font-medium"
-                        : "text-green-500 font-medium"
-                      : "text-red-500 font-medium"
-                  }>
+                  <p
+                    className={
+                      feeEstimationResult.sufficientBalance
+                        ? Number(feeEstimationResult.bnbForDistribution) +
+                            wallets
+                              .filter((w) => w.role !== 'botmain')
+                              .reduce(
+                                (sum, wallet) =>
+                                  sum + (wallet.insufficientBnb || 0),
+                                0
+                              ) >
+                          0
+                          ? 'text-amber-500 font-medium'
+                          : 'text-green-500 font-medium'
+                        : 'text-red-500 font-medium'
+                    }
+                  >
                     {feeEstimationResult.sufficientBalance
-                      ? (Number(feeEstimationResult.bnbForDistribution) + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))) > 0 
-                        ? "✓ Fee estimation successful. You can distribute BNB to sniping wallets and then proceed with simulation and execution." 
-                        : "✓✓ Perfect. All sniping wallets have sufficient BNB balance. Please go to next step."
+                      ? Number(feeEstimationResult.bnbForDistribution) +
+                          wallets
+                            .filter((w) => w.role !== 'botmain')
+                            .reduce(
+                              (sum, wallet) =>
+                                sum + (wallet.insufficientBnb || 0),
+                              0
+                            ) >
+                        0
+                        ? '✓ Fee estimation successful. You can distribute BNB to sniping wallets and then proceed with simulation and execution.'
+                        : '✓✓ Perfect. All sniping wallets have sufficient BNB balance. Please go to next step.'
                       : `⚠ Insufficient balance. You need to fill BNB to deposit wallet and then distribute BNB to sniping wallets before proceeding with simulation and execution.`}
                   </p>
                 </div>
 
-                {!feeEstimationResult.sufficientBalance && insufficientFundsDetails && (
-                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800">
-                    <p className="font-medium mb-1">Insufficient BNB Details:</p>
-                    <ul className="list-disc pl-5 space-y-1 text-xs">
-                      <li>
-                        <span className="font-medium">{insufficientFundsDetails.walletType}:</span> {insufficientFundsDetails.walletAddress.slice(0, 6)}...{insufficientFundsDetails.walletAddress.slice(-4)}
-                      </li>
-                      <li>Available: {insufficientFundsDetails.availableBnb.toFixed(6)} BNB</li>
-                      <li>Required: {insufficientFundsDetails.requiredBnb.toFixed(6)} BNB</li>
-                      <li>Missing: <span className="font-medium">{insufficientFundsDetails.missingBnb.toFixed(6)} BNB</span></li>
-                    </ul>
-                    <p className="text-xs mt-2">
-                      Please distribute more BNB to this wallet before execution.
-                    </p>
-                  </div>
-                )}
+                {!feeEstimationResult.sufficientBalance &&
+                  insufficientFundsDetails && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800">
+                      <p className="font-medium mb-1">
+                        Insufficient BNB Details:
+                      </p>
+                      <ul className="list-disc pl-5 space-y-1 text-xs">
+                        <li>
+                          <span className="font-medium">
+                            {insufficientFundsDetails.walletType}:
+                          </span>{' '}
+                          {insufficientFundsDetails.walletAddress.slice(0, 6)}
+                          ...{insufficientFundsDetails.walletAddress.slice(-4)}
+                        </li>
+                        <li>
+                          Available:{' '}
+                          {insufficientFundsDetails.availableBnb.toFixed(6)} BNB
+                        </li>
+                        <li>
+                          Required:{' '}
+                          {insufficientFundsDetails.requiredBnb.toFixed(6)} BNB
+                        </li>
+                        <li>
+                          Missing:{' '}
+                          <span className="font-medium">
+                            {insufficientFundsDetails.missingBnb.toFixed(6)} BNB
+                          </span>
+                        </li>
+                      </ul>
+                      <p className="text-xs mt-2">
+                        Please distribute more BNB to this wallet before
+                        execution.
+                      </p>
+                    </div>
+                  )}
               </div>
             </div>
           )}
@@ -1527,10 +1975,21 @@ export function SnipeWizardDialog({
           <div className="bg-muted/20 rounded-lg p-2 sm:p-4">
             <h3 className="text-base font-medium mb-2">Tips</h3>
             <ul className="list-disc ml-4 sm:ml-5 space-y-1 sm:space-y-2 text-xs sm:text-sm">
-              <li>Always estimate fees before distributing BNB to ensure you have enough funds</li>
-              <li>Make sure your deposit wallet has sufficient BNB to cover all costs</li>
-              <li>Consider distributing extra BNB if you plan to sell tokens later</li>
-              <li>The system automatically calculates the optimal BNB needed for each wallet</li>
+              <li>
+                Always estimate fees before distributing BNB to ensure you have
+                enough funds
+              </li>
+              <li>
+                Make sure your deposit wallet has sufficient BNB to cover all
+                costs
+              </li>
+              <li>
+                Consider distributing extra BNB if you plan to sell tokens later
+              </li>
+              <li>
+                The system automatically calculates the optimal BNB needed for
+                each wallet
+              </li>
             </ul>
           </div>
         </div>
@@ -1543,84 +2002,168 @@ export function SnipeWizardDialog({
       <CardHeader className="px-0 pt-0 pb-2 sm:px-6 sm:pb-4">
         <CardTitle>Simulation</CardTitle>
         <CardDescription>
-          Run a simulation to ensure everything is correctly set up before executing.
+          Run a simulation to ensure everything is correctly set up before
+          executing.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 sm:px-6">
         <div className="space-y-4 sm:space-y-6">
           {/* Readiness Check */}
           <div className="border rounded-lg p-2 sm:p-4">
-            <h3 className="text-base font-medium mb-2 sm:mb-3">Pre-Simulation Checklist</h3>
-            
+            <h3 className="text-base font-medium mb-2 sm:mb-3">
+              Pre-Simulation Checklist
+            </h3>
+
             <div className="space-y-2">
               {/* Wallet Setup Check */}
               <div className="flex items-center gap-3">
-                {wallets.filter(w => w.role !== 'botmain').length > 0 ? (
+                {wallets.filter((w) => w.role !== 'botmain').length > 0 ? (
                   <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 text-green-600"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 ) : (
                   <div className="h-5 w-5 rounded-full bg-red-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 text-red-600"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 )}
                 <span className="text-sm">Sniping wallets configured</span>
               </div>
-              
+
               {/* Token Amount Check */}
               <div className="flex items-center gap-3">
-                {wallets.filter(w => w.role !== 'botmain').some(w => (w.tokenAmount || 0) > 0) ? (
+                {wallets
+                  .filter((w) => w.role !== 'botmain')
+                  .some((w) => (w.tokenAmount || 0) > 0) ? (
                   <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 text-green-600"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 ) : (
                   <div className="h-5 w-5 rounded-full bg-red-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 text-red-600"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 )}
                 <span className="text-sm">Token snipe amounts configured</span>
               </div>
-              
+
               {/* Fee Estimation Check */}
               <div className="flex items-center gap-3">
                 {feeEstimationResult ? (
                   <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 text-green-600"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 ) : (
                   <div className="h-5 w-5 rounded-full bg-red-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 text-red-600"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 )}
                 <span className="text-sm">Fees estimated</span>
               </div>
-              
+
               {/* Sufficient Balance Check */}
               <div className="flex items-center gap-3">
-                {
-                  feeEstimationResult && feeEstimationResult.sufficientBalance && 
-                   (Number(feeEstimationResult.bnbForDistribution) + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))) <= 0  ? (
+                {feeEstimationResult &&
+                feeEstimationResult.sufficientBalance &&
+                Number(feeEstimationResult.bnbForDistribution) +
+                  wallets
+                    .filter((w) => w.role !== 'botmain')
+                    .reduce(
+                      (sum, wallet) => sum + (wallet.insufficientBnb || 0),
+                      0
+                    ) <=
+                  0 ? (
                   <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 text-green-600"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 ) : (
                   <div className="h-5 w-5 rounded-full bg-red-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 text-red-600"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                 )}
@@ -1631,22 +2174,30 @@ export function SnipeWizardDialog({
 
           {/* Simulation Button and Status */}
           <div className="border rounded-lg p-2 sm:p-4">
-            <h3 className="text-base font-medium mb-2 sm:mb-3">Simulate Snipe Operation</h3>
+            <h3 className="text-base font-medium mb-2 sm:mb-3">
+              Simulate Snipe Operation
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Run a simulation to verify that your snipe operation is configured correctly and can be executed successfully.
+              Run a simulation to verify that your snipe operation is configured
+              correctly and can be executed successfully.
             </p>
-            
+
             <div className="space-y-4">
               <Button
-                onClick={ () => {
-                  handleSimulate()}}
+                onClick={() => {
+                  handleSimulate();
+                }}
                 disabled={
-                  isEstimatingFees || 
-                  isSimulating || 
-                  !feeEstimationResult || 
-                  isExecuting || 
-                  !wallets.filter(w => w.role !== 'botmain').some(w => (w.tokenAmount || 0) > 0) ||
-                  !wallets.filter(w => w.role !== 'botmain').every(w => (w.bnbNeeded || 0) === 0)
+                  isEstimatingFees ||
+                  isSimulating ||
+                  !feeEstimationResult ||
+                  isExecuting ||
+                  !wallets
+                    .filter((w) => w.role !== 'botmain')
+                    .some((w) => (w.tokenAmount || 0) > 0) ||
+                  !wallets
+                    .filter((w) => w.role !== 'botmain')
+                    .every((w) => (w.bnbNeeded || 0) === 0)
                 }
                 className="w-full"
               >
@@ -1656,10 +2207,10 @@ export function SnipeWizardDialog({
                     Simulating...
                   </>
                 ) : (
-                  "Simulate Bundle"
+                  'Simulate Bundle'
                 )}
               </Button>
-              
+
               {/* Simulation Status */}
               <div className="bg-muted/20 p-3 rounded-md">
                 <h4 className="text-sm font-medium mb-2">Simulation Status</h4>
@@ -1670,28 +2221,34 @@ export function SnipeWizardDialog({
                   </div>
                 ) : simulationResult ? (
                   <div className="text-sm">
-                    <p className={simulationResult.success ? "text-green-600" : "text-red-600"}>
-                      {simulationResult.success 
-                        ? "✓ Simulation successful! You can proceed to execution." 
-                        : "⚠ Simulation completed, but some wallets have insufficient funds."}
+                    <p
+                      className={
+                        simulationResult.success
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }
+                    >
+                      {simulationResult.success
+                        ? '✓ Simulation successful! You can proceed to execution.'
+                        : '⚠ Simulation completed, but some wallets have insufficient funds.'}
                     </p>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No simulation has been run yet. Click "Simulate Bundle" to start.
+                    No simulation has been run yet. Click "Simulate Bundle" to
+                    start.
                   </p>
                 )}
               </div>
             </div>
           </div>
-          
 
-          
           {/* Navigation Hint */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-4">
             <h3 className="text-base font-medium mb-1">Next Steps</h3>
             <p className="text-sm text-blue-700">
-              After successful simulation, proceed to the execution step to snipe the token.
+              After successful simulation, proceed to the execution step to
+              snipe the token.
             </p>
           </div>
         </div>
@@ -1713,9 +2270,12 @@ export function SnipeWizardDialog({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             {/* Final Confirmation */}
             <div className="border rounded-lg p-2 sm:p-4">
-              <h3 className="text-base font-medium mb-2 sm:mb-3">Final Confirmation</h3>
+              <h3 className="text-base font-medium mb-2 sm:mb-3">
+                Final Confirmation
+              </h3>
               <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
-                Please verify all details below before executing the snipe operation.
+                Please verify all details below before executing the snipe
+                operation.
               </p>
 
               <div className="space-y-3">
@@ -1723,23 +2283,49 @@ export function SnipeWizardDialog({
                 <div className="bg-muted/20 p-3 rounded-md">
                   <p className="text-xs text-muted-foreground mb-1">Token:</p>
                   <div className="flex items-center gap-2">
-                    <p className="font-medium">{project?.symbol || "Unknown"}</p>
+                    <p className="font-medium">
+                      {project?.symbol || 'Unknown'}
+                    </p>
                     <code className="text-xs font-mono bg-muted/30 px-1 py-0.5 rounded">
-                      {project?.tokenAddress.slice(0, 6)}...{project?.tokenAddress.slice(-4)}
+                      {project?.tokenAddress.slice(0, 6)}...
+                      {project?.tokenAddress.slice(-4)}
                     </code>
                   </div>
                 </div>
 
                 {/* Operation Summary */}
                 <div className="bg-muted/20 p-3 rounded-md">
-                  <p className="text-xs text-muted-foreground mb-1">Operation Summary:</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Operation Summary:
+                  </p>
                   <ul className="mt-1 space-y-1 text-sm">
-                    <li><span className="text-muted-foreground">Sniping Wallets:</span> {wallets.filter(w => w.role !== 'botmain').length}</li>
-                    <li><span className="text-muted-foreground">Total Tokens to Buy:</span> {wallets
-                      .filter(w => w.role !== 'botmain')
-                      .reduce((sum, wallet) => sum + (wallet.tokenAmount || 0), 0)
-                      .toLocaleString()}</li>
-                    <li><span className="text-muted-foreground">Total BNB Required:</span> {feeEstimationResult ? feeEstimationResult.totalBnbNeeded.toFixed(6) : '0.000000'} BNB</li>
+                    <li>
+                      <span className="text-muted-foreground">
+                        Sniping Wallets:
+                      </span>{' '}
+                      {wallets.filter((w) => w.role !== 'botmain').length}
+                    </li>
+                    <li>
+                      <span className="text-muted-foreground">
+                        Total Tokens to Buy:
+                      </span>{' '}
+                      {wallets
+                        .filter((w) => w.role !== 'botmain')
+                        .reduce(
+                          (sum, wallet) => sum + (wallet.tokenAmount || 0),
+                          0
+                        )
+                        .toLocaleString()}
+                    </li>
+                    <li>
+                      <span className="text-muted-foreground">
+                        Total BNB Required:
+                      </span>{' '}
+                      {feeEstimationResult
+                        ? feeEstimationResult.totalBnbNeeded.toFixed(6)
+                        : '0.000000'}{' '}
+                      BNB
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -1747,29 +2333,44 @@ export function SnipeWizardDialog({
 
             {/* Execution Controls */}
             <div className="border rounded-lg p-2 sm:p-4">
-              <h3 className="text-base font-medium mb-2 sm:mb-3">Execute Bundle</h3>
+              <h3 className="text-base font-medium mb-2 sm:mb-3">
+                Execute Bundle
+              </h3>
               <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
-                Click the button below to execute the bundle operation with all configured parameters.
+                Click the button below to execute the bundle operation with all
+                configured parameters.
               </p>
-              
+
               {/* Warning */}
               <div className="bg-amber-50 border border-amber-200 rounded-md p-2 sm:p-3 text-amber-800 text-xs sm:text-sm mb-4">
                 <p className="font-medium mb-1">⚠️ Important</p>
-                <p>Once executed, this operation cannot be reversed. Ensure all parameters are correct.</p>
+                <p>
+                  Once executed, this operation cannot be reversed. Ensure all
+                  parameters are correct.
+                </p>
               </div>
 
               <Button
                 onClick={handleExecute}
                 disabled={
-                  isExecuting || 
-                  insufficientFundsDetails !== null || 
-                  !feeEstimationResult || 
-                  !feeEstimationResult.sufficientBalance || 
-                  !wallets.filter(w => w.role !== 'botmain').some(w => (w.tokenAmount || 0) > 0) || 
-                  !wallets.filter(w => w.role !== 'botmain').every(w => (w.bnbNeeded || 0) === 0)
+                  isExecuting ||
+                  insufficientFundsDetails !== null ||
+                  !feeEstimationResult ||
+                  !feeEstimationResult.sufficientBalance ||
+                  !wallets
+                    .filter((w) => w.role !== 'botmain')
+                    .some((w) => (w.tokenAmount || 0) > 0) ||
+                  !wallets
+                    .filter((w) => w.role !== 'botmain')
+                    .every((w) => (w.bnbNeeded || 0) === 0)
                 }
                 className="w-full mb-4"
-                variant={insufficientFundsDetails || !feeEstimationResult?.sufficientBalance ? "outline" : "default"}
+                variant={
+                  insufficientFundsDetails ||
+                  !feeEstimationResult?.sufficientBalance
+                    ? 'outline'
+                    : 'default'
+                }
               >
                 {isExecuting ? (
                   <>
@@ -1777,53 +2378,84 @@ export function SnipeWizardDialog({
                     Executing...
                   </>
                 ) : (
-                  "Execute Bundle"
+                  'Execute Bundle'
                 )}
               </Button>
 
               {insufficientFundsDetails && (
                 <div className="bg-red-50 border border-red-200 p-3 rounded-md text-red-700 text-sm">
-                  <p className="font-medium mb-1">⚠️ Cannot Execute: Insufficient Funds</p>
-                  <p>Please go back to the previous step and resolve the insufficient funds issue.</p>
+                  <p className="font-medium mb-1">
+                    ⚠️ Cannot Execute: Insufficient Funds
+                  </p>
+                  <p>
+                    Please go back to the previous step and resolve the
+                    insufficient funds issue.
+                  </p>
                 </div>
               )}
 
-              {!insufficientFundsDetails && feeEstimationResult && !feeEstimationResult.sufficientBalance && (
-                <div className="bg-red-50 border border-red-200 p-3 rounded-md text-red-700 text-sm">
-                  <p className="font-medium mb-1">⚠️ Cannot Execute: Insufficient Balance</p>
-                  <p>Your deposit wallet doesn't have enough BNB to cover the operation costs.</p>
-                </div>
-              )}
+              {!insufficientFundsDetails &&
+                feeEstimationResult &&
+                !feeEstimationResult.sufficientBalance && (
+                  <div className="bg-red-50 border border-red-200 p-3 rounded-md text-red-700 text-sm">
+                    <p className="font-medium mb-1">
+                      ⚠️ Cannot Execute: Insufficient Balance
+                    </p>
+                    <p>
+                      Your deposit wallet doesn't have enough BNB to cover the
+                      operation costs.
+                    </p>
+                  </div>
+                )}
 
-              {!insufficientFundsDetails && (!feeEstimationResult || !wallets.filter(w => w.role !== 'botmain').every(w => (w.bnbNeeded || 0) === 0)) && (
-                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-amber-800 text-sm">
-                  <p className="font-medium mb-1">⚠️ Cannot Execute: Incomplete Setup</p>
-                  <p>Please complete fee estimation and BNB distribution before executing.</p>
-                </div>
-              )}
-              
+              {!insufficientFundsDetails &&
+                (!feeEstimationResult ||
+                  !wallets
+                    .filter((w) => w.role !== 'botmain')
+                    .every((w) => (w.bnbNeeded || 0) === 0)) && (
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-amber-800 text-sm">
+                    <p className="font-medium mb-1">
+                      ⚠️ Cannot Execute: Incomplete Setup
+                    </p>
+                    <p>
+                      Please complete fee estimation and BNB distribution before
+                      executing.
+                    </p>
+                  </div>
+                )}
+
               {/* Execution Status */}
               <div className="mt-4 border-t pt-4">
                 <h4 className="text-sm font-medium mb-2">Execution Status</h4>
-                
+
                 {isExecuting ? (
                   <div className="text-center py-4">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
                     <p className="font-medium">Executing Bundle Operation</p>
-                    <p className="text-sm text-muted-foreground">This may take a few moments...</p>
+                    <p className="text-sm text-muted-foreground">
+                      This may take a few moments...
+                    </p>
                   </div>
                 ) : (
                   <div className="text-center py-4 bg-muted/10 rounded-md">
                     {executionSuccess ? (
                       <>
                         <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-4" />
-                        <p className="font-medium text-green-600">Execution Successful!</p>
-                        <p className="text-xs mt-2 text-muted-foreground">You can now proceed to manage your tokens</p>
+                        <p className="font-medium text-green-600">
+                          Execution Successful!
+                        </p>
+                        <p className="text-xs mt-2 text-muted-foreground">
+                          You can now proceed to manage your tokens
+                        </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-muted-foreground">No execution in progress</p>
-                        <p className="text-xs mt-2">Click "Execute Bundle" to start the operation</p>
+                        <p className="text-muted-foreground">
+                          No execution in progress
+                        </p>
+                        <p className="text-xs mt-2">
+                          Click "Execute Bundle" to start the operation
+                        </p>
                       </>
                     )}
                   </div>
@@ -1839,7 +2471,10 @@ export function SnipeWizardDialog({
               After successful execution, you can:
             </p>
             <ul className="list-disc ml-4 sm:ml-5 space-y-1 text-sm text-blue-700">
-              <li>Proceed to the next step to manage your tokens (selling, collecting BNB)</li>
+              <li>
+                Proceed to the next step to manage your tokens (selling,
+                collecting BNB)
+              </li>
               <li>Check wallet balances to verify tokens were received</li>
               <li>Monitor the token price on PancakeSwap</li>
             </ul>
@@ -1850,9 +2485,18 @@ export function SnipeWizardDialog({
             <h3 className="text-base font-medium mb-2">Tips</h3>
             <ul className="list-disc ml-4 sm:ml-5 space-y-1 sm:space-y-2 text-xs sm:text-sm">
               <li>Ensure all parameters are correct before executing</li>
-              <li>The execution process automatically handles all the steps required for sniping</li>
-              <li>After execution, wait for a few moments for all transactions to complete</li>
-              <li>If execution fails, check wallet balances and try simulating again</li>
+              <li>
+                The execution process automatically handles all the steps
+                required for sniping
+              </li>
+              <li>
+                After execution, wait for a few moments for all transactions to
+                complete
+              </li>
+              <li>
+                If execution fails, check wallet balances and try simulating
+                again
+              </li>
             </ul>
           </div>
         </div>
@@ -1871,50 +2515,71 @@ export function SnipeWizardDialog({
       <CardContent className="px-0 sm:px-6">
         <div className="space-y-4 sm:space-y-6">
           {/* Wallet Management Section */}
-          <div className="border rounded-lg p-2 sm:p-4">
-            <h3 className="text-base font-medium mb-2 sm:mb-3">Wallet Management</h3>
+          <div className="border rounded-lg p-2 sm:p-4 w-full">
+            <h3 className="text-base font-medium mb-2 sm:mb-3">
+              Wallet Management
+            </h3>
             <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
               Manage your wallets, sell tokens, and collect BNB.
             </p>
-          {/* Deposit Wallet Balance */}
-          <div className="border rounded-lg p-2 sm:p-4 bg-muted/10 mb-2">
-            <h3 className="text-base font-medium mb-2">Deposit Wallet</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Address:</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs font-mono bg-muted/20 px-1 py-0.5 rounded truncate max-w-[150px] sm:max-w-[200px]">
-                    {project?.addons.SnipeBot.depositWalletId?.publicKey.slice(0, 6)}...
-                    {project?.addons.SnipeBot.depositWalletId?.publicKey.slice(-4)}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5"
-                    onClick={() => project?.addons.SnipeBot.depositWalletId && copyToClipboard(project?.addons.SnipeBot.depositWalletId.publicKey)}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
+            {/* Deposit Wallet Balance */}
+            <div className="border rounded-lg p-2 sm:p-4 bg-muted/10 mb-2">
+              <h3 className="text-base font-medium mb-2">Deposit Wallet</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Address:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs font-mono bg-muted/20 px-1 py-0.5 rounded truncate max-w-[150px] sm:max-w-[200px]">
+                      {project?.addons.SnipeBot.depositWalletId?.publicKey.slice(
+                        0,
+                        6
+                      )}
+                      ...
+                      {project?.addons.SnipeBot.depositWalletId?.publicKey.slice(
+                        -4
+                      )}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() =>
+                        project?.addons.SnipeBot.depositWalletId &&
+                        copyToClipboard(
+                          project?.addons.SnipeBot.depositWalletId.publicKey
+                        )
+                      }
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    BNB Balance:
+                  </p>
+                  <p className="font-medium">
+                    {wallets
+                      .find((w) => w.role === 'botmain')
+                      ?.bnbBalance?.toFixed(4) || '0.0000'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {project?.symbol || project?.name} Balance:
+                  </p>
+                  <p className="font-medium">
+                    {wallets
+                      .find((w) => w.role === 'botmain')
+                      ?.tokenBalance?.toFixed(4) || '0.0000'}
+                  </p>
                 </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">BNB Balance:</p>
-                <p className="font-medium">
-                  {wallets.find(w => w.role === 'botmain')?.bnbBalance?.toFixed(4) || '0.0000'} 
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">{project?.symbol || project?.name} Balance:</p>
-                <p className="font-medium">
-                  {wallets.find(w => w.role === 'botmain')?.tokenBalance?.toFixed(4) || '0.0000'} 
-                </p>
-              </div>
             </div>
-          </div>
 
             {/* Wallet Table */}
-            <div className="overflow-x-auto border rounded-lg">
-              <div className="min-w-[500px]">
+            <div className="relative h-[115px]">
+              <div className="border rounded-lg w-full absolute">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1922,126 +2587,184 @@ export function SnipeWizardDialog({
                       <TableHead className="text-right">BNB</TableHead>
                       <TableHead className="text-right">Tokens</TableHead>
                       <TableHead className="text-center">Sell %</TableHead>
-                      <TableHead className="text-center">BNB Rate for buying %</TableHead>
+                      <TableHead className="text-center">
+                        BNB Rate for buying %
+                      </TableHead>
                       <TableHead className="text-center">Multi</TableHead>
                       <TableHead className="text-center">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {wallets.length > 0 ? (
-                      wallets.filter(w => w.role !== 'botmain').map((wallet, index) => (
-                        <TableRow key={wallet.publicKey}>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <span className="text-xs font-mono">
-                                {wallet.publicKey.slice(0, 6)}...{wallet.publicKey.slice(-4)}
-                              </span>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 w-6 p-0 ml-1"
-                                onClick={() => copyToClipboard(wallet.publicKey)}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 w-6 p-0"
-                                onClick={() => window.open(`https://bscscan.com/address/${wallet.publicKey}`, '_blank')}
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {wallet.bnbBalance?.toFixed(4) || '0.000000'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {wallet.tokenBalance?.toLocaleString() || '0'}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              className="h-8 w-16 text-center"
-                              min={1}
-                              max={100}
-                              value={wallet.sellPercentage === undefined ? 100 : wallet.sellPercentage}
-                              onChange={(e) => setWallets(prev =>
-                                prev.map(w => w.publicKey === wallet.publicKey
-                                  ? { ...w, sellPercentage: Number(e.target.value) }
-                                  : w
-                                )
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              className="h-8 w-16 text-center"
-                              min={1}
-                              max={100}
-                              value={wallet.bnbSpendRate === undefined ? 50 : wallet.bnbSpendRate}
-                              onChange={(e) => setWallets(prev =>
-                                prev.map(w => w.publicKey === wallet.publicKey
-                                  ? { ...w, bnbSpendRate: Number(e.target.value) }
-                                  : w
-                                )
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Checkbox
-                              checked={((wallet.tokenBalance || 0) <= 0 && (wallet.bnbBalance || 0) <= 0) ? false : (wallet.isSelectedForMutilSell || false)}
-                              onCheckedChange={(checked) => setWallets(prev =>
-                                prev.map(w => w.publicKey === wallet.publicKey
-                                  ? { ...w, isSelectedForMutilSell: checked === true }
-                                  : w
-                                )
-                              )}
-                              disabled={(wallet.tokenBalance || 0) <= 0 && (wallet.bnbBalance || 0) <= 0}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex flex-row gap-2 justify-center">
-                              <Button
-                                className="h-8"
-                                variant="outline"
-                                onClick={() => handleSingleBuy(wallet.publicKey)}
-                                disabled={
-                                  executingSingleBuys[wallet.publicKey] ||
-                                  wallet.isSelectedForMutilSell
+                      wallets
+                        .filter((w) => w.role !== 'botmain')
+                        .map((wallet, index) => (
+                          <TableRow key={wallet.publicKey}>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <span className="text-xs font-mono">
+                                  {wallet.publicKey.slice(0, 6)}...
+                                  {wallet.publicKey.slice(-4)}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 ml-1"
+                                  onClick={() =>
+                                    copyToClipboard(wallet.publicKey)
+                                  }
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() =>
+                                    window.open(
+                                      `https://bscscan.com/address/${wallet.publicKey}`,
+                                      '_blank'
+                                    )
+                                  }
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {wallet.bnbBalance?.toFixed(4) || '0.000000'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {wallet.tokenBalance?.toLocaleString() || '0'}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                className="h-8 w-16 text-center"
+                                min={1}
+                                max={100}
+                                value={
+                                  wallet.sellPercentage === undefined
+                                    ? 100
+                                    : wallet.sellPercentage
                                 }
-                              >
-                                {executingSingleBuys[wallet.publicKey] ? (
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : (
-                                  null
-                                )}
-                                Buy
-                              </Button>
-                              <Button
-                                className="h-8"
-                                onClick={() => handleSingleSell(wallet.publicKey, wallet.sellPercentage || 100)}
-                                disabled={
-                                  executingSingleSells[wallet.publicKey] ||
-                                  wallet.isSelectedForMutilSell ||
-                                  (wallet.tokenBalance || 0) <= 0
+                                onChange={(e) =>
+                                  setWallets((prev) =>
+                                    prev.map((w) =>
+                                      w.publicKey === wallet.publicKey
+                                        ? {
+                                            ...w,
+                                            sellPercentage: Number(
+                                              e.target.value
+                                            ),
+                                          }
+                                        : w
+                                    )
+                                  )
                                 }
-                              >
-                                {executingSingleSells[wallet.publicKey] ? (
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : null}
-                                Sell
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                className="h-8 w-16 text-center"
+                                min={1}
+                                max={100}
+                                value={
+                                  wallet.bnbSpendRate === undefined
+                                    ? 50
+                                    : wallet.bnbSpendRate
+                                }
+                                onChange={(e) =>
+                                  setWallets((prev) =>
+                                    prev.map((w) =>
+                                      w.publicKey === wallet.publicKey
+                                        ? {
+                                            ...w,
+                                            bnbSpendRate: Number(
+                                              e.target.value
+                                            ),
+                                          }
+                                        : w
+                                    )
+                                  )
+                                }
+                              />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Checkbox
+                                checked={
+                                  (wallet.tokenBalance || 0) <= 0 &&
+                                  (wallet.bnbBalance || 0) <= 0
+                                    ? false
+                                    : wallet.isSelectedForMutilSell || false
+                                }
+                                onCheckedChange={(checked) =>
+                                  setWallets((prev) =>
+                                    prev.map((w) =>
+                                      w.publicKey === wallet.publicKey
+                                        ? {
+                                            ...w,
+                                            isSelectedForMutilSell:
+                                              checked === true,
+                                          }
+                                        : w
+                                    )
+                                  )
+                                }
+                                disabled={
+                                  (wallet.tokenBalance || 0) <= 0 &&
+                                  (wallet.bnbBalance || 0) <= 0
+                                }
+                              />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex flex-row gap-2 justify-center">
+                                <Button
+                                  className="h-8"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleSingleBuy(wallet.publicKey)
+                                  }
+                                  disabled={
+                                    executingSingleBuys[wallet.publicKey] ||
+                                    wallet.isSelectedForMutilSell
+                                  }
+                                >
+                                  {executingSingleBuys[wallet.publicKey] ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  ) : null}
+                                  Buy
+                                </Button>
+                                <Button
+                                  className="h-8"
+                                  onClick={() =>
+                                    handleSingleSell(
+                                      wallet.publicKey,
+                                      wallet.sellPercentage || 100
+                                    )
+                                  }
+                                  disabled={
+                                    executingSingleSells[wallet.publicKey] ||
+                                    wallet.isSelectedForMutilSell ||
+                                    (wallet.tokenBalance || 0) <= 0
+                                  }
+                                >
+                                  {executingSingleSells[wallet.publicKey] ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  ) : null}
+                                  Sell
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
                     ) : (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center">
-                          <span className="text-sm text-muted-foreground">No wallets found. Generate wallets to start.</span>
+                          <span className="text-sm text-muted-foreground">
+                            No wallets found. Generate wallets to start.
+                          </span>
                         </TableCell>
                       </TableRow>
                     )}
@@ -2054,7 +2777,7 @@ export function SnipeWizardDialog({
             <div className="mt-4 flex flex-wrap gap-3">
               <Button
                 onClick={() => {
-                  const addresses = wallets.map(w => w.publicKey);
+                  const addresses = wallets.map((w) => w.publicKey);
                   fetchBalances(addresses);
                 }}
                 className="h-9"
@@ -2074,9 +2797,8 @@ export function SnipeWizardDialog({
                 disabled={
                   isCollectingBnb ||
                   isExecutingMultiSell ||
-                  !wallets.some(w => 
-                    w.role !== 'botmain' && 
-                    (w.bnbBalance || 0) > 0.00002
+                  !wallets.some(
+                    (w) => w.role !== 'botmain' && (w.bnbBalance || 0) > 0.00002
                   )
                 }
               >
@@ -2099,11 +2821,12 @@ export function SnipeWizardDialog({
                 onClick={handleMultiSell}
                 disabled={
                   isExecutingMultiSell ||
-                  isCollectingBnb || 
-                  !wallets.some(w =>
-                    w.isSelectedForMutilSell &&
-                    w.role !== 'botmain' &&
-                    (w.tokenBalance || 0) > 0
+                  isCollectingBnb ||
+                  !wallets.some(
+                    (w) =>
+                      w.isSelectedForMutilSell &&
+                      w.role !== 'botmain' &&
+                      (w.tokenBalance || 0) > 0
                   )
                 }
                 className="h-9"
@@ -2118,11 +2841,12 @@ export function SnipeWizardDialog({
                 onClick={handleMultiBuy}
                 disabled={
                   isExecutingMultiBuy ||
-                  isCollectingBnb || 
-                  !wallets.some(w =>
-                    w.isSelectedForMutilSell &&
-                    w.role !== 'botmain' &&
-                    (w.bnbBalance || 0) > 0
+                  isCollectingBnb ||
+                  !wallets.some(
+                    (w) =>
+                      w.isSelectedForMutilSell &&
+                      w.role !== 'botmain' &&
+                      (w.bnbBalance || 0) > 0
                   )
                 }
                 className="h-9"
@@ -2133,69 +2857,98 @@ export function SnipeWizardDialog({
                 ) : null}
                 Multi Buy {project?.symbol || project?.name}
               </Button>
-                
-              <Button
-                  onClick={() => {
-                    handleDistributeBnb()}}
-                variant="outline"
-                  className={
-                    `h-9 ${                   
-                      insufficientFundsDetails && (insufficientFundsDetails?.missingBnb || 0) > 0
-                      ? "border-2 border-red-500 hover:border-red-600"
-                      :
-                      ""
-                      
-                    } `
-                  }
-                  disabled={
-                    !wallets.filter((wallet: WalletInfo) => wallet.role !== 'botmain').length ||
-                    isDistributingBNBs ||
-                    (insufficientFundsDetails?.missingBnb || 0) <= 0
-                  }
-                >
-                  {isDistributingBNBs ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Distributing...
-                    </>
-                  )  : (
-                    "Distribute BNB"
-                  )}
-                </Button>
 
+              <Button
+                onClick={() => {
+                  handleDistributeBnb();
+                }}
+                variant="outline"
+                className={`h-9 ${
+                  insufficientFundsDetails &&
+                  (insufficientFundsDetails?.missingBnb || 0) > 0
+                    ? 'border-2 border-red-500 hover:border-red-600'
+                    : ''
+                } `}
+                disabled={
+                  !wallets.filter(
+                    (wallet: WalletInfo) => wallet.role !== 'botmain'
+                  ).length ||
+                  isDistributingBNBs ||
+                  (insufficientFundsDetails?.missingBnb || 0) <= 0
+                }
+              >
+                {isDistributingBNBs ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Distributing...
+                  </>
+                ) : (
+                  'Distribute BNB'
+                )}
+              </Button>
             </div>
           </div>
 
           {/* Help and Instructions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="border rounded-lg p-3">
-              <h3 className="text-sm font-medium mb-2">Post-Operation Instructions</h3>
+              <h3 className="text-sm font-medium mb-2">
+                Post-Operation Instructions
+              </h3>
               <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li>Refresh balances to see the current token and BNB amounts</li>
+                <li>
+                  Refresh balances to see the current token and BNB amounts
+                </li>
                 <li>Use "Buy" to purchase tokens from individual wallets</li>
                 <li>Set the sell percentage for each wallet (default: 100%)</li>
                 <li>Use "Single Sell" to sell from individual wallets</li>
-                <li>Check wallets and use "Multi Sell" to sell from multiple wallets at once</li>
-                <li>After selling, use "Collect BNB" to transfer BNB to your deposit wallet</li>
-                <li>If there's insufficient BNB in any wallet, use "Distribute BNB" to transfer BNB from the deposit wallet to the sniping wallets</li>
+                <li>
+                  Check wallets and use "Multi Sell" to sell from multiple
+                  wallets at once
+                </li>
+                <li>
+                  After selling, use "Collect BNB" to transfer BNB to your
+                  deposit wallet
+                </li>
+                <li>
+                  If there's insufficient BNB in any wallet, use "Distribute
+                  BNB" to transfer BNB from the deposit wallet to the sniping
+                  wallets
+                </li>
               </ul>
             </div>
 
             <div className="border rounded-lg p-3">
               <h3 className="text-sm font-medium mb-2">Wallet Information</h3>
               <div className="space-y-2 text-sm">
-                <p><span className="text-muted-foreground">Total Sniping Wallets:</span> {wallets.filter(w => w.role !== 'botmain').length}</p>
                 <p>
-                  <span className="text-muted-foreground">Total BNB Balance:</span>{' '}
-                  {wallets.reduce((sum, w) => sum + (w.bnbBalance || 0), 0).toFixed(6)} BNB
+                  <span className="text-muted-foreground">
+                    Total Sniping Wallets:
+                  </span>{' '}
+                  {wallets.filter((w) => w.role !== 'botmain').length}
                 </p>
                 <p>
-                  <span className="text-muted-foreground">Total Token Balance:</span>{' '}
-                  {wallets.reduce((sum, w) => sum + (w.tokenBalance || 0), 0).toLocaleString()} Tokens
+                  <span className="text-muted-foreground">
+                    Total BNB Balance:
+                  </span>{' '}
+                  {wallets
+                    .reduce((sum, w) => sum + (w.bnbBalance || 0), 0)
+                    .toFixed(6)}{' '}
+                  BNB
+                </p>
+                <p>
+                  <span className="text-muted-foreground">
+                    Total Token Balance:
+                  </span>{' '}
+                  {wallets
+                    .reduce((sum, w) => sum + (w.tokenBalance || 0), 0)
+                    .toLocaleString()}{' '}
+                  Tokens
                 </p>
                 <p className="mt-4 text-xs text-blue-600">
                   <Info className="h-3 w-3 inline mr-1" />
-                  Deposit wallet funds are used for gas fees during collecting and selling operations.
+                  Deposit wallet funds are used for gas fees during collecting
+                  and selling operations.
                 </p>
               </div>
             </div>
@@ -2210,14 +2963,14 @@ export function SnipeWizardDialog({
     try {
       await navigator.clipboard.writeText(text);
       toast({
-        title: "Copied!",
-        description: "Address copied to clipboard",
+        title: 'Copied!',
+        description: 'Address copied to clipboard',
       });
     } catch (err) {
       toast({
-        title: "Failed to copy",
-        description: "Please try again",
-        variant: "destructive",
+        title: 'Failed to copy',
+        description: 'Please try again',
+        variant: 'destructive',
       });
     }
   };
@@ -2231,64 +2984,67 @@ export function SnipeWizardDialog({
       // Get number of wallets to generate
       const count = parseInt(walletCount, 10) || 5;
       if (count <= 0) {
-        throw new Error("Please enter a valid number of wallets");
+        throw new Error('Please enter a valid number of wallets');
       }
 
       // Get the project ID and bot ID
       const projectId = project?._id || '';
       const botId = project?.addons?.SnipeBot?._id || '';
       if (!projectId || !botId) {
-        throw new Error("Project ID and SnipeBot ID are required");
+        throw new Error('Project ID and SnipeBot ID are required');
       }
 
       //read counts of existing wallets
       console.log('wallets', wallets);
-      const existingWallets = wallets.filter(w => w.role !== 'botmain');
+      const existingWallets = wallets.filter((w) => w.role !== 'botmain');
       const existingWalletCount = existingWallets.length;
-      if(existingWalletCount > count){
+      if (existingWalletCount > count) {
         const counts2delete = existingWalletCount - count;
-        const addresses2Delete = existingWallets.slice(-counts2delete).map(w => w.publicKey || '');        
+        const addresses2Delete = existingWallets
+          .slice(-counts2delete)
+          .map((w) => w.publicKey || '');
         //delete extra wallets
         // get snipe bot id from project
         const snipeBotId = project?.addons?.SnipeBot?._id || '';
-        await walletApi.deleteMultipleWallets( 
-          snipeBotId,
-          addresses2Delete);
+        await walletApi.deleteMultipleWallets(snipeBotId, addresses2Delete);
         setWallets(existingWallets.slice(0, count));
         setWalletCount(String(count));
         return;
-      } else if(existingWalletCount < count){
-      // Dispatch the action to generate wallets
-      const generatedWallets = await dispatch(generateWallets({
-        projectId,
-        count: count - existingWalletCount,
-        botId
-      })).unwrap();
+      } else if (existingWalletCount < count) {
+        // Dispatch the action to generate wallets
+        const generatedWallets = await dispatch(
+          generateWallets({
+            projectId,
+            count: count - existingWalletCount,
+            botId,
+          })
+        ).unwrap();
 
-      // Update wallets state
-      if (generatedWallets) {
-        let walletInfos: WalletInfo[] = generatedWallets.map(wallet => ({
-          _id: wallet._id,
-          publicKey: wallet.publicKey,
-          role: 'botsub', // Set default role for sub wallets
-          bnbBalance: 0,
-          tokenBalance: 0,
-          sellPercentage: 100,
-          insufficientBnb: 0,
-          bnbSpendRate: 90, // Initialize bnbSpendRate to 90%
-        }));
+        // Update wallets state
+        if (generatedWallets) {
+          const walletInfos: WalletInfo[] = generatedWallets.map((wallet) => ({
+            _id: wallet._id,
+            publicKey: wallet.publicKey,
+            role: 'botsub', // Set default role for sub wallets
+            bnbBalance: 0,
+            tokenBalance: 0,
+            sellPercentage: 100,
+            insufficientBnb: 0,
+            bnbSpendRate: 90, // Initialize bnbSpendRate to 90%
+          }));
 
-        setWallets(walletInfos);
-        setGeneratingWallets(false);
-        setIsEstimating(false);
+          setWallets(walletInfos);
+          setGeneratingWallets(false);
+          setIsEstimating(false);
+        }
       }
-    }
     } catch (error) {
       console.error('Error generating wallets:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate wallets",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to generate wallets',
+        variant: 'destructive',
       });
       setGeneratingWallets(false);
       setIsEstimating(false);
@@ -2298,36 +3054,51 @@ export function SnipeWizardDialog({
   // Utility functions to fix compilation errors
   // Function to fetch balances for wallet addresses
   const fetchBalances = async (addresses: string[]) => {
-    if (!project?.tokenAddress || !addresses.length || balanceFetchInProgressRef.current) return;
-    
+    if (
+      !project?.tokenAddress ||
+      !addresses.length ||
+      balanceFetchInProgressRef.current
+    )
+      return;
+
     try {
       balanceFetchInProgressRef.current = true;
-      
+
       const now = Date.now();
       const timeSinceLastUpdate = now - lastBalanceUpdateRef.current;
-      
+
       if (timeSinceLastUpdate < MIN_BALANCE_UPDATE_INTERVAL) {
-        await new Promise(resolve => setTimeout(resolve, MIN_BALANCE_UPDATE_INTERVAL - timeSinceLastUpdate));
+        await new Promise((resolve) =>
+          setTimeout(resolve, MIN_BALANCE_UPDATE_INTERVAL - timeSinceLastUpdate)
+        );
       }
-      
+
       setIsLoadingBalances(true);
-      
+
       // Use the Redux thunk to get wallet balances
-      const response = await dispatch(getWalletBalances({
-        walletAddresses: addresses,
-        tokenAddress: project.tokenAddress
-      })).unwrap();
-      
+      const response = await dispatch(
+        getWalletBalances({
+          walletAddresses: addresses,
+          tokenAddress: project.tokenAddress,
+        })
+      ).unwrap();
+
       // Map response to wallet info structure
-      const updatedWallets = addresses.map(address => {
-        const balance = response.find((b: any) => b.address.toLowerCase() === address.toLowerCase());
-        const existingWallet = wallets.find(w => w.publicKey.toLowerCase() === address.toLowerCase());
-        
+      const updatedWallets = addresses.map((address) => {
+        const balance = response.find(
+          (b: any) => b.address.toLowerCase() === address.toLowerCase()
+        );
+        const existingWallet = wallets.find(
+          (w) => w.publicKey.toLowerCase() === address.toLowerCase()
+        );
+
         return {
           publicKey: address,
-          role: address.toLowerCase() === project?.addons.SnipeBot.depositWalletId?.publicKey.toLowerCase() 
-            ? 'botmain' 
-            : existingWallet?.role || 'sniping',
+          role:
+            address.toLowerCase() ===
+            project?.addons.SnipeBot.depositWalletId?.publicKey.toLowerCase()
+              ? 'botmain'
+              : existingWallet?.role || 'sniping',
           _id: existingWallet?._id,
           bnbBalance: balance?.bnbBalance || 0,
           tokenBalance: balance?.tokenAmount || 0, // Use tokenAmount instead of tokenBalance
@@ -2336,16 +3107,18 @@ export function SnipeWizardDialog({
           tokenAmount: existingWallet?.tokenAmount || 0,
         };
       });
-      
-      setWalletCount(String(updatedWallets.filter(w => w.role !== 'botmain').length));
+
+      setWalletCount(
+        String(updatedWallets.filter((w) => w.role !== 'botmain').length)
+      );
       setWallets(updatedWallets);
       lastBalanceUpdateRef.current = Date.now();
     } catch (error) {
       console.error('Error fetching balances:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch wallet balances",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to fetch wallet balances',
+        variant: 'destructive',
       });
     } finally {
       setIsLoadingBalances(false);
@@ -2355,26 +3128,30 @@ export function SnipeWizardDialog({
 
   // Function to fetch connected wallet balance
   const fetchConnectedWalletBalance = async () => {
-    if (!address || !project?.tokenAddress || isLoadingConnectedWalletBalance) return;
-    
+    if (!address || !project?.tokenAddress || isLoadingConnectedWalletBalance)
+      return;
+
     try {
       setIsLoadingConnectedWalletBalance(true);
-      
+
       // Use web3Utils directly as this isn't going through our backend
-      const balances = await getWeb3WalletBalances([address], project.tokenAddress);
-      
+      const balances = await getWeb3WalletBalances(
+        [address],
+        project.tokenAddress
+      );
+
       if (balances.length > 0) {
         setConnectedWalletBalance({
           bnb: balances[0].bnbBalance,
-          token: balances[0].tokenAmount
+          token: balances[0].tokenAmount,
         });
       }
     } catch (error) {
       console.error('Error fetching connected wallet balance:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch connected wallet balance",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to fetch connected wallet balance',
+        variant: 'destructive',
       });
     } finally {
       setIsLoadingConnectedWalletBalance(false);
@@ -2383,20 +3160,21 @@ export function SnipeWizardDialog({
 
   // Function to fetch LP token balance
   const fetchLpTokenBalance = async () => {
-    if (!address || !project?.tokenAddress || lpTokenFetchInProgressRef.current) return;
-    
+    if (!address || !project?.tokenAddress || lpTokenFetchInProgressRef.current)
+      return;
+
     try {
       lpTokenFetchInProgressRef.current = true;
       setIsLoadingLpBalance(true);
-      
+
       const balance = await getLPTokenBalance(address, project.tokenAddress);
       setLpTokenBalance(balance);
     } catch (error) {
       console.error('Error fetching LP token balance:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch LP token balance",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to fetch LP token balance',
+        variant: 'destructive',
       });
     } finally {
       setIsLoadingLpBalance(false);
@@ -2407,7 +3185,7 @@ export function SnipeWizardDialog({
   // Function to fetch pool information
   const fetchPoolInfo = async () => {
     if (!project?.tokenAddress || isLoadingPoolInfo) return;
-    
+
     try {
       setIsLoadingPoolInfo(true);
       const info = await getPoolInfo(project.tokenAddress);
@@ -2415,9 +3193,9 @@ export function SnipeWizardDialog({
     } catch (error) {
       console.error('Error fetching pool info:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch pool information",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to fetch pool information',
+        variant: 'destructive',
       });
     } finally {
       setIsLoadingPoolInfo(false);
@@ -2428,29 +3206,34 @@ export function SnipeWizardDialog({
   const handleRemoveLiquidity = async () => {
     if (!project?.tokenAddress || !signer) {
       toast({
-        title: "Error",
-        description: "Missing required data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Missing required data',
+        variant: 'destructive',
       });
       return;
     }
 
     try {
       setIsRemovingLiquidity(true);
-      const result = await removeLiquidity(signer, project.tokenAddress, removePercentage);
-      
+      const result = await removeLiquidity(
+        signer,
+        project.tokenAddress,
+        removePercentage
+      );
+
       if (result.success) {
         toast({
-          title: "Success",
-          description: "Liquidity removed successfully",
+          title: 'Success',
+          description: 'Liquidity removed successfully',
         });
       }
     } catch (error) {
-      console.error("Error removing liquidity:", error);
+      console.error('Error removing liquidity:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to remove liquidity",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to remove liquidity',
+        variant: 'destructive',
       });
     } finally {
       setIsRemovingLiquidity(false);
@@ -2461,9 +3244,9 @@ export function SnipeWizardDialog({
   const handleBurnLiquidity = async () => {
     if (!project?.tokenAddress || !signer) {
       toast({
-        title: "Error",
-        description: "Missing required data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Missing required data',
+        variant: 'destructive',
       });
       return;
     }
@@ -2471,19 +3254,20 @@ export function SnipeWizardDialog({
     try {
       setIsBurningLiquidity(true);
       const result = await burnLiquidity(signer, project.tokenAddress);
-      
+
       if (result.success) {
         toast({
-          title: "Success",
-          description: "Liquidity burned successfully",
+          title: 'Success',
+          description: 'Liquidity burned successfully',
         });
       }
     } catch (error) {
-      console.error("Error burning liquidity:", error);
+      console.error('Error burning liquidity:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to burn liquidity",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to burn liquidity',
+        variant: 'destructive',
       });
     } finally {
       setIsBurningLiquidity(false);
@@ -2493,79 +3277,102 @@ export function SnipeWizardDialog({
   // Function to handle fee estimation
   const handleEstimateFees = async () => {
     if (!project?.tokenAddress || isEstimatingFees) return;
-    
+
     try {
       setIsEstimatingFees(true);
-      
+
       // Filter only sniping wallets (not deposit wallet)
-      const snipingWallets = wallets.filter(w => w.role !== 'botmain');
-      const depositWallet = wallets.find(w => w.role === 'botmain');
-      
+      const snipingWallets = wallets.filter((w) => w.role !== 'botmain');
+      const depositWallet = wallets.find((w) => w.role === 'botmain');
+
       if (!depositWallet || !project?.addons?.SnipeBot?.depositWalletId) {
         toast({
-          title: "Error",
-          description: "Deposit wallet not found",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Deposit wallet not found',
+          variant: 'destructive',
         });
         return;
       }
-      
-      const tokenAmounts = snipingWallets.map(w => w.tokenAmount || 0);
-      
+
+      const tokenAmounts = snipingWallets.map((w) => w.tokenAmount || 0);
+
       const response = await BotService.estimateSnipeFees({
         projectId: project._id,
         botId: project.addons.SnipeBot._id,
         depositWallet: depositWallet.publicKey,
-        subWallets: snipingWallets.map(w => w.publicKey),
+        subWallets: snipingWallets.map((w) => w.publicKey),
         tokenAmounts2Buy: tokenAmounts,
-        tokenAddress: project.tokenAddress
+        tokenAddress: project.tokenAddress,
       });
-      
+
       if (response.success) {
         const { data } = response;
-        
+
         // Update the wallets with estimated BNB to spend
-        const updatedWallets = wallets.map(wallet => {
+        const updatedWallets = wallets.map((wallet) => {
           if (wallet.role === 'botmain') {
             return wallet;
           }
-          
-          const requirement = data.subWalletRequirements.find(r => 
-            r.address.toLowerCase() === wallet.publicKey.toLowerCase()
+
+          const requirement = data.subWalletRequirements.find(
+            (r) => r.address.toLowerCase() === wallet.publicKey.toLowerCase()
           );
-          
+
           return {
             ...wallet,
             bnbToSpend: requirement?.bnbToSpend || 0,
             bnbNeeded: requirement?.bnbNeeded || 0,
-            insufficientBnb: requirement ? 
-              Math.max(0, requirement.bnbToSpend - (wallet.bnbBalance || 0)) : 
-              0
+            insufficientBnb: requirement
+              ? Math.max(0, requirement.bnbToSpend - (wallet.bnbBalance || 0))
+              : 0,
           };
         });
-        
-        setWalletCount(String(updatedWallets.filter(w => w.role !== 'botmain').length));
+
+        setWalletCount(
+          String(updatedWallets.filter((w) => w.role !== 'botmain').length)
+        );
         setWallets(updatedWallets);
-        
+
         // Create simulation result
         const simulationData = {
           wallets: updatedWallets,
           totalBnbNeeded: data.totalBnbNeeded,
-          snipingBnb: data.subWalletRequirements.reduce((sum, r) => sum + r.bnbToSpend, 0),
-          bnbForDistribution: data.subWalletRequirements.reduce((sum, r) => sum + r.bnbNeeded, 0),
+          snipingBnb: data.subWalletRequirements.reduce(
+            (sum, r) => sum + r.bnbToSpend,
+            0
+          ),
+          bnbForDistribution: data.subWalletRequirements.reduce(
+            (sum, r) => sum + r.bnbNeeded,
+            0
+          ),
           tipBnb: data.depositWalletRequirements.bnbForTip,
           gasCost: data.depositWalletRequirements.gasCost,
           currentBnbBalance: data.depositWalletRequirements.currentBnb,
           currentTokenBalance: data.depositWalletRequirements.currentToken,
-          tokenAmountRequired: data.depositWalletRequirements.tokenAmountRequired,
-          sufficientBalance: (Number(data.depositWalletRequirements.bnbNeeded) + Number(data.subWalletRequirements.reduce((sum, r) => sum + r.bnbNeeded, 0)) + (wallets.filter(w => w.role !== 'botmain').reduce((sum, wallet) => sum + (wallet.insufficientBnb || 0), 0))) <= 0,
+          tokenAmountRequired:
+            data.depositWalletRequirements.tokenAmountRequired,
+          sufficientBalance:
+            Number(data.depositWalletRequirements.bnbNeeded) +
+              Number(
+                data.subWalletRequirements.reduce(
+                  (sum, r) => sum + r.bnbNeeded,
+                  0
+                )
+              ) +
+              wallets
+                .filter((w) => w.role !== 'botmain')
+                .reduce(
+                  (sum, wallet) => sum + (wallet.insufficientBnb || 0),
+                  0
+                ) <=
+            0,
           gasDetails: data.estimatedGasCosts,
           poolSimulation: data.poolSimulation,
         };
-        
+
         setFeeEstimationResult(simulationData);
         setEstimationResult(response);
-        
+
         // Check if we have enough funds
         if (data.depositWalletRequirements.currentBnb < data.totalBnbNeeded) {
           setInsufficientFundsDetails({
@@ -2573,31 +3380,34 @@ export function SnipeWizardDialog({
             walletType: 'Deposit Wallet',
             availableBnb: data.depositWalletRequirements.currentBnb,
             requiredBnb: data.totalBnbNeeded,
-            missingBnb: data.totalBnbNeeded - data.depositWalletRequirements.currentBnb,
+            missingBnb:
+              data.totalBnbNeeded - data.depositWalletRequirements.currentBnb,
           });
         } else {
           setInsufficientFundsDetails(null);
         }
-        
+
         toast({
-          title: "Success",
-          description: "Fee estimation completed, please look at the Sniping Fee Estimation Results",
+          title: 'Success',
+          description:
+            'Fee estimation completed, please look at the Sniping Fee Estimation Results',
         });
       } else {
         toast({
-          title: "Error",
-          description: response.error?.includes("INSUFFICIENT_LIQUIDITY") 
-            ? "There is not enough liquidity in the pool to perform this operation. Please try with a smaller amount or wait for more liquidity to be added."
-            : response.error || "Failed to estimate fees",
-          variant: "destructive",
+          title: 'Error',
+          description: response.error?.includes('INSUFFICIENT_LIQUIDITY')
+            ? 'There is not enough liquidity in the pool to perform this operation. Please try with a smaller amount or wait for more liquidity to be added.'
+            : response.error || 'Failed to estimate fees',
+          variant: 'destructive',
         });
       }
     } catch (error) {
       console.error('Error estimating fees:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to estimate fees",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to estimate fees',
+        variant: 'destructive',
       });
     } finally {
       setIsEstimatingFees(false);
@@ -2607,92 +3417,104 @@ export function SnipeWizardDialog({
   // Function to handle BNB distribution
   const handleDistributeBnb = async () => {
     if (
-      !project?.tokenAddress || 
-      isDistributingBNBs || 
-      !wallets.filter(w => w.role !== 'botmain').length
-    ) return;
-    
+      !project?.tokenAddress ||
+      isDistributingBNBs ||
+      !wallets.filter((w) => w.role !== 'botmain').length
+    )
+      return;
+
     try {
       setIsDistributingBNBs(true);
-      
+
       // Filter only sniping wallets (not deposit wallet)
-      const snipingWallets = wallets.filter(w => w.role !== 'botmain');
-      const depositWallet = wallets.find(w => w.role === 'botmain');
-      
+      const snipingWallets = wallets.filter((w) => w.role !== 'botmain');
+      const depositWallet = wallets.find((w) => w.role === 'botmain');
+
       if (!depositWallet || !project?.addons?.SnipeBot?.depositWalletId) {
         toast({
-          title: "Error",
-          description: "Deposit wallet not found",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Deposit wallet not found',
+          variant: 'destructive',
         });
         return;
       }
       setInsufficientFundsDetails(null);
       //iterate through wallets and make zero to bnbToSpend and insufficientBnb
-      setWallets(prevWallets => prevWallets.map(wallet => ({
-        ...wallet,
-        bnbToSpend: 0,
-        insufficientBnb: 0
-      })));
+      setWallets((prevWallets) =>
+        prevWallets.map((wallet) => ({
+          ...wallet,
+          bnbToSpend: 0,
+          insufficientBnb: 0,
+        }))
+      );
       const response = await BotService.distributeBnb({
         depositWallet: depositWallet.publicKey,
-        subWallets: snipingWallets.map(w => w.publicKey),
-        amounts: snipingWallets.map(w => w.bnbNeeded || 0),
+        subWallets: snipingWallets.map((w) => w.publicKey),
+        amounts: snipingWallets.map((w) => w.bnbNeeded || 0),
         projectId: project._id,
         botId: project.addons.SnipeBot._id,
       });
       if (response.success?.success) {
         setIsBnbDistributed(true);
-        
+
         // Refresh balances after distribution
         setTimeout(() => {
           const allAddresses = [
             depositWallet.publicKey,
-            ...snipingWallets.map(w => w.publicKey)
+            ...snipingWallets.map((w) => w.publicKey),
           ];
           fetchBalances(allAddresses).then(() => {
-            if(currentStep !== WizardStep.POST_OPERATION) handleEstimateFees();
+            if (currentStep !== WizardStep.POST_OPERATION) handleEstimateFees();
           });
         }, 3000);
-        
+
         toast({
-          title: "Success",
-          description: "BNB distributed successfully, refreshing balances.",
+          title: 'Success',
+          description: 'BNB distributed successfully, refreshing balances.',
         });
       } else {
         // Check for insufficient balance error
-        if (response.success?.error?.includes("Insufficient wallet balance")) {
-          const match = response.success.error.match(/Required: ~([\d.]+) BNB, Found: ([\d.]+) BNB/);
+        if (response.success?.error?.includes('Insufficient wallet balance')) {
+          const match = response.success.error.match(
+            /Required: ~([\d.]+) BNB, Found: ([\d.]+) BNB/
+          );
           if (match) {
             const required = parseFloat(match[1]);
             const found = parseFloat(match[2]);
             const needed = (required - found).toFixed(6);
             toast({
-              title: "Insufficient Balance",
+              title: 'Insufficient Balance',
               description: `Failed to distribute BNB. You need to deposit ${needed} BNB to your deposit wallet and try again.`,
-              variant: "destructive",
+              variant: 'destructive',
             });
           } else {
             toast({
-              title: "Error",
-              description: response.success?.error || response.message || "Failed to distribute BNB",
-              variant: "destructive",
+              title: 'Error',
+              description:
+                response.success?.error ||
+                response.message ||
+                'Failed to distribute BNB',
+              variant: 'destructive',
             });
           }
         } else {
           toast({
-            title: "Error",
-            description: response.success?.error || response.message || "Failed to distribute BNB",
-            variant: "destructive",
+            title: 'Error',
+            description:
+              response.success?.error ||
+              response.message ||
+              'Failed to distribute BNB',
+            variant: 'destructive',
           });
         }
       }
     } catch (error) {
       console.error('Error distributing BNB:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to distribute BNB",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to distribute BNB',
+        variant: 'destructive',
       });
     } finally {
       setIsDistributingBNBs(false);
@@ -2702,13 +3524,12 @@ export function SnipeWizardDialog({
   const handleSimulate = async () => {
     if (!project?.addons?.SnipeBot) return;
 
-
     const depositWallet = project?.addons.SnipeBot.depositWalletId;
     if (!depositWallet) {
       toast({
-        title: "Error",
-        description: "Deposit wallet not found",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Deposit wallet not found',
+        variant: 'destructive',
       });
       return;
     }
@@ -2716,9 +3537,9 @@ export function SnipeWizardDialog({
     // Check if we have estimation results
     if (!estimationResult) {
       toast({
-        title: "Error",
-        description: "Please estimate fees first",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please estimate fees first',
+        variant: 'destructive',
       });
       return;
     }
@@ -2727,35 +3548,39 @@ export function SnipeWizardDialog({
       setIsSimulating(true);
 
       // Filter out wallets without _id
-      const snipingWallets = wallets.filter(w => w.role !== 'botmain');
+      const snipingWallets = wallets.filter((w) => w.role !== 'botmain');
       if (snipingWallets.length === 0) {
-        throw new Error("No valid Snipnig wallets found");
+        throw new Error('No valid Snipnig wallets found');
       }
 
       setInsufficientFundsDetails(null);
       //iterate through wallets and make zero to bnbToSpend and insufficientBnb
-      setWallets(prevWallets => prevWallets.map(wallet => ({
-        ...wallet,
-        bnbToSpend: 0,
-        insufficientBnb: 0
-      })));
+      setWallets((prevWallets) =>
+        prevWallets.map((wallet) => ({
+          ...wallet,
+          bnbToSpend: 0,
+          insufficientBnb: 0,
+        }))
+      );
 
       // Simulate the snipe operation
       const result = await BotService.simulateSnipe({
         projectId: project?._id,
         botId: project?.addons.SnipeBot._id,
         depositWallet: depositWallet.publicKey,
-        subWallets: wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey),
-        tokenAmounts2Buy: wallets.filter(w => w.role !== 'botmain').map(w => w.tokenAmount || 0),
+        subWallets: wallets
+          .filter((w) => w.role !== 'botmain')
+          .map((w) => w.publicKey),
+        tokenAmounts2Buy: wallets
+          .filter((w) => w.role !== 'botmain')
+          .map((w) => w.tokenAmount || 0),
         tokenAddress: project?.tokenAddress,
       });
-      
-      setSimulationResult(
-        result
-      )
+
+      setSimulationResult(result);
       if (!result.success) {
         // Check if the error is related to insufficient funds
-        if (result.error && result.error.includes("Insufficient funds")) {
+        if (result.error && result.error.includes('Insufficient funds')) {
           // Extract wallet address, available amount, and required amount from the error message
           const errorMsg = result.error;
           const addressMatch = errorMsg.match(/address\s+([0-9a-fA-Fx]+)/);
@@ -2772,16 +3597,21 @@ export function SnipeWizardDialog({
             const missingBnb = Number(requiredWei - availableWei) / 1e18;
 
             // Find which wallet has insufficient funds
-            const walletType = wallets.find(w => w.publicKey?.toString()?.toLowerCase() === walletAddress?.toString()?.toLowerCase())?.role === 'botmain'
-              ? 'Deposit Wallet'
-              : 'Sniping Wallet';
+            const walletType =
+              wallets.find(
+                (w) =>
+                  w.publicKey?.toString()?.toLowerCase() ===
+                  walletAddress?.toString()?.toLowerCase()
+              )?.role === 'botmain'
+                ? 'Deposit Wallet'
+                : 'Sniping Wallet';
 
             // Update simulation result to reflect insufficient balance
-            setEstimationResult((prev : any) => {
+            setEstimationResult((prev: any) => {
               if (!prev) return null;
               return {
                 ...prev,
-                sufficientBalance: missingBnb<=0? true: false,
+                sufficientBalance: missingBnb <= 0 ? true : false,
                 totalBnbNeeded: prev.totalBnbNeeded + missingBnb,
               };
             });
@@ -2792,23 +3622,27 @@ export function SnipeWizardDialog({
               walletType,
               availableBnb,
               requiredBnb,
-              missingBnb
+              missingBnb,
             });
 
             // Update the wallet with the insufficientBnb property
-            setWallets(prevWallets =>
-              prevWallets.map(wallet =>
+            setWallets((prevWallets) =>
+              prevWallets.map((wallet) =>
                 wallet.publicKey === walletAddress
-                  ? { ...wallet, bnbNeeded: Number(wallet.bnbNeeded) + Number(missingBnb), insufficientBnb: missingBnb }
+                  ? {
+                      ...wallet,
+                      bnbNeeded: Number(wallet.bnbNeeded) + Number(missingBnb),
+                      insufficientBnb: missingBnb,
+                    }
                   : wallet
               )
             );
 
             // Show detailed error message
             toast({
-              title: "Insufficient BNB Balance",
+              title: 'Insufficient BNB Balance',
               description: `${walletType} (${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}) has ${availableBnb.toFixed(6)} BNB but needs ${requiredBnb.toFixed(6)} BNB. Missing ${missingBnb.toFixed(6)} BNB.`,
-              variant: "destructive",
+              variant: 'destructive',
             });
 
             // Return early to prevent the generic error message
@@ -2817,22 +3651,23 @@ export function SnipeWizardDialog({
         }
 
         // If not an insufficient funds error or couldn't parse it, throw the original error
-        throw new Error(result.error || "Simulation failed");
+        throw new Error(result.error || 'Simulation failed');
       }
 
       toast({
-        title: "Success",
-        description: "Snipe simulation completed successfully. Go on proceed Execution.",
+        title: 'Success',
+        description:
+          'Snipe simulation completed successfully. Go on proceed Execution.',
       });
-      
+
       setIsSimulating(false);
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to simulate snipe",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to simulate snipe',
+        variant: 'destructive',
       });
-
 
       setIsSimulating(false);
     } finally {
@@ -2844,9 +3679,10 @@ export function SnipeWizardDialog({
     // Change this check to not strictly require simulation results
     if (!project?.addons?.SnipeBot) {
       toast({
-        title: "Error",
-        description: "Cannot execute: Invalid state or missing bot configuration",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          'Cannot execute: Invalid state or missing bot configuration',
+        variant: 'destructive',
       });
       return;
     }
@@ -2858,9 +3694,9 @@ export function SnipeWizardDialog({
     // If we have simulation results and they show insufficient balance, don't proceed
     if (feeEstimationResult && !feeEstimationResult?.sufficientBalance) {
       toast({
-        title: "Error",
-        description: "Cannot execute: insufficient balance",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Cannot execute: insufficient balance',
+        variant: 'destructive',
       });
       return;
     }
@@ -2868,18 +3704,20 @@ export function SnipeWizardDialog({
     // Reset insufficient funds details when starting execution
     setInsufficientFundsDetails(null);
     //iterate through wallets and make zero to bnbToSpend and insufficientBnb
-    setWallets(prevWallets => prevWallets.map(wallet => ({
-      ...wallet,
-      bnbToSpend: 0,
-      insufficientBnb: 0
-    })));
+    setWallets((prevWallets) =>
+      prevWallets.map((wallet) => ({
+        ...wallet,
+        bnbToSpend: 0,
+        insufficientBnb: 0,
+      }))
+    );
 
     const depositWallet = project?.addons.SnipeBot.depositWalletId;
     if (!depositWallet) {
       toast({
-        title: "Error",
-        description: "Deposit wallet not found",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Deposit wallet not found',
+        variant: 'destructive',
       });
       return;
     }
@@ -2888,42 +3726,51 @@ export function SnipeWizardDialog({
       setIsExecuting(true);
 
       // Filter out wallets without _id
-      const subWallets = wallets.filter(w => w.role !== 'botmain');
+      const subWallets = wallets.filter((w) => w.role !== 'botmain');
       if (subWallets.length === 0) {
-        throw new Error("No valid Snipnig wallets found");
+        throw new Error('No valid Snipnig wallets found');
       }
 
       const result = await BotService.executeSnipe({
         projectId: project?._id,
         botId: project?.addons.SnipeBot._id,
         depositWallet: depositWallet.publicKey,
-        subWallets: wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey),
-        tokenAmounts2Buy: wallets.filter(w => w.role !== 'botmain').map(w => w.tokenAmount || 0),
-        tokenAddress: project?.tokenAddress
+        subWallets: wallets
+          .filter((w) => w.role !== 'botmain')
+          .map((w) => w.publicKey),
+        tokenAmounts2Buy: wallets
+          .filter((w) => w.role !== 'botmain')
+          .map((w) => w.tokenAmount || 0),
+        tokenAddress: project?.tokenAddress,
       });
 
       if (result.success) {
         setExecutionSuccess(true);
         toast({
-          title: "Success",
-          description: "Snipe executed successfully, now refreshing balances. Please go to next step to sell tokens",
+          title: 'Success',
+          description:
+            'Snipe executed successfully, now refreshing balances. Please go to next step to sell tokens',
         });
-        
+
         // Refresh balances after successful sell
         const allAddresses = [
-          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
-          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey
+            ? [project?.addons.SnipeBot.depositWalletId.publicKey]
+            : []),
+          ...wallets
+            .filter((w) => w.role !== 'botmain')
+            .map((w) => w.publicKey),
         ];
         fetchBalances(allAddresses);
-
       } else {
-        throw new Error(result.error || "Execution failed");
+        throw new Error(result.error || 'Execution failed');
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to execute snipe",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to execute snipe',
+        variant: 'destructive',
       });
       setIsExecuting(false);
     } finally {
@@ -2931,155 +3778,188 @@ export function SnipeWizardDialog({
     }
   };
 
-
-  const handleSingleSell = async (walletAddress: string, sellPercentage: number) => {
+  const handleSingleSell = async (
+    walletAddress: string,
+    sellPercentage: number
+  ) => {
     try {
-      setInsufficientFundsDetails(null)
-      setWallets(prevWallets => prevWallets.map(w => ({
-        ...w,
-        bnbToSpend: 0,
-        insufficientBnb: 0
-      })));
-      setExecutingSingleSells(prev => ({ ...prev, [walletAddress]: true }));
+      setInsufficientFundsDetails(null);
+      setWallets((prevWallets) =>
+        prevWallets.map((w) => ({
+          ...w,
+          bnbToSpend: 0,
+          insufficientBnb: 0,
+        }))
+      );
+      setExecutingSingleSells((prev) => ({ ...prev, [walletAddress]: true }));
       const result = await BotService.singleWalletSell({
-        projectId: project?._id || projectId as string || "",
-        botId: project?.addons.SnipeBot._id || "",
+        projectId: project?._id || (projectId as string) || '',
+        botId: project?.addons.SnipeBot._id || '',
         walletAddress,
-        tokenAddress: project?.tokenAddress || "",
+        tokenAddress: project?.tokenAddress || '',
         sellPercentage,
         slippageTolerance,
-        targetWalletAddress: project?.addons?.SnipeBot?.depositWalletId?.publicKey
+        targetWalletAddress:
+          project?.addons?.SnipeBot?.depositWalletId?.publicKey,
       });
 
       if (result.success) {
         toast({
-          title: "Success",
-          description: "Tokens sold successfully",
+          title: 'Success',
+          description: 'Tokens sold successfully',
         });
         // Refresh balances after successful sell
         const allAddresses = [
-          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
-          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey
+            ? [project?.addons.SnipeBot.depositWalletId.publicKey]
+            : []),
+          ...wallets
+            .filter((w) => w.role !== 'botmain')
+            .map((w) => w.publicKey),
         ];
         fetchBalances(allAddresses);
       } else {
-        const errorMessage = result.error ? result.error : "Failed to sell tokens";
-        const errorDetails = errorMessage || "";
-        let errorString = "";
-        
-        if (typeof errorDetails === "string") {
+        const errorMessage = result.error
+          ? result.error
+          : 'Failed to sell tokens';
+        const errorDetails = errorMessage || '';
+        let errorString = '';
+
+        if (typeof errorDetails === 'string') {
           errorString = errorDetails;
-        } else if (typeof errorDetails === "object" && errorDetails !== null) {
+        } else if (typeof errorDetails === 'object' && errorDetails !== null) {
           // Cast errorDetails to unknown first, then to object type to safely access properties
-          const errorObj = errorDetails as unknown as { originalError?: string };
+          const errorObj = errorDetails as unknown as {
+            originalError?: string;
+          };
           errorString = errorObj.originalError || String(errorDetails);
         }
 
         // Check for insufficient BNB balance error
-        const insufficientBnbMatch = errorString.match(/Insufficient BNB balance for fees\. Required: ([\d.]+) BNB, Available: ([\d.]+) BNB/);
-        
+        const insufficientBnbMatch = errorString.match(
+          /Insufficient BNB balance for fees\. Required: ([\d.]+) BNB, Available: ([\d.]+) BNB/
+        );
+
         // Check for PancakeRouter INSUFFICIENT_OUTPUT_AMOUNT error
-        const insufficientOutputMatch = errorString.includes("PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT");
+        const insufficientOutputMatch = errorString.includes(
+          'PancakeRouter: INSUFFICIENT_OUTPUT_AMOUNT'
+        );
 
         if (insufficientBnbMatch) {
           const requiredBnb = insufficientBnbMatch[1];
           const availableBnb = insufficientBnbMatch[2];
-          
+
           setInsufficientFundsDetails({
             walletAddress: walletAddress,
             walletType: 'botsub',
             availableBnb: Number(availableBnb),
             requiredBnb: Number(requiredBnb),
-            missingBnb: Number(requiredBnb) - Number(availableBnb)
-          })
-          setWallets(prevWallets =>
-            prevWallets.map(wallet =>
+            missingBnb: Number(requiredBnb) - Number(availableBnb),
+          });
+          setWallets((prevWallets) =>
+            prevWallets.map((wallet) =>
               wallet.publicKey === walletAddress
-                ? { ...wallet, bnbNeeded: Number(wallet.bnbNeeded) + Number(requiredBnb), insufficientBnb: Number(requiredBnb) }
+                ? {
+                    ...wallet,
+                    bnbNeeded: Number(wallet.bnbNeeded) + Number(requiredBnb),
+                    insufficientBnb: Number(requiredBnb),
+                  }
                 : wallet
             )
           );
           toast({
-            title: "Error",
+            title: 'Error',
             description: `Failed to sell tokens. You need to add ${requiredBnb} BNB to the sniping wallet (${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}) to proceed. Available: ${availableBnb} BNB`,
-            variant: "destructive",
+            variant: 'destructive',
           });
         } else if (insufficientOutputMatch) {
           toast({
-            title: "Transaction Failed",
-            description: "The price impact is too high. Try selling a smaller amount.",
-            variant: "destructive"
+            title: 'Transaction Failed',
+            description:
+              'The price impact is too high. Try selling a smaller amount.',
+            variant: 'destructive',
           });
         } else {
           toast({
-            title: "Transaction Failed",
+            title: 'Transaction Failed',
             description: errorMessage,
-            variant: "destructive"
+            variant: 'destructive',
           });
         }
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to sell tokens",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to sell tokens',
+        variant: 'destructive',
       });
     } finally {
-      setExecutingSingleSells(prev => ({ ...prev, [walletAddress]: false }));
+      setExecutingSingleSells((prev) => ({ ...prev, [walletAddress]: false }));
     }
   };
 
   const handleMultiSell = async () => {
     // Filter wallets that are selected for multi-sell and have token balance > 0
-    const selectedWallets = wallets.filter(w =>
-      w.isSelectedForMutilSell &&
-      (w.tokenBalance || 0) > 0
+    const selectedWallets = wallets.filter(
+      (w) => w.isSelectedForMutilSell && (w.tokenBalance || 0) > 0
     );
 
     if (selectedWallets.length === 0) {
       toast({
-        title: "Error",
-        description: "No wallets selected with sufficient token balance for multi-sell",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          'No wallets selected with sufficient token balance for multi-sell',
+        variant: 'destructive',
       });
       return;
     }
 
     try {
-      setInsufficientFundsDetails(null)
-      setWallets(prevWallets => prevWallets.map(w => ({
-        ...w,
-        bnbToSpend: 0,
-        insufficientBnb: 0
-      })));
+      setInsufficientFundsDetails(null);
+      setWallets((prevWallets) =>
+        prevWallets.map((w) => ({
+          ...w,
+          bnbToSpend: 0,
+          insufficientBnb: 0,
+        }))
+      );
       setIsExecutingMultiSell(true);
 
-      const result = await BotService.multiWalletSell({
-        projectId: project?._id || projectId as string || "",
-        botId: project?.addons.SnipeBot._id || "",
-        walletAddresses: selectedWallets.map(w => w.publicKey),
-        tokenAddress: project?.tokenAddress || "",
-        sellPercentages: selectedWallets.map(w => w.sellPercentage || 100), // Default to 100% if not set
+      const result = (await BotService.multiWalletSell({
+        projectId: project?._id || (projectId as string) || '',
+        botId: project?.addons.SnipeBot._id || '',
+        walletAddresses: selectedWallets.map((w) => w.publicKey),
+        tokenAddress: project?.tokenAddress || '',
+        sellPercentages: selectedWallets.map((w) => w.sellPercentage || 100), // Default to 100% if not set
         slippageTolerance,
-        targetWalletAddress: project?.addons.SnipeBot?.depositWalletId?.publicKey
-      }) as MultiSellResult;
+        targetWalletAddress:
+          project?.addons.SnipeBot?.depositWalletId?.publicKey,
+      })) as MultiSellResult;
 
       if (result.success) {
         toast({
-          title: "Success",
-          description: "Tokens sold successfully from all selected wallets, Now refreshing balances",
+          title: 'Success',
+          description:
+            'Tokens sold successfully from all selected wallets, Now refreshing balances',
         });
         // Refresh balances after successful sell
         const allAddresses = [
-          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
-          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey
+            ? [project?.addons.SnipeBot.depositWalletId.publicKey]
+            : []),
+          ...wallets
+            .filter((w) => w.role !== 'botmain')
+            .map((w) => w.publicKey),
         ];
         fetchBalances(allAddresses);
       } else {
         if (result.failedTransactions > 0 && result.errors.length > 0) {
           const errorMessages = result.errors
-            .map(tx => {
-              const insufficientBnbMatch = tx.error.match(/Insufficient gas funds\. Required: ([\d.]+) BNB, Available: ([\d.]+) BNB/);
+            .map((tx) => {
+              const insufficientBnbMatch = tx.error.match(
+                /Insufficient gas funds\. Required: ([\d.]+) BNB, Available: ([\d.]+) BNB/
+              );
 
               if (insufficientBnbMatch) {
                 const requiredBnb = insufficientBnbMatch[1];
@@ -3089,12 +3969,17 @@ export function SnipeWizardDialog({
                   walletType: 'botsub',
                   availableBnb: Number(availableBnb),
                   requiredBnb: Number(requiredBnb),
-                  missingBnb: Number(requiredBnb) - Number(availableBnb)
-                })                
-                setWallets(prevWallets =>
-                  prevWallets.map(wallet =>
+                  missingBnb: Number(requiredBnb) - Number(availableBnb),
+                });
+                setWallets((prevWallets) =>
+                  prevWallets.map((wallet) =>
                     wallet.publicKey === tx.wallet
-                      ? { ...wallet, bnbNeeded: Number(wallet.bnbNeeded) + Number(requiredBnb), insufficientBnb: Number(requiredBnb) }
+                      ? {
+                          ...wallet,
+                          bnbNeeded:
+                            Number(wallet.bnbNeeded) + Number(requiredBnb),
+                          insufficientBnb: Number(requiredBnb),
+                        }
                       : wallet
                   )
                 );
@@ -3106,14 +3991,15 @@ export function SnipeWizardDialog({
             .join('\n');
           throw new Error(`Failed transactions:\n${errorMessages}`);
         } else {
-          throw new Error(result.error || "Failed to sell tokens");
+          throw new Error(result.error || 'Failed to sell tokens');
         }
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to sell tokens",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to sell tokens',
+        variant: 'destructive',
       });
     } finally {
       setIsExecutingMultiSell(false);
@@ -3122,17 +4008,19 @@ export function SnipeWizardDialog({
 
   const handleCollectBnb = async () => {
     // Filter wallets that are selected for collection and have BNB balance > 0
-    const selectedWallets = wallets.filter(w =>
-      w.isSelectedForMutilSell &&
-      w.role !== 'botmain' &&
-      (w.bnbBalance || 0) > 0.00002
+    const selectedWallets = wallets.filter(
+      (w) =>
+        w.isSelectedForMutilSell &&
+        w.role !== 'botmain' &&
+        (w.bnbBalance || 0) > 0.00002
     );
 
     if (selectedWallets.length === 0) {
       toast({
-        title: "Error",
-        description: "No wallets selected with sufficient BNB balance for collection",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          'No wallets selected with sufficient BNB balance for collection',
+        variant: 'destructive',
       });
       return;
     }
@@ -3140,31 +4028,37 @@ export function SnipeWizardDialog({
     try {
       setIsCollectingBnb(true);
       const result = await BotService.collectBnb({
-        projectId: project?._id || projectId as string || "",
-        botId: project?.addons.SnipeBot._id || "",
-        walletAddresses: selectedWallets.map(w => w.publicKey),
-        targetWallet: project?.addons.SnipeBot?.depositWalletId?.publicKey || ""
+        projectId: project?._id || (projectId as string) || '',
+        botId: project?.addons.SnipeBot._id || '',
+        walletAddresses: selectedWallets.map((w) => w.publicKey),
+        targetWallet:
+          project?.addons.SnipeBot?.depositWalletId?.publicKey || '',
       });
 
       if (result.success) {
         toast({
-          title: "Success",
-          description: "BNB collected successfully from all selected wallets",
+          title: 'Success',
+          description: 'BNB collected successfully from all selected wallets',
         });
         // Refresh balances after successful collection
         const allAddresses = [
-          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
-          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey
+            ? [project?.addons.SnipeBot.depositWalletId.publicKey]
+            : []),
+          ...wallets
+            .filter((w) => w.role !== 'botmain')
+            .map((w) => w.publicKey),
         ];
         fetchBalances(allAddresses);
       } else {
-        throw new Error(result.error || "Failed to collect BNB");
+        throw new Error(result.error || 'Failed to collect BNB');
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to collect BNB",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to collect BNB',
+        variant: 'destructive',
       });
     } finally {
       setIsCollectingBnb(false);
@@ -3175,127 +4069,152 @@ export function SnipeWizardDialog({
   const handleSingleBuy = async (walletAddress: string) => {
     try {
       setInsufficientFundsDetails(null);
-      setWallets(prevWallets => prevWallets.map(w => ({
-        ...w,
-        bnbToSpend: 0,
-        insufficientBnb: 0
-      })));
-      setExecutingSingleBuys(prev => ({ ...prev, [walletAddress]: true }));
-      
+      setWallets((prevWallets) =>
+        prevWallets.map((w) => ({
+          ...w,
+          bnbToSpend: 0,
+          insufficientBnb: 0,
+        }))
+      );
+      setExecutingSingleBuys((prev) => ({ ...prev, [walletAddress]: true }));
+
       // Find the wallet to get its bnbSpendRate
-      const wallet = wallets.find(w => w.publicKey === walletAddress);
+      const wallet = wallets.find((w) => w.publicKey === walletAddress);
       const bnbSpendRate = wallet?.bnbSpendRate || 90; // Default to 90% if not specified
-      
+
       const result = await BotService.singleWalletBuy({
-        projectId: project?._id || projectId as string || "",
-        botId: project?.addons.SnipeBot._id || "",
+        projectId: project?._id || (projectId as string) || '',
+        botId: project?.addons.SnipeBot._id || '',
         walletAddress,
-        tokenAddress: project?.tokenAddress || "",
+        tokenAddress: project?.tokenAddress || '',
         slippageTolerance,
         targetWalletAddress: walletAddress,
-        bnbSpendRate
+        bnbSpendRate,
       });
 
       if (result.success) {
         toast({
-          title: "Success",
-          description: "Tokens bought successfully",
+          title: 'Success',
+          description: 'Tokens bought successfully',
         });
         // Refresh balances after successful buy
         const allAddresses = [
-          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
-          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey
+            ? [project?.addons.SnipeBot.depositWalletId.publicKey]
+            : []),
+          ...wallets
+            .filter((w) => w.role !== 'botmain')
+            .map((w) => w.publicKey),
         ];
         fetchBalances(allAddresses);
       } else {
         console.log(result);
-        const errorMessage = result.error ? result.error : "Failed to buy tokens";
+        const errorMessage = result.error
+          ? result.error
+          : 'Failed to buy tokens';
         let errorString = errorMessage; // Changed to use errorMessage as the default
-        
-        if (typeof errorMessage === "string") {
+
+        if (typeof errorMessage === 'string') {
           errorString = errorMessage;
-        } else if (typeof errorMessage === "object" && errorMessage !== null) {
-          const errorObj = errorMessage as unknown as { originalError?: string };
+        } else if (typeof errorMessage === 'object' && errorMessage !== null) {
+          const errorObj = errorMessage as unknown as {
+            originalError?: string;
+          };
           errorString = errorObj.originalError || String(errorMessage);
         }
 
         // Check for insufficient BNB balance error (first pattern)
-        const insufficientBnbMatch = errorString.match(/Insufficient BNB balance for fees\. Required: ([\d.]+) BNB, Available: ([\d.]+) BNB/);
+        const insufficientBnbMatch = errorString.match(
+          /Insufficient BNB balance for fees\. Required: ([\d.]+) BNB, Available: ([\d.]+) BNB/
+        );
         // Check for alternative insufficient funds error pattern
-        const alternativeInsufficientMatch = errorString.match(/Insufficient funds for transaction\. Required: ([\d.]+) BNB plus gas, Available: ([\d.]+) BNB/i);
-        
+        const alternativeInsufficientMatch = errorString.match(
+          /Insufficient funds for transaction\. Required: ([\d.]+) BNB plus gas, Available: ([\d.]+) BNB/i
+        );
+
         if (insufficientBnbMatch || alternativeInsufficientMatch) {
           const match = insufficientBnbMatch || alternativeInsufficientMatch;
           const requiredBnb = match![1];
           const availableBnb = match![2];
           const targetWalletAddress = result?.walletAddress || walletAddress;
-          
+
           setInsufficientFundsDetails({
             walletAddress: targetWalletAddress,
             walletType: 'botsub',
             availableBnb: Number(availableBnb),
             requiredBnb: Number(requiredBnb),
-            missingBnb: Number(requiredBnb) 
+            missingBnb: Number(requiredBnb),
           });
-          setWallets(prevWallets =>
-            prevWallets.map(wallet =>
+          setWallets((prevWallets) =>
+            prevWallets.map((wallet) =>
               wallet.publicKey === targetWalletAddress
-                ? { ...wallet, bnbNeeded: Number(requiredBnb), insufficientBnb: Number(requiredBnb) }
+                ? {
+                    ...wallet,
+                    bnbNeeded: Number(requiredBnb),
+                    insufficientBnb: Number(requiredBnb),
+                  }
                 : wallet
             )
           );
           toast({
-            title: "Error",
+            title: 'Error',
             description: `Failed to buy tokens. You need to add ${requiredBnb} BNB to the wallet (${targetWalletAddress.slice(0, 6)}...${targetWalletAddress.slice(-4)}) to proceed. Available: ${availableBnb} BNB`,
-            variant: "destructive",
+            variant: 'destructive',
           });
         } else {
           toast({
-            title: "Transaction Failed",
+            title: 'Transaction Failed',
             description: errorMessage,
-            variant: "destructive"
+            variant: 'destructive',
           });
         }
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to buy tokens",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to buy tokens',
+        variant: 'destructive',
       });
     } finally {
-      setExecutingSingleBuys(prev => ({ ...prev, [walletAddress]: false }));
+      setExecutingSingleBuys((prev) => ({ ...prev, [walletAddress]: false }));
     }
   };
 
   const handleDownloadWalletInfo = () => {
     if (!project || wallets.length === 0) {
       toast({
-        title: "No Data Available",
-        description: "There is no wallet data to download.",
-        variant: "destructive",
+        title: 'No Data Available',
+        description: 'There is no wallet data to download.',
+        variant: 'destructive',
       });
       return;
     }
 
     try {
       // Format wallet data
-      const walletsForExport = wallets.map(wallet => ({
+      const walletsForExport = wallets.map((wallet) => ({
         Role: wallet.role === 'botmain' ? 'Deposit' : 'Sniping',
         Address: wallet.publicKey,
         'BNB Balance': wallet.bnbBalance ? wallet.bnbBalance.toFixed(6) : '0',
-        'Token Balance': wallet.tokenBalance ? wallet.tokenBalance.toString() : '0'
+        'Token Balance': wallet.tokenBalance
+          ? wallet.tokenBalance.toString()
+          : '0',
       }));
 
       // Convert to CSV
       const headers = Object.keys(walletsForExport[0]).join(',');
-      const rows = walletsForExport.map(row => 
-        Object.values(row).map(value => 
-          typeof value === 'string' && value.includes(',') 
-            ? `"${value}"`
-            : value
-        ).join(',')
-      ).join('\n');
+      const rows = walletsForExport
+        .map((row) =>
+          Object.values(row)
+            .map((value) =>
+              typeof value === 'string' && value.includes(',')
+                ? `"${value}"`
+                : value
+            )
+            .join(',')
+        )
+        .join('\n');
       const csv = `${headers}\n${rows}`;
 
       // Create and download file
@@ -3303,30 +4222,33 @@ export function SnipeWizardDialog({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.setAttribute('href', url);
-      a.setAttribute('download', `${project.name.replace(/\s+/g, '_')}_wallets_${new Date().toISOString().slice(0, 10)}.csv`);
+      a.setAttribute(
+        'download',
+        `${project.name.replace(/\s+/g, '_')}_wallets_${new Date().toISOString().slice(0, 10)}.csv`
+      );
       a.click();
       URL.revokeObjectURL(url);
-      
+
       toast({
-        title: "Success",
-        description: "Wallet information downloaded successfully.",
+        title: 'Success',
+        description: 'Wallet information downloaded successfully.',
       });
     } catch (error) {
       console.error('Error downloading wallet info:', error);
       toast({
-        title: "Error",
-        description: "Failed to download wallet information",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to download wallet information',
+        variant: 'destructive',
       });
     }
   };
 
   const handleDistributeExtraBnb = async () => {
-    if(distributeAmount <= 0){
+    if (distributeAmount <= 0) {
       toast({
-        title: "Recommendation",
-        description: "Please enter a valid amount to distribute",
-        variant: "default",
+        title: 'Recommendation',
+        description: 'Please enter a valid amount to distribute',
+        variant: 'default',
       });
       return;
     }
@@ -3334,9 +4256,9 @@ export function SnipeWizardDialog({
       const depositWallet = project?.addons?.SnipeBot?.depositWalletId;
       if (!depositWallet) {
         toast({
-          title: "Error",
-          description: "Deposit wallet not found",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Deposit wallet not found',
+          variant: 'destructive',
         });
         return;
       }
@@ -3345,12 +4267,12 @@ export function SnipeWizardDialog({
       const subWalletAddresses = project?.addons.SnipeBot.subWalletIds
         .filter((w: SubWallet) => w.publicKey)
         .map((w: SubWallet) => w.publicKey);
-      
+
       if (!subWalletAddresses.length) {
         toast({
-          title: "Error",
-          description: "No sniping wallets found",
-          variant: "destructive",
+          title: 'Error',
+          description: 'No sniping wallets found',
+          variant: 'destructive',
         });
         return;
       }
@@ -3360,77 +4282,86 @@ export function SnipeWizardDialog({
       const amounts = subWalletAddresses.map(() => perWalletAmount);
 
       setIsDistributingBNBs(true);
-      
 
       setInsufficientFundsDetails(null);
       //iterate through wallets and make zero to bnbToSpend and insufficientBnb
-      setWallets(prevWallets => prevWallets.map(wallet => ({
-        ...wallet,
-        bnbToSpend: 0,
-        insufficientBnb: 0
-      })));
+      setWallets((prevWallets) =>
+        prevWallets.map((wallet) => ({
+          ...wallet,
+          bnbToSpend: 0,
+          insufficientBnb: 0,
+        }))
+      );
 
       const response = await BotService.distributeBnb({
         depositWallet: depositWallet.publicKey,
         subWallets: subWalletAddresses,
         amounts,
-        projectId: project?._id || "",
-        botId: project?.addons.SnipeBot._id || ""
+        projectId: project?._id || '',
+        botId: project?.addons.SnipeBot._id || '',
       });
 
-      
       if (response.success?.success) {
         setIsBnbDistributed(true);
-        
+
         // Refresh balances after distribution
         setTimeout(() => {
-          const allAddresses = [
-            depositWallet.publicKey,
-            ...subWalletAddresses
-          ];
+          const allAddresses = [depositWallet.publicKey, ...subWalletAddresses];
           fetchBalances(allAddresses).then(() => {
             handleEstimateFees();
           });
         }, 3000);
-        
+
         toast({
-          title: "Success",
-          description: "Extra BNB distributed successfully, automatically estimating fees again.",
+          title: 'Success',
+          description:
+            'Extra BNB distributed successfully, automatically estimating fees again.',
         });
       } else {
         // Check for insufficient balance error
-        if (response.success?.error?.includes("Insufficient wallet balance")) {
-          const match = response.success.error.match(/Required: ~([\d.]+) BNB, Found: ([\d.]+) BNB/);
+        if (response.success?.error?.includes('Insufficient wallet balance')) {
+          const match = response.success.error.match(
+            /Required: ~([\d.]+) BNB, Found: ([\d.]+) BNB/
+          );
           if (match) {
             const required = parseFloat(match[1]);
             const found = parseFloat(match[2]);
             const needed = (required - found).toFixed(6);
             toast({
-              title: "Insufficient Balance",
+              title: 'Insufficient Balance',
               description: `Failed to distribute Extra BNB. You need to deposit ${needed} BNB to your deposit wallet and try again.`,
-              variant: "destructive",
+              variant: 'destructive',
             });
           } else {
             toast({
-              title: "Error",
-              description: response.success?.error || response.message || "Failed to distribute Extra BNB",
-              variant: "destructive",
+              title: 'Error',
+              description:
+                response.success?.error ||
+                response.message ||
+                'Failed to distribute Extra BNB',
+              variant: 'destructive',
             });
           }
         } else {
           toast({
-            title: "Error",
-            description: response.success?.error || response.message || "Failed to distribute Extra BNB",
-            variant: "destructive",
+            title: 'Error',
+            description:
+              response.success?.error ||
+              response.message ||
+              'Failed to distribute Extra BNB',
+            variant: 'destructive',
           });
         }
       }
     } catch (error) {
       console.error('Error distributing extra BNB:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to distribute extra BNB",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to distribute extra BNB',
+        variant: 'destructive',
       });
     } finally {
       setIsDistributingBNBs(false);
@@ -3443,23 +4374,23 @@ export function SnipeWizardDialog({
     if (project?._id && project?.addons?.SnipeBot) {
       const depositWalletId = project.addons.SnipeBot.depositWalletId;
       const subWalletIds = project.addons.SnipeBot.subWalletIds || [];
-      
+
       // Get addresses
       const addresses = [
         ...(depositWalletId ? [depositWalletId.publicKey] : []),
-        ...subWalletIds.map((w: SubWallet) => w.publicKey)
+        ...subWalletIds.map((w: SubWallet) => w.publicKey),
       ];
-      
+
       // Fetch balances
       if (addresses.length > 0) {
         fetchBalances(addresses);
       }
-      
+
       // Fetch pool info if token address exists
       if (project.tokenAddress) {
         fetchPoolInfo();
       }
-      
+
       // Fetch connected wallet balance and LP token balance if wallet is connected
       if (address && project.tokenAddress) {
         fetchConnectedWalletBalance();
@@ -3469,7 +4400,7 @@ export function SnipeWizardDialog({
   }, [project, address]);
 
   // Ensure all string properties are handled safely
-  const safeString = (value: string | undefined): string => value || "";
+  const safeString = (value: string | undefined): string => value || '';
 
   // Update components to use safeString for potentially undefined values
   const handleCopyToClipboard = (value?: string) => {
@@ -3481,9 +4412,9 @@ export function SnipeWizardDialog({
     if (project?.addons?.SnipeBot?.subWalletIds) {
       const depositWallet = project.addons.SnipeBot.depositWalletId;
       const subWallets = project.addons.SnipeBot.subWalletIds;
-      
-      let newWallets: WalletInfo[] = [];
-      
+
+      const newWallets: WalletInfo[] = [];
+
       // Add deposit wallet if it exists
       if (depositWallet) {
         newWallets.push({
@@ -3492,12 +4423,12 @@ export function SnipeWizardDialog({
           role: 'botmain',
           sellPercentage: 100,
           isSelectedForMutilSell: false,
-          insufficientBnb: 0
+          insufficientBnb: 0,
         });
       }
-      
+
       // Add sub wallets
-      subWallets.forEach(wallet => {
+      subWallets.forEach((wallet) => {
         newWallets.push({
           _id: wallet._id,
           publicKey: wallet.publicKey,
@@ -3505,75 +4436,88 @@ export function SnipeWizardDialog({
           sellPercentage: 100,
           isSelectedForMutilSell: false,
           insufficientBnb: 0,
-          bnbSpendRate: 90 // Default to 90% BNB spend rate
+          bnbSpendRate: 90, // Default to 90% BNB spend rate
         });
       });
-      
+
       setWallets(newWallets);
-      
+
       // Fetch wallet balances
       const allAddresses = [
         ...(depositWallet ? [depositWallet.publicKey] : []),
-        ...subWallets.map(w => w.publicKey)
+        ...subWallets.map((w) => w.publicKey),
       ];
       fetchBalances(allAddresses);
     }
-  }, [project?.addons?.SnipeBot?.subWalletIds, project?.addons?.SnipeBot?.depositWalletId]);
+  }, [
+    project?.addons?.SnipeBot?.subWalletIds,
+    project?.addons?.SnipeBot?.depositWalletId,
+  ]);
 
   const handleMultiBuy = async () => {
     // Filter wallets that are selected and have BNB balance
-    const selectedWallets = wallets.filter(w =>
-      w.isSelectedForMutilSell &&
-      w.role !== 'botmain' &&
-      (w.bnbBalance || 0) > 0
+    const selectedWallets = wallets.filter(
+      (w) =>
+        w.isSelectedForMutilSell &&
+        w.role !== 'botmain' &&
+        (w.bnbBalance || 0) > 0
     );
 
     if (selectedWallets.length === 0) {
       toast({
-        title: "Error",
-        description: "No wallets selected with sufficient BNB balance for multi-buy",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          'No wallets selected with sufficient BNB balance for multi-buy',
+        variant: 'destructive',
       });
       return;
     }
 
     try {
       setInsufficientFundsDetails(null);
-      setWallets(prevWallets => prevWallets.map(w => ({
-        ...w,
-        bnbToSpend: 0,
-        insufficientBnb: 0
-      })));
+      setWallets((prevWallets) =>
+        prevWallets.map((w) => ({
+          ...w,
+          bnbToSpend: 0,
+          insufficientBnb: 0,
+        }))
+      );
       setIsExecutingMultiBuy(true);
 
       const result = await BotService.multiWalletBuy({
-        projectId: project?._id || projectId as string || "",
-        botId: project?.addons.SnipeBot._id || "",
-        walletAddresses: selectedWallets.map(w => w.publicKey),
-        tokenAddress: project?.tokenAddress || "",
+        projectId: project?._id || (projectId as string) || '',
+        botId: project?.addons.SnipeBot._id || '',
+        walletAddresses: selectedWallets.map((w) => w.publicKey),
+        tokenAddress: project?.tokenAddress || '',
         slippageTolerance,
-        bnbSpendRates: selectedWallets.map(w => w.bnbSpendRate || 90), // Default to 90% if not set
+        bnbSpendRates: selectedWallets.map((w) => w.bnbSpendRate || 90), // Default to 90% if not set
       });
 
       if (result.success) {
         toast({
-          title: "Success",
-          description: "Tokens bought successfully from all selected wallets, Now refreshing balances",
+          title: 'Success',
+          description:
+            'Tokens bought successfully from all selected wallets, Now refreshing balances',
         });
         // Refresh balances after successful buy
         const allAddresses = [
-          ...(project?.addons.SnipeBot.depositWalletId?.publicKey ? [project?.addons.SnipeBot.depositWalletId.publicKey] : []),
-          ...wallets.filter(w => w.role !== 'botmain').map(w => w.publicKey)
+          ...(project?.addons.SnipeBot.depositWalletId?.publicKey
+            ? [project?.addons.SnipeBot.depositWalletId.publicKey]
+            : []),
+          ...wallets
+            .filter((w) => w.role !== 'botmain')
+            .map((w) => w.publicKey),
         ];
         fetchBalances(allAddresses);
       } else {
-        throw new Error(result.error || "Failed to buy tokens");
+        throw new Error(result.error || 'Failed to buy tokens');
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to buy tokens",
-        variant: "destructive",
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Failed to buy tokens',
+        variant: 'destructive',
       });
     } finally {
       setIsExecutingMultiBuy(false);
@@ -3586,23 +4530,35 @@ export function SnipeWizardDialog({
         <DialogHeader className="pb-2">
           <DialogTitle>Snipe Wizard</DialogTitle>
         </DialogHeader>
-        
+
         <div className="flex flex-col lg:flex-row lg:gap-6">
           {/* Left side - progress and navigation */}
           <div className="lg:w-64 lg:flex-shrink-0 mb-4 lg:mb-0">
             {/* Progress bar */}
             <div className="mb-4">
               <div className="flex justify-between text-xs mb-1">
-                <span>Step {currentStep + 1} of {WizardStep.POST_OPERATION + 1}</span>
-                <span className="hidden sm:inline">{Object.keys(WizardStep).filter(key => isNaN(Number(key)))[currentStep]}</span>
+                <span>
+                  Step {currentStep + 1} of {WizardStep.POST_OPERATION + 1}
+                </span>
+                <span className="hidden sm:inline">
+                  {
+                    Object.keys(WizardStep).filter((key) => isNaN(Number(key)))[
+                      currentStep
+                    ]
+                  }
+                </span>
               </div>
-              <Progress value={((currentStep + 1) / (WizardStep.POST_OPERATION + 1)) * 100} />
+              <Progress
+                value={
+                  ((currentStep + 1) / (WizardStep.POST_OPERATION + 1)) * 100
+                }
+              />
             </div>
-            
+
             {/* Navigation buttons */}
             <div className="flex justify-between mb-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={goToPreviousStep}
                 disabled={currentStep === WizardStep.INTRODUCTION}
                 className="h-9 px-2 sm:px-4"
@@ -3611,8 +4567,8 @@ export function SnipeWizardDialog({
                 <ChevronLeft className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Previous</span>
               </Button>
-              
-              <Button 
+
+              <Button
                 onClick={goToNextStep}
                 disabled={currentStep === WizardStep.POST_OPERATION}
                 className="h-9 px-2 sm:px-4"
@@ -3631,7 +4587,7 @@ export function SnipeWizardDialog({
                 )}
               </Button>
             </div>
-            
+
             {/* Step indicator - visible only on larger screens */}
             <div className="hidden lg:block mt-6">
               <h3 className="text-sm font-medium mb-3">Wizard Steps</h3>
@@ -3639,11 +4595,11 @@ export function SnipeWizardDialog({
                 {Object.entries(WizardStep)
                   .filter(([key]) => isNaN(Number(key)))
                   .map(([step, index]) => (
-                    <li 
-                      key={step} 
+                    <li
+                      key={step}
                       className={`px-3 py-2 rounded-md flex items-center gap-2 ${
-                        currentStep === Number(index) 
-                          ? 'bg-primary/10 text-primary font-medium' 
+                        currentStep === Number(index)
+                          ? 'bg-primary/10 text-primary font-medium'
                           : 'text-muted-foreground'
                       }`}
                     >
@@ -3656,37 +4612,38 @@ export function SnipeWizardDialog({
               </ul>
 
               <div className="mt-4">
-            <div className="border rounded-lg p-4 ">
-              <h3 className="text-base font-medium mb-2 flex items-center gap-2">
-                <span>🤖 Recommended: AutoSellBot</span>
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Enhance your trading strategy by setting up automated sell conditions for your sniping wallets. Configure target prices and stop losses to protect your investment. You can set this up right after successful sniping to automate your exit strategy.
-              </p>
-              <Button
-                onClick={() => {
-                  // Close the current wizard
-                  onOpenChange(false);
-                  // TODO: Open AutoSellBot modal with current sniping wallets
-                  // This should be implemented by the parent component
-                }}
-                variant="outline"
-                className="w-full "
-              >
-                Configure AutoSellBot
-              </Button>
-            </div>
-          </div>
+                <div className="border rounded-lg p-4 ">
+                  <h3 className="text-base font-medium mb-2 flex items-center gap-2">
+                    <span>🤖 Recommended: AutoSellBot</span>
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Enhance your trading strategy by setting up automated sell
+                    conditions for your sniping wallets. Configure target prices
+                    and stop losses to protect your investment. You can set this
+                    up right after successful sniping to automate your exit
+                    strategy.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      // Close the current wizard
+                      onOpenChange(false);
+                      // TODO: Open AutoSellBot modal with current sniping wallets
+                      // This should be implemented by the parent component
+                    }}
+                    variant="outline"
+                    className="w-full "
+                  >
+                    Configure AutoSellBot
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Right side - step content */}
-          <div className="flex-1">
-            {renderStepContent()}
-          </div>
+          <div className="flex-1">{renderStepContent()}</div>
         </div>
-
       </DialogContent>
     </Dialog>
   );
-} 
+}

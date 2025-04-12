@@ -21,7 +21,8 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-const BACKEND_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
+const BACKEND_URL =
+  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
 
 export const tokenService = {
   /**
@@ -31,12 +32,16 @@ export const tokenService = {
    */
   async getTokenInfo(address: string): Promise<TokenInfo> {
     try {
-      const response = await axios.get<ApiResponse<TokenInfo>>(`${BACKEND_URL}/web3/token/${address}`);
-      
+      const response = await axios.get<ApiResponse<TokenInfo>>(
+        `${BACKEND_URL}/web3/token/${address}`
+      );
+
       if (!response.data.success || !response.data.data) {
-        throw new Error(response.data.message || 'Failed to fetch token information');
+        throw new Error(
+          response.data.message || 'Failed to fetch token information'
+        );
       }
-      
+
       return response.data.data;
     } catch (error: unknown) {
       const axiosError = error as any;
@@ -45,5 +50,5 @@ export const tokenService = {
       }
       throw new Error('Failed to validate token');
     }
-  }
-}; 
+  },
+};

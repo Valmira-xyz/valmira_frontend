@@ -1,12 +1,19 @@
-import { useEffect, useCallback, useRef } from 'react';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useCallback, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setUser, setLoading, setError, logout } from '@/store/slices/authSlice';
-import { authService } from '@/services/authService';
-import type { RootState } from '@/store/store';
-import { web3modal } from '@/components/providers';
-import { jwtDecode } from 'jwt-decode';
+
 import CryptoJS from 'crypto-js';
+import { jwtDecode } from 'jwt-decode';
+import { useAccount, useDisconnect } from 'wagmi';
+
+import { web3modal } from '@/components/providers';
+import { authService } from '@/services/authService';
+import {
+  logout,
+  setError,
+  setLoading,
+  setUser,
+} from '@/store/slices/authSlice';
+import type { RootState } from '@/store/store';
 
 // JWT token interface
 interface JwtPayload {
@@ -21,7 +28,7 @@ export const useWeb3Auth = () => {
   const { address, isConnected, isDisconnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { user } = useSelector((state: RootState) => state.auth);
-  
+
   // Use refs to maintain stable references
   const addressRef = useRef(address);
   const isConnectedRef = useRef(isConnected);
@@ -33,7 +40,7 @@ export const useWeb3Auth = () => {
     addressRef.current = address;
     isConnectedRef.current = isConnected;
     userRef.current = user;
-    
+
     // Reset isAuthenticatingRef when component unmounts or when connection changes
     return () => {
       isAuthenticatingRef.current = false;
@@ -43,41 +50,47 @@ export const useWeb3Auth = () => {
   const handleLogout = useCallback(() => {
     isAuthenticatingRef.current = false;
     dispatch(logout());
-    authService.logout();   
+    authService.logout();
   }, [dispatch]);
 
   // Validate existing token from localStorage
-  const validateExistingToken = useCallback((walletAddress: string): boolean => {
-    try {
-      // Get token from localStorage
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
+  const validateExistingToken = useCallback(
+    (walletAddress: string): boolean => {
+      try {
+        // Get token from localStorage
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+          return false;
+        }
+
+        // Decode the token to get payload
+        const decodedToken = jwtDecode<JwtPayload>(token);
+
+        // Check if token is expired
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (decodedToken.exp <= currentTime) {
+          return false;
+        }
+
+        // Check if walletAddress in token matches connected wallet
+        if (
+          decodedToken.walletAddress.toLowerCase() !==
+          walletAddress.toLowerCase()
+        ) {
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        console.error('Error validating token:', error);
+        // If there's an error decoding, the token is likely invalid
+        localStorage.removeItem('token');
         return false;
       }
-      
-      // Decode the token to get payload
-      const decodedToken = jwtDecode<JwtPayload>(token);
-      
-      // Check if token is expired
-      const currentTime = Math.floor(Date.now() / 1000);
-      if (decodedToken.exp <= currentTime) {
-        return false;
-      }
-      
-      // Check if walletAddress in token matches connected wallet
-      if (decodedToken.walletAddress.toLowerCase() !== walletAddress.toLowerCase()) {
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error validating token:', error);
-      // If there's an error decoding, the token is likely invalid
-      localStorage.removeItem('token');
-      return false;
-    }
-  }, []);
+    },
+    []
+  );
 
   // Load user profile using existing token
   const loadUserProfile = useCallback(async () => {
@@ -125,21 +138,26 @@ export const useWeb3Auth = () => {
     // Check if MetaMask is locked
     const isLocked = await checkMetaMaskLockStatus();
     if (isLocked) {
-      dispatch(setError('Please unlock your wallet to continue authentication'));
+      dispatch(
+        setError('Please unlock your wallet to continue authentication')
+      );
       alert('Please unlock your wallet to continue.');
       return;
     }
 
     // If user is already authenticated with the current address, skip
-    if (currentUser && currentUser.walletAddress.toLowerCase() === currentAddress.toLowerCase()) {
+    if (
+      currentUser &&
+      currentUser.walletAddress.toLowerCase() === currentAddress.toLowerCase()
+    ) {
       return;
     }
 
     try {
       isAuthenticatingRef.current = true;
       dispatch(setLoading(true));
-      
-      // Check if we have a valid token in localStorage 
+
+      // Check if we have a valid token in localStorage
       if (validateExistingToken(currentAddress)) {
         // If token is valid, load user profile and return
         const profileLoaded = await loadUserProfile();
@@ -148,27 +166,36 @@ export const useWeb3Auth = () => {
         }
         // If profile loading failed, proceed with full authentication
       }
-      
+
       // Get nonce from backend
       const nonceResponse = await authService.getNonce(currentAddress);
-      
-      console.log("handleAuthentication - Starting authentication process");
-      console.log("handleAuthentication - Current address:", currentAddress);
-      
+
+      console.log('handleAuthentication - Starting authentication process');
+      console.log('handleAuthentication - Current address:', currentAddress);
+
       try {
         // Create verification token using MD5 hash of wallet address + nonce
         const walletAddress = currentAddress.toLowerCase();
         const nonce = nonceResponse.nonce;
-        const verificationToken = CryptoJS.MD5(`${walletAddress}-${nonce}`).toString();
-        
-        console.log("handleAuthentication - Verification token generated");
-        
+        const verificationToken = CryptoJS.MD5(
+          `${walletAddress}-${nonce}`
+        ).toString();
+
+        console.log('handleAuthentication - Verification token generated');
+
         // Verify with backend
-        const response = await authService.verifySignature(walletAddress, verificationToken, nonce);
+        const response = await authService.verifySignature(
+          walletAddress,
+          verificationToken,
+          nonce
+        );
         dispatch(setUser(response.user));
-        console.log("handleAuthentication - Authentication successful");
+        console.log('handleAuthentication - Authentication successful');
       } catch (verificationError: any) {
-        console.error("handleAuthentication - Error during verification:", verificationError);
+        console.error(
+          'handleAuthentication - Error during verification:',
+          verificationError
+        );
         throw verificationError;
       }
     } catch (error: any) {
@@ -182,7 +209,13 @@ export const useWeb3Auth = () => {
       dispatch(setLoading(false));
       isAuthenticatingRef.current = false;
     }
-  }, [dispatch, handleLogout, validateExistingToken, loadUserProfile, checkMetaMaskLockStatus]);
+  }, [
+    dispatch,
+    handleLogout,
+    validateExistingToken,
+    loadUserProfile,
+    checkMetaMaskLockStatus,
+  ]);
 
   // Handle initial connection and address changes
   useEffect(() => {
@@ -217,6 +250,6 @@ export const useWeb3Auth = () => {
     user,
     logout: handleLogout,
     authenticate: manualAuthenticate,
-    isAuthenticating: isAuthenticatingRef.current
+    isAuthenticating: isAuthenticatingRef.current,
   };
 };

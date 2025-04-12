@@ -1,46 +1,53 @@
-"use client"
+'use client';
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import { ProjectSummaryCard } from "@/components/projects/project-summary-card"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CreateProjectButton } from "../projects/create-project-button"
-import { useEffect, useRef, useCallback } from "react"
-import { useDispatch, useSelector } from "@/hooks/use-redux"
-import { fetchProjects } from "@/store/slices/projectSlice"
-import type { Project, ProjectWithAddons, TimeSeriesDataPoint } from "@/types"
+import { useCallback, useEffect, useRef } from 'react';
+
+import Link from 'next/link';
+
+import { ProjectSummaryCard } from '@/components/projects/project-summary-card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useDispatch, useSelector } from '@/hooks/use-redux';
+import { fetchProjects } from '@/store/slices/projectSlice';
+import type { Project, ProjectWithAddons } from '@/types';
+
+import { CreateProjectButton } from '../projects/create-project-button';
 
 export function LatestProjects() {
-  const dispatch = useDispatch()
-  const { projects, loading: isLoading, error } = useSelector((state) => state.projects)
-  const fetchInProgress = useRef(false)
-  const hasInitialFetch = useRef(false)
+  const dispatch = useDispatch();
+  const {
+    projects,
+    loading: isLoading,
+    error,
+  } = useSelector((state) => state.projects);
+  const fetchInProgress = useRef(false);
+  const hasInitialFetch = useRef(false);
 
   const fetchProjectsData = useCallback(async () => {
     // Skip if fetch is already in progress or if we've already fetched
-    if (fetchInProgress.current || (hasInitialFetch.current && !error)) return
-    
+    if (fetchInProgress.current || (hasInitialFetch.current && !error)) return;
+
     try {
-      fetchInProgress.current = true
-      await dispatch(fetchProjects())
-      hasInitialFetch.current = true
+      fetchInProgress.current = true;
+      await dispatch(fetchProjects());
+      hasInitialFetch.current = true;
     } finally {
-      fetchInProgress.current = false
+      fetchInProgress.current = false;
     }
-  }, [dispatch, error])
+  }, [dispatch, error]);
 
   useEffect(() => {
-    fetchProjectsData()
-  }, [fetchProjectsData])
+    fetchProjectsData();
+  }, [fetchProjectsData]);
 
   // Show only active projects, sorted by last updated
   const activeProjects = projects
     ?.filter((project: ProjectWithAddons) => project.status === 'active')
-    .sort((a: ProjectWithAddons, b: ProjectWithAddons) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 3) // Show only the 3 most recent projects
-
-
+    .sort(
+      (a: ProjectWithAddons, b: ProjectWithAddons) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    )
+    .slice(0, 3); // Show only the 3 most recent projects
 
   if (error) {
     return (
@@ -48,7 +55,7 @@ export function LatestProjects() {
         <h2 className="text-2xl font-bold">Your Latest Active Projects</h2>
         <div className="text-red-500">Please check connect your wallet.</div>
       </div>
-    )
+    );
   }
 
   if (!activeProjects?.length) {
@@ -59,25 +66,29 @@ export function LatestProjects() {
           <CardHeader>
             <CardTitle>
               {!projects?.length
-                ? "Get Started with Your First Project"
-                : projects.every((project: Project) => project.status !== 'active')
-                  ? "All Projects Completed or Inactive"
-                  : "No Active Projects Found"}
+                ? 'Get Started with Your First Project'
+                : projects.every(
+                      (project: Project) => project.status !== 'active'
+                    )
+                  ? 'All Projects Completed or Inactive'
+                  : 'No Active Projects Found'}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center text-center">
             <p className="mb-4 text-muted-foreground">
               {!projects?.length
-                ? "Create your first project to start managing your crypto assets and trading bots."
-                : projects.every((project: Project) => project.status !== 'active')
-                  ? "All your projects are either completed or inactive. Create a new project or reactivate an existing one."
-                  : "You have projects, but none are currently active. Activate an existing project or create a new one."}
+                ? 'Create your first project to start managing your crypto assets and trading bots.'
+                : projects.every(
+                      (project: Project) => project.status !== 'active'
+                    )
+                  ? 'All your projects are either completed or inactive. Create a new project or reactivate an existing one.'
+                  : 'You have projects, but none are currently active. Activate an existing project or create a new one.'}
             </p>
             <CreateProjectButton />
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -92,14 +103,11 @@ export function LatestProjects() {
         <div className="flex gap-6 min-w-max">
           {activeProjects.map((project: ProjectWithAddons) => (
             <div key={project._id} className="w-[320px] flex-shrink-0">
-              <ProjectSummaryCard 
-                project={project} 
-              />
+              <ProjectSummaryCard project={project} />
             </div>
           ))}
         </div>
       </div>
     </div>
-  )
+  );
 }
-

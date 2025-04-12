@@ -1,23 +1,25 @@
-"use client"
+'use client';
 
-import { Provider } from "react-redux"
-import { store } from "@/store/store"
-import { SessionProvider } from "@/components/session-provider"
-import { QueryProvider } from "@/components/query-provider"
-import { ThemeProvider } from "@/components/theme-provider"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
-import { Toaster } from "@/components/ui/toaster"
-import { wagmiAdapter, projectId } from "@/lib/web3modal"
-import { createAppKit } from '@reown/appkit/react' 
-import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
-import { bsc, bscTestnet } from "viem/chains"
-import { ReactNode } from "react"
-import { WalletProvider } from "@/components/wallet/wallet-provider"
-import { AuthProvider } from "@/components/AuthProvider"
+import { ReactNode } from 'react';
+import { Provider } from 'react-redux';
+
+import { bsc, bscTestnet } from 'viem/chains';
+import { type Config, cookieToInitialState, WagmiProvider } from 'wagmi';
+import { createAppKit } from '@reown/appkit/react';
+
+import { AuthProvider } from '@/components/AuthProvider';
+import { DashboardSidebar } from '@/components/layout/dashboard-sidebar';
+import { QueryProvider } from '@/components/query-provider';
+import { SessionProvider } from '@/components/session-provider';
+import { ThemeProvider } from '@/components/theme-provider';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { Toaster } from '@/components/ui/toaster';
+import { WalletProvider } from '@/components/wallet/wallet-provider';
+import { projectId, wagmiAdapter } from '@/lib/web3modal';
+import { store } from '@/store/store';
 
 if (!projectId) {
-  throw new Error('Project ID is not defined')
+  throw new Error('Project ID is not defined');
 }
 
 // Set up metadata
@@ -25,8 +27,8 @@ const metadata = {
   name: 'valmira_frontend',
   description: 'The first innovated multi chain meme launchpad',
   url: 'https://reown.com/appkit', // origin must match your domain & subdomain
-  icons: ['https://assets.reown.com/reown-profile-pic.png']
-}
+  icons: ['https://assets.reown.com/reown-profile-pic.png'],
+};
 
 // Create the modal
 export const web3modal = createAppKit({
@@ -37,25 +39,37 @@ export const web3modal = createAppKit({
   metadata: metadata,
   features: {
     analytics: true, // Optional - defaults to your Cloud configuration
-  }
-})
+  },
+});
 
-export function Providers({ children, cookies }: { children: ReactNode; cookies: string | null }){
-  const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies)
+export function Providers({
+  children,
+  cookies,
+}: {
+  children: ReactNode;
+  cookies: string | null;
+}) {
+  const initialState = cookieToInitialState(
+    wagmiAdapter.wagmiConfig as Config,
+    cookies
+  );
 
   return (
     <Provider store={store}>
       <SessionProvider>
-        <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
+        <WagmiProvider
+          config={wagmiAdapter.wagmiConfig as Config}
+          initialState={initialState}
+        >
           <QueryProvider>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
               <WalletProvider>
                 <AuthProvider>
                   <SidebarProvider>
-                    <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80">
+                    <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80 w-full">
                       <DashboardSidebar />
-                      <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out">
-                        <main className="flex-1 px-6 py-6">{children}</main>
+                      <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out w-full overflow-x-hidden">
+                        <main className="">{children}</main>
                       </div>
                     </div>
                   </SidebarProvider>
@@ -67,5 +81,5 @@ export function Providers({ children, cookies }: { children: ReactNode; cookies:
       </SessionProvider>
       <Toaster />
     </Provider>
-  )
-} 
+  );
+}

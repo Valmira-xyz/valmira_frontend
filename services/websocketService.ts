@@ -1,14 +1,13 @@
 import { io, Socket } from 'socket.io-client';
 
-
-// WebSocket events enumeration 
+// WebSocket events enumeration
 export enum WebSocketEvents {
   PROJECT_METRICS_UPDATED = 'project:metrics:updated',
   BOT_PERFORMANCE_UPDATED = 'bot:performance:updated',
   ACTIVITY_LOG_ADDED = 'activity:log:added',
   TIME_SERIES_UPDATED = 'timeseries:updated',
   VOLUME_GENERATION_UPDATED = 'volume:generation:updated',
-  HOLDER_GENERATION_UPDATED = 'holder:generation:updated'
+  HOLDER_GENERATION_UPDATED = 'holder:generation:updated',
 }
 
 // Event handler type definition
@@ -28,15 +27,16 @@ class WebSocketService {
       return;
     }
 
-    const url = apiUrl || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-    
+    const url =
+      apiUrl || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
     this.socket = io(url, {
       reconnection: true,
       reconnectionAttempts: this.maxReconnectionAttempts,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
     });
 
     this.setupListeners();
@@ -54,14 +54,14 @@ class WebSocketService {
       this.reconnectionAttempts = 0;
       console.log('🔌 [WebSocket] Connected successfully', {
         socketId: this.socket?.id,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      
+
       // If we were previously subscribed to a project, resubscribe
       if (this.projectId) {
         console.log('🔌 [WebSocket] Resubscribing to project', {
           projectId: this.projectId,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
         this.joinProject(this.projectId);
       }
@@ -73,17 +73,20 @@ class WebSocketService {
         reason,
         reconnectionAttempts: this.reconnectionAttempts,
         maxReconnectionAttempts: this.maxReconnectionAttempts,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      
+
       if (reason === 'io server disconnect') {
         // The server has forcefully disconnected the connection
         if (this.reconnectionAttempts < this.maxReconnectionAttempts) {
           this.reconnectionAttempts++;
-          console.log('🔌 [WebSocket] Attempting server disconnect reconnection', {
-            attempt: this.reconnectionAttempts,
-            timestamp: new Date().toISOString()
-          });
+          console.log(
+            '🔌 [WebSocket] Attempting server disconnect reconnection',
+            {
+              attempt: this.reconnectionAttempts,
+              timestamp: new Date().toISOString(),
+            }
+          );
           setTimeout(() => {
             this.socket?.connect();
           }, 1000);
@@ -92,10 +95,13 @@ class WebSocketService {
         // Client-side socket connection issues - try to reconnect
         if (this.reconnectionAttempts < this.maxReconnectionAttempts) {
           this.reconnectionAttempts++;
-          console.log('🔌 [WebSocket] Attempting transport/timeout reconnection', {
-            attempt: this.reconnectionAttempts,
-            timestamp: new Date().toISOString()
-          });
+          console.log(
+            '🔌 [WebSocket] Attempting transport/timeout reconnection',
+            {
+              attempt: this.reconnectionAttempts,
+              timestamp: new Date().toISOString(),
+            }
+          );
           setTimeout(() => {
             this.socket?.connect();
           }, 2000);
@@ -106,13 +112,13 @@ class WebSocketService {
     this.socket.on('reconnect', (attemptNumber) => {
       console.log('🔌 [WebSocket] Reconnected successfully', {
         attemptNumber,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      
+
       if (this.projectId) {
         console.log('🔌 [WebSocket] Resubscribing to project after reconnect', {
           projectId: this.projectId,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
         this.joinProject(this.projectId);
       }
@@ -121,36 +127,42 @@ class WebSocketService {
     this.socket.on('error', (error) => {
       console.error('🔌 [WebSocket] Connection error:', {
         error,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     });
 
     // Set up listeners for all event types
-    Object.values(WebSocketEvents).forEach(eventType => {
+    Object.values(WebSocketEvents).forEach((eventType) => {
       this.socket?.on(eventType, (data) => {
         console.log(`📡 [WebSocket] Received event: ${eventType}`, {
           data,
           timestamp: new Date().toISOString(),
-          handlers: this.eventHandlers.get(eventType)?.size || 0
+          handlers: this.eventHandlers.get(eventType)?.size || 0,
         });
 
         const handlers = this.eventHandlers.get(eventType);
         if (handlers && handlers.size > 0) {
-          handlers.forEach(handler => {
+          handlers.forEach((handler) => {
             try {
               handler(data);
             } catch (error) {
-              console.error(`🔌 [WebSocket] Error in handler for ${eventType}:`, {
-                error,
-                data,
-                timestamp: new Date().toISOString()
-              });
+              console.error(
+                `🔌 [WebSocket] Error in handler for ${eventType}:`,
+                {
+                  error,
+                  data,
+                  timestamp: new Date().toISOString(),
+                }
+              );
             }
           });
         } else {
-          console.warn(`🔌 [WebSocket] No handlers registered for event: ${eventType}`, {
-            timestamp: new Date().toISOString()
-          });
+          console.warn(
+            `🔌 [WebSocket] No handlers registered for event: ${eventType}`,
+            {
+              timestamp: new Date().toISOString(),
+            }
+          );
         }
       });
     });
@@ -163,7 +175,7 @@ class WebSocketService {
         projectId,
         isConnected: this.isConnected,
         hasSocket: !!this.socket,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       // Store projectId for reconnection
       this.projectId = projectId;
@@ -173,7 +185,7 @@ class WebSocketService {
     console.log('🔌 [WebSocket] Joining project room', {
       projectId,
       socketId: this.socket.id,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     this.socket.emit('joinProject', projectId);
     this.projectId = projectId;
@@ -184,9 +196,9 @@ class WebSocketService {
     if (!this.socket || !this.isConnected) {
       return;
     }
-    
+
     this.socket.emit('leaveProject', projectId);
-    
+
     if (this.projectId === projectId) {
       this.projectId = null;
     }
@@ -197,35 +209,35 @@ class WebSocketService {
     if (!this.socket) {
       console.warn('🔌 [WebSocket] Cannot subscribe: Socket not initialized', {
         event,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       return;
     }
-    
+
     // Create a handler set if none exists
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
-    
+
     const handlers = this.eventHandlers.get(event);
-    
+
     if (handlers) {
       // Convert Set to Array to check if handler exists
       const handlersArray = Array.from(handlers);
-      const isAlreadyRegistered = handlersArray.some(h => h === handler);
-      
+      const isAlreadyRegistered = handlersArray.some((h) => h === handler);
+
       if (!isAlreadyRegistered) {
         // Add the handler if it's not already registered
         handlers.add(handler);
         console.log('🔌 [WebSocket] Subscribed to event', {
           event,
           totalHandlers: handlers.size,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       } else {
         console.warn('🔌 [WebSocket] Handler already registered for event', {
           event,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       }
     }
@@ -244,7 +256,7 @@ class WebSocketService {
     if (!this.socket) {
       return;
     }
-    
+
     this.socket.disconnect();
     this.isConnected = false;
     this.socket = null;
@@ -260,4 +272,4 @@ class WebSocketService {
 
 // Create a singleton instance
 const websocketService = new WebSocketService();
-export default websocketService; 
+export default websocketService;

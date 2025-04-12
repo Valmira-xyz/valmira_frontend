@@ -32,4 +32,4 @@ export interface Project {
   };
 }
 
-export type ProjectWithAddons = Project; 
+export type ProjectWithAddons = Project;

@@ -1,10 +1,11 @@
-'use client'
+'use client';
 
-import { ReactNode, useEffect, useRef } from 'react'
-import websocketService from '@/services/websocketService'
+import { ReactNode, useEffect, useRef } from 'react';
+
+import websocketService from '@/services/websocketService';
 
 interface WebSocketProviderProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 /**
@@ -23,7 +24,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     }
 
     console.log('🔄 Initializing WebSocket connection in WebSocketProvider');
-    
+
     // Delay initial connection slightly to avoid competing with API requests
     setTimeout(() => {
       try {
@@ -38,13 +39,15 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     // Reconnect on visibility change (when user returns to tab) with debounce
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('📱 Document became visible, checking WebSocket connection');
-        
+        console.log(
+          '📱 Document became visible, checking WebSocket connection'
+        );
+
         // Clear any existing reconnect timer
         if (reconnectTimer.current) {
           clearTimeout(reconnectTimer.current);
         }
-        
+
         // Set a delay before reconnecting to avoid rapid connections
         reconnectTimer.current = setTimeout(() => {
           if (!websocketService.isSocketConnected()) {
@@ -55,23 +58,23 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         }, 1500);
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       // Clean up connection on app unmount
       console.log('🧹 Cleaning up WebSocket connection');
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
+
       if (reconnectTimer.current) {
         clearTimeout(reconnectTimer.current);
       }
-      
-      websocketService.disconnect();
-    }
-  }, [])
 
-  return <>{children}</>
+      websocketService.disconnect();
+    };
+  }, []);
+
+  return <>{children}</>;
 }
 
-export default WebSocketProvider 
+export default WebSocketProvider;

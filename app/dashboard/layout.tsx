@@ -1,15 +1,14 @@
-"use client"
+'use client';
 
-import type React from "react"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
-import { useSelector } from 'react-redux'
-import { RootState } from '@/store/store'
+import type React from 'react';
+
+import { DashboardSidebar } from '@/components/layout/dashboard-sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <SidebarProvider>
@@ -20,6 +19,5 @@ export default function DashboardLayout({
         </div>
       </div>
     </SidebarProvider>
-  )
+  );
 }
-

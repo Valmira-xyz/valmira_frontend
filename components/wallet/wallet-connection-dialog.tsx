@@ -1,39 +1,47 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Check, Loader2, Wallet } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+import { useState } from 'react';
+
+import { Check, Loader2, Wallet } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 // Mock wallet providers
 const walletProviders = [
   {
-    id: "metamask",
-    name: "MetaMask",
-    icon: "🦊",
-    description: "Connect to your MetaMask Wallet",
+    id: 'metamask',
+    name: 'MetaMask',
+    icon: '🦊',
+    description: 'Connect to your MetaMask Wallet',
   },
   {
-    id: "walletconnect",
-    name: "WalletConnect",
-    icon: "🔗",
-    description: "Scan with WalletConnect to connect",
+    id: 'walletconnect',
+    name: 'WalletConnect',
+    icon: '🔗',
+    description: 'Scan with WalletConnect to connect',
   },
   {
-    id: "coinbase",
-    name: "Coinbase Wallet",
-    icon: "🪙",
-    description: "Connect to your Coinbase Wallet",
+    id: 'coinbase',
+    name: 'Coinbase Wallet',
+    icon: '🪙',
+    description: 'Connect to your Coinbase Wallet',
   },
-]
+];
 
 type WalletConnectionDialogProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onConnect: (address: string) => void
-  onDisconnect: () => void
-  isConnected: boolean
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConnect: (address: string) => void;
+  onDisconnect: () => void;
+  isConnected: boolean;
+};
 
 export function WalletConnectionDialog({
   open,
@@ -42,39 +50,39 @@ export function WalletConnectionDialog({
   onDisconnect,
   isConnected,
 }: WalletConnectionDialogProps) {
-  const [connecting, setConnecting] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null)
+  const [connecting, setConnecting] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   // Generate a mock wallet address
   const generateMockAddress = () => {
-    const chars = "0123456789abcdef"
-    let address = "0x"
+    const chars = '0123456789abcdef';
+    let address = '0x';
     for (let i = 0; i < 40; i++) {
-      address += chars[Math.floor(Math.random() * chars.length)]
+      address += chars[Math.floor(Math.random() * chars.length)];
     }
-    return address
-  }
+    return address;
+  };
 
   const handleConnect = (providerId: string) => {
-    setSelectedProvider(providerId)
-    setConnecting(true)
+    setSelectedProvider(providerId);
+    setConnecting(true);
 
     // Simulate connection delay
     setTimeout(() => {
-      const mockAddress = generateMockAddress()
+      const mockAddress = generateMockAddress();
 
       // Get the onConnect function from the parent component
-      onConnect(mockAddress)
+      onConnect(mockAddress);
 
-      setConnecting(false)
-      onOpenChange(false)
+      setConnecting(false);
+      onOpenChange(false);
 
       // Reset state after closing
       setTimeout(() => {
-        setSelectedProvider(null)
-      }, 500)
-    }, 1500)
-  }
+        setSelectedProvider(null);
+      }, 500);
+    }, 1500);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,12 +90,12 @@ export function WalletConnectionDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5" />
-            {isConnected ? "Switch Wallet" : "Connect Your Wallet"}
+            {isConnected ? 'Switch Wallet' : 'Connect Your Wallet'}
           </DialogTitle>
           <DialogDescription>
             {isConnected
-              ? "Choose a different wallet to connect or disconnect your current wallet."
-              : "Connect your wallet to access all features and manage your projects."}
+              ? 'Choose a different wallet to connect or disconnect your current wallet.'
+              : 'Connect your wallet to access all features and manage your projects.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -104,7 +112,9 @@ export function WalletConnectionDialog({
                 <div className="text-2xl">{provider.icon}</div>
                 <div className="flex flex-col items-start">
                   <span className="font-medium">{provider.name}</span>
-                  <span className="text-xs text-muted-foreground">{provider.description}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {provider.description}
+                  </span>
                 </div>
               </div>
 
@@ -129,7 +139,7 @@ export function WalletConnectionDialog({
             <a href="/terms" className="underline hover:text-primary">
               Terms of Service
             </a>
-            {" and "}
+            {' and '}
             <a href="/privacy" className="underline hover:text-primary">
               Privacy Policy
             </a>
@@ -137,6 +147,5 @@ export function WalletConnectionDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

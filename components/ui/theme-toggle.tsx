@@ -1,21 +1,48 @@
-"use client"
+'use client';
 
-import { Moon, Sun } from "lucide-react"
-import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import * as React from 'react';
 
-export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
+import { Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
+
+import { Button, ButtonProps } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
+interface ThemeToggleProps {
+  className?: string;
+  buttonProps?: Omit<ButtonProps, 'onClick' | 'children' | 'aria-label'>;
+  tooltipContent?: React.ReactNode;
+  onThemeChange?: (newTheme: 'light' | 'dark') => void;
+}
+
+export function ThemeToggle({
+  className,
+  buttonProps = { variant: 'ghost', size: 'icon' },
+  tooltipContent = 'Toggle theme',
+  onThemeChange,
+}: ThemeToggleProps) {
+  const { theme, setTheme } = useTheme();
+
+  const handleToggle = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    onThemeChange?.(newTheme);
+  };
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          <Button
+            {...buttonProps}
+            className={cn(buttonProps.className, className)}
+            onClick={handleToggle}
             aria-label="Toggle theme"
           >
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -23,9 +50,13 @@ export function ThemeToggle() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Toggle theme</p>
+          {typeof tooltipContent === 'string' ? (
+            <p>{tooltipContent}</p>
+          ) : (
+            tooltipContent
+          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  )
-} 
+  );
+}

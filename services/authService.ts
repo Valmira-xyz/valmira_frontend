@@ -1,7 +1,9 @@
 import axios from 'axios';
-import type { User, ApiResponse, AuthResponse, NonceResponse, VerifyResponse } from '@/types';
 
-const API_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
+import type { ApiResponse, NonceResponse, User, VerifyResponse } from '@/types';
+
+const API_URL =
+  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
 
 class AuthService {
   private token: string | null = null;
@@ -33,10 +35,11 @@ class AuthService {
 
   async getNonce(walletAddress: string): Promise<NonceResponse> {
     try {
-      const response = await axios.get<ApiResponse<{ nonce: string }>>(`${API_URL}/users/nonce/${walletAddress}`, 
-       {
-        withCredentials: true,
-       }  
+      const response = await axios.get<ApiResponse<{ nonce: string }>>(
+        `${API_URL}/users/nonce/${walletAddress}`,
+        {
+          withCredentials: true,
+        }
       );
       return response.data.data;
     } catch (error) {
@@ -44,18 +47,23 @@ class AuthService {
     }
   }
 
-  async verifySignature(walletAddress: string, verificationToken: string, nonce: string): Promise<VerifyResponse> {
+  async verifySignature(
+    walletAddress: string,
+    verificationToken: string,
+    nonce: string
+  ): Promise<VerifyResponse> {
     try {
-      const response = await axios.post<ApiResponse<VerifyResponse>>(`${API_URL}/users/verify-signature`, 
+      const response = await axios.post<ApiResponse<VerifyResponse>>(
+        `${API_URL}/users/verify-signature`,
         {
-        walletAddress,
-        verificationToken,
-        nonce,
-      },
-      {
-        withCredentials: true,
-      }
-    );
+          walletAddress,
+          verificationToken,
+          nonce,
+        },
+        {
+          withCredentials: true,
+        }
+      );
 
       const { user, token } = response.data.data;
       this.setToken(token);
@@ -70,9 +78,9 @@ class AuthService {
           _id: user._id,
           walletAddress: user.walletAddress,
           role: user.role as 'user' | 'admin',
-          name: user.name
+          name: user.name,
         },
-        token
+        token,
       };
     } catch (error) {
       throw new Error('Failed to verify authentication');
@@ -81,14 +89,16 @@ class AuthService {
 
   async register(walletAddress: string, name?: string): Promise<User> {
     try {
-      const response = await axios.post<ApiResponse<{ user: User }>>(`${API_URL}/users/register`, {
-        walletAddress,
-        name,
-      },
-      {
-        withCredentials: true,
-      }
-    );
+      const response = await axios.post<ApiResponse<{ user: User }>>(
+        `${API_URL}/users/register`,
+        {
+          walletAddress,
+          name,
+        },
+        {
+          withCredentials: true,
+        }
+      );
       return response.data.data.user;
     } catch (error) {
       throw new Error('Registration failed');
@@ -97,10 +107,13 @@ class AuthService {
 
   async getProfile(): Promise<User> {
     try {
-      const response = await axios.get<ApiResponse<{ user: User }>>(`${API_URL}/users/profile`, {
-        headers: this.getAuthHeader(),
-        withCredentials: true,
-      });
+      const response = await axios.get<ApiResponse<{ user: User }>>(
+        `${API_URL}/users/profile`,
+        {
+          headers: this.getAuthHeader(),
+          withCredentials: true,
+        }
+      );
       return response.data.data.user;
     } catch (error) {
       throw new Error('Failed to get profile');
@@ -109,10 +122,14 @@ class AuthService {
 
   async updateProfile(data: Partial<User>): Promise<User> {
     try {
-      const response = await axios.put<ApiResponse<{ user: User }>>(`${API_URL}/users/profile`, data, {
-        headers: this.getAuthHeader(),
-        withCredentials: true,
-      });
+      const response = await axios.put<ApiResponse<{ user: User }>>(
+        `${API_URL}/users/profile`,
+        data,
+        {
+          headers: this.getAuthHeader(),
+          withCredentials: true,
+        }
+      );
       return response.data.data.user;
     } catch (error) {
       throw new Error('Failed to update profile');
@@ -128,4 +145,4 @@ class AuthService {
   }
 }
 
-export const authService = new AuthService(); 
+export const authService = new AuthService();

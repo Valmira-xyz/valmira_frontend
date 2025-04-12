@@ -93,12 +93,12 @@ body {
   }
 }
 
-[data-sidebar="menu-item"] {
+[data-sidebar='menu-item'] {
   list-style: none;
   display: none;
 }
 
-[data-sidebar="menu-item"]::marker {
+[data-sidebar='menu-item']::marker {
   content: none;
   display: none;
 }

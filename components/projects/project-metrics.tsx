@@ -1,22 +1,25 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Project, ProjectWithAddons } from "@/types"
-import { useSelector, useDispatch } from 'react-redux'
-import { RootState, AppDispatch } from "@/store/store"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useEffect, useState, useRef, useCallback } from "react"
-import { getPoolInfo } from "@/services/web3Utils"
-import { fetchBnbPrice } from "@/store/slices/projectSlice"
-import websocketService, { WebSocketEvents } from "@/services/websocketService"
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
-export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { getPoolInfo } from '@/services/web3Utils';
+import websocketService, { WebSocketEvents } from '@/services/websocketService';
+import { fetchBnbPrice } from '@/store/slices/projectSlice';
+import { AppDispatch, RootState } from '@/store/store';
+import { ProjectWithAddons } from '@/types';
+
+export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
   const dispatch = useDispatch<AppDispatch>();
-  const { projectStats, loading, bnbPrice, bnbPriceLoading } = useSelector((state: RootState) => state.projects);
-  const [poolLiquidity, setPoolLiquidity] = useState<number>(0)
-  const [loadingLiquidity, setLoadingLiquidity] = useState<boolean>(false)
-  const [localMetrics, setLocalMetrics] = useState<ProjectMetrics | null>(null)
-  const isFetchingBnbPrice = useRef(false)
-  const hasInitialBnbPriceFetch = useRef(false)
-  const isCalculatingLiquidity = useRef(false)
+  const { projectStats, loading, bnbPrice, bnbPriceLoading } = useSelector(
+    (state: RootState) => state.projects
+  );
+  const [poolLiquidity, setPoolLiquidity] = useState<number>(0);
+  const [loadingLiquidity, setLoadingLiquidity] = useState<boolean>(false);
+  const [localMetrics, setLocalMetrics] = useState<ProjectMetrics | null>(null);
+  const isFetchingBnbPrice = useRef(false);
+  const hasInitialBnbPriceFetch = useRef(false);
+  const isCalculatingLiquidity = useRef(false);
 
   // Define a type for the metrics object
   type ProjectMetrics = {
@@ -24,120 +27,131 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
     volume24h: number;
     activeBots: number;
     [key: string]: any; // Allow other properties
-  }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value)
-  }
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
 
   const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('en-US').format(value)
-  }
+    return new Intl.NumberFormat('en-US').format(value);
+  };
 
   // Calculate active bots count similar to dashboard-metrics.tsx
   const calculateActiveBots = (): number => {
     let activeBots = 0;
-    
+
     // Count active bots from addons
     if (project.addons) {
       // SnipeBot
       if (project.addons.SnipeBot?.isEnabled) {
         activeBots += 1;
       }
-      
+
       // VolumeBot
       if (project.addons.VolumeBot?.isEnabled) {
         activeBots += 1;
       }
-      
+
       // HolderBot
       if (project.addons.HolderBot?.isEnabled) {
         activeBots += 1;
       }
     }
-    
+
     return activeBots;
   };
 
   // Memoize the metrics update handler to maintain reference stability
-  const handleMetricsUpdate = useCallback((data: any) => {
-    console.log('📊 [ProjectMetrics] Received metrics update:', {
-      projectId: data.projectId,
-      expectedProjectId: project._id,
-      metrics: data.metrics,
-      timestamp: new Date().toISOString()
-    });
-
-    if (data.projectId === project._id && data.metrics) {
-      console.log('📊 [ProjectMetrics] Processing metrics update:', {
-        currentMetrics: localMetrics,
-        newMetrics: data.metrics,
-        timestamp: new Date().toISOString()
+  const handleMetricsUpdate = useCallback(
+    (data: any) => {
+      console.log('📊 [ProjectMetrics] Received metrics update:', {
+        projectId: data.projectId,
+        expectedProjectId: project._id,
+        metrics: data.metrics,
+        timestamp: new Date().toISOString(),
       });
-      
-      // Simply replace the metrics with the new values from the backend
-      // since the backend already calculates the accumulated values
-      setLocalMetrics((prevMetrics: ProjectMetrics | null) => {
-        const updatedMetrics = { ...data.metrics };
-        
-        // Use calculated active bots if not provided in the metrics
-        if (!updatedMetrics.activeBots) {
-          updatedMetrics.activeBots = calculateActiveBots();
-        }
 
-        console.log('📊 [ProjectMetrics] Updated metrics:', {
-          previousMetrics: prevMetrics,
-          updatedMetrics,
-          timestamp: new Date().toISOString()
+      if (data.projectId === project._id && data.metrics) {
+        console.log('📊 [ProjectMetrics] Processing metrics update:', {
+          currentMetrics: localMetrics,
+          newMetrics: data.metrics,
+          timestamp: new Date().toISOString(),
         });
 
-        return updatedMetrics;
-      });
-    } else {
-      console.warn(`📊 [ProjectMetrics] Invalid metrics update:`, {
-        event: WebSocketEvents.PROJECT_METRICS_UPDATED,
-        hasProjectId: !!data.projectId,
-        hasMetrics: !!data.metrics,
-        expectedProjectId: project._id,
-        actualProjectId: data.projectId,
-        data,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }, [project._id, localMetrics, calculateActiveBots]);
+        // Simply replace the metrics with the new values from the backend
+        // since the backend already calculates the accumulated values
+        setLocalMetrics((prevMetrics: ProjectMetrics | null) => {
+          const updatedMetrics = { ...data.metrics };
+
+          // Use calculated active bots if not provided in the metrics
+          if (!updatedMetrics.activeBots) {
+            updatedMetrics.activeBots = calculateActiveBots();
+          }
+
+          console.log('📊 [ProjectMetrics] Updated metrics:', {
+            previousMetrics: prevMetrics,
+            updatedMetrics,
+            timestamp: new Date().toISOString(),
+          });
+
+          return updatedMetrics;
+        });
+      } else {
+        console.warn(`📊 [ProjectMetrics] Invalid metrics update:`, {
+          event: WebSocketEvents.PROJECT_METRICS_UPDATED,
+          hasProjectId: !!data.projectId,
+          hasMetrics: !!data.metrics,
+          expectedProjectId: project._id,
+          actualProjectId: data.projectId,
+          data,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    },
+    [project._id, localMetrics, calculateActiveBots]
+  );
 
   // Connect to WebSocket and subscribe to project updates
   useEffect(() => {
     if (!project?._id) {
-      console.warn('📊 [ProjectMetrics] No project ID available for WebSocket connection');
+      console.warn(
+        '📊 [ProjectMetrics] No project ID available for WebSocket connection'
+      );
       return;
     }
-    
+
     console.log('📊 [ProjectMetrics] Setting up WebSocket connection:', {
       projectId: project._id,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     // Ensure connection and join project room
     websocketService.connect();
     websocketService.joinProject(project._id);
-    
+
     // Subscribe to metrics updates
-    websocketService.subscribe(WebSocketEvents.PROJECT_METRICS_UPDATED, handleMetricsUpdate);
-    
+    websocketService.subscribe(
+      WebSocketEvents.PROJECT_METRICS_UPDATED,
+      handleMetricsUpdate
+    );
+
     // Cleanup on unmount
     return () => {
       if (project._id) {
         console.log('📊 [ProjectMetrics] Cleaning up WebSocket connection:', {
           projectId: project._id,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
-        websocketService.unsubscribe(WebSocketEvents.PROJECT_METRICS_UPDATED, handleMetricsUpdate);
+        websocketService.unsubscribe(
+          WebSocketEvents.PROJECT_METRICS_UPDATED,
+          handleMetricsUpdate
+        );
         websocketService.leaveProject(project._id);
       }
     };
@@ -146,16 +160,19 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
   // Fetch BNB price with debounce mechanism
   const fetchBnbPriceData = useCallback(async () => {
     // Skip if fetch is already in progress or we've already fetched and have data
-    if (isFetchingBnbPrice.current || (hasInitialBnbPriceFetch.current && bnbPrice)) {
+    if (
+      isFetchingBnbPrice.current ||
+      (hasInitialBnbPriceFetch.current && bnbPrice)
+    ) {
       console.log('📊 [ProjectMetrics] Skipping BNB price fetch:', {
         isFetching: isFetchingBnbPrice.current,
         hasInitialFetch: hasInitialBnbPriceFetch.current,
         currentPrice: bnbPrice,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       return;
     }
-    
+
     try {
       console.log('📊 [ProjectMetrics] Fetching BNB price');
       isFetchingBnbPrice.current = true;
@@ -163,12 +180,12 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
       hasInitialBnbPriceFetch.current = true;
       console.log('📊 [ProjectMetrics] BNB price fetched successfully:', {
         price: bnbPrice,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       console.error('📊 [ProjectMetrics] Error fetching BNB price:', {
         error,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } finally {
       isFetchingBnbPrice.current = false;
@@ -187,20 +204,20 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
         hasTokenAddress: !!tokenAddress,
         hasBnbPrice: !!bnbPrice,
         isCalculating: isCalculatingLiquidity.current,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       return;
     }
-    
+
     try {
       console.log('📊 [ProjectMetrics] Calculating liquidity for token:', {
         tokenAddress,
         bnbPrice,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       isCalculatingLiquidity.current = true;
       setLoadingLiquidity(true);
-      
+
       const poolInfo = await getPoolInfo(tokenAddress);
       if (poolInfo) {
         // Calculate liquidity in USD using the BNB price from Redux
@@ -209,13 +226,13 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
           bnbReserve: poolInfo.bnbReserve,
           bnbPrice,
           liquidityUsd: liquidityInUsd,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
         setPoolLiquidity(liquidityInUsd);
       } else {
         console.warn('📊 [ProjectMetrics] No pool info available for token:', {
           tokenAddress,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
         setPoolLiquidity(0);
       }
@@ -223,7 +240,7 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
       console.error('📊 [ProjectMetrics] Failed to fetch liquidity:', {
         error,
         tokenAddress,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       setPoolLiquidity(0);
     } finally {
@@ -253,25 +270,37 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
           </Card>
         ))}
       </div>
-    )
+    );
   }
 
   // Use local metrics from WebSocket if available, otherwise fall back to Redux or project data
   const metrics = {
-    cumulativeProfit: localMetrics?.cumulativeProfit ?? projectStats?.metrics?.cumulativeProfit ?? project.metrics?.cumulativeProfit ?? 0,
-    volume24h: localMetrics?.volume24h ?? projectStats?.metrics?.volume24h ?? project.metrics?.volume24h ?? 0,
+    cumulativeProfit:
+      localMetrics?.cumulativeProfit ??
+      projectStats?.metrics?.cumulativeProfit ??
+      project.metrics?.cumulativeProfit ??
+      0,
+    volume24h:
+      localMetrics?.volume24h ??
+      projectStats?.metrics?.volume24h ??
+      project.metrics?.volume24h ??
+      0,
     activeBots: localMetrics?.activeBots ?? calculateActiveBots(),
-    liquidity: poolLiquidity
-  }
+    liquidity: poolLiquidity,
+  };
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Cumulative Profit</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            Cumulative Profit
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(metrics.cumulativeProfit)}</div>
+          <div className="text-2xl font-bold">
+            {formatCurrency(metrics.cumulativeProfit)}
+          </div>
           <p className="text-xs text-muted-foreground">
             Total profit since inception
           </p>
@@ -279,10 +308,14 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Cumulative Volume</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            Cumulative Volume
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(metrics.volume24h)}</div>
+          <div className="text-2xl font-bold">
+            {formatCurrency(metrics.volume24h)}
+          </div>
           <p className="text-xs text-muted-foreground">
             Trading volume since inception
           </p>
@@ -293,7 +326,9 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
           <CardTitle className="text-sm font-medium">Active Bots</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(metrics.activeBots)}</div>
+          <div className="text-2xl font-bold">
+            {formatNumber(metrics.activeBots)}
+          </div>
           <p className="text-xs text-muted-foreground">
             Currently active trading bots
           </p>
@@ -304,13 +339,14 @@ export function ProjectMetrics({ project }: {project: ProjectWithAddons}) {
           <CardTitle className="text-sm font-medium">Liquidity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(metrics.liquidity)}</div>
+          <div className="text-2xl font-bold">
+            {formatCurrency(metrics.liquidity)}
+          </div>
           <p className="text-xs text-muted-foreground">
             Total available liquidity
           </p>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
-
