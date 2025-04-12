@@ -347,8 +347,11 @@ export function ProjectsList({
         {displayedProjects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12">
             <p className="text-muted-foreground mb-4">No projects found</p>
-            Create your first project by clicking the button "Create New
-            Project"
+
+            <p className="text-center">
+              Create your first project by clicking the button "Create New
+              Project"
+            </p>
           </div>
         )}
       </div>

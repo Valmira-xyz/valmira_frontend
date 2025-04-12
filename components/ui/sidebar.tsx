@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { useImperativeHandle, useRef } from 'react';
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -163,8 +164,14 @@ const SidebarProvider = React.forwardRef<
 );
 SidebarProvider.displayName = 'SidebarProvider';
 
+// Add this interface before the Sidebar component
+export interface SidebarRef {
+  element: HTMLDivElement | null;
+  toggleSidebar: () => void;
+}
+
 const Sidebar = React.forwardRef<
-  HTMLDivElement,
+  SidebarRef,
   React.ComponentProps<'div'> & {
     side?: 'left' | 'right';
     variant?: 'sidebar' | 'floating' | 'inset';
@@ -184,6 +191,13 @@ const Sidebar = React.forwardRef<
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
+    const sidebarRef = useRef<HTMLDivElement>(null);
+
+    useImperativeHandle(ref, () => ({
+      element: sidebarRef.current,
+      toggleSidebar: () => setOpenMobile(!openMobile),
+    }));
+
     if (collapsible === 'none') {
       return (
         <div
@@ -191,7 +205,7 @@ const Sidebar = React.forwardRef<
             'flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground',
             className
           )}
-          ref={ref}
+          ref={sidebarRef}
           {...props}
         >
           {children}
@@ -225,7 +239,7 @@ const Sidebar = React.forwardRef<
 
     return (
       <div
-        ref={ref}
+        ref={sidebarRef}
         className="group peer hidden text-sidebar-foreground md:block"
         data-state={state}
         data-collapsible={state === 'collapsed' ? collapsible : ''}

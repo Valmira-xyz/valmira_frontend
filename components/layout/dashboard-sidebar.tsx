@@ -1,5 +1,5 @@
 'use client';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import {
@@ -29,6 +29,7 @@ import {
   SidebarContent,
   SidebarHeader,
   SidebarMenuButton,
+  SidebarRef,
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -59,6 +60,8 @@ export function DashboardSidebar() {
   const { projects, loading: projectsLoading } = useSelector(
     (state: RootState) => state.projects
   );
+
+  const sidebarRef = useRef<SidebarRef>(null);
 
   // Set mounted state to true after component mounts
   useEffect(() => {
@@ -222,13 +225,20 @@ export function DashboardSidebar() {
     };
   }, [isAuthenticated, isConnected, userProjects, handleMetricsUpdate]);
 
+  const onNavigateTo = (path: string) => {
+    router.push(path);
+    if (sidebarRef.current) {
+      sidebarRef.current.toggleSidebar();
+    }
+  };
+
   return (
-    <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'}>
+    <Sidebar ref={sidebarRef} collapsible={isMobile ? 'offcanvas' : 'icon'}>
       <SidebarHeader className="px-2 py-4 relative w-full">
         <div className="flex justify-between items-center h-8">
           {open &&
             (mounted ? (
-              <Link href="/">
+              <Link href="/" onClick={() => onNavigateTo('/')}>
                 <Logo />
               </Link>
             ) : (
@@ -240,7 +250,7 @@ export function DashboardSidebar() {
       <SidebarContent className="flex flex-col h-full">
         <div className="px-2">
           <SidebarMenuButton
-            onClick={() => router.push('/')}
+            onClick={() => onNavigateTo('/')}
             className="flex items-center "
           >
             <HomeIcon className="h-4 w-4" />
@@ -280,7 +290,7 @@ export function DashboardSidebar() {
                     {filteredAndSortedProjects.map((project) => (
                       <button
                         key={project._id}
-                        onClick={() => router.push(`/projects/${project._id}`)}
+                        onClick={() => onNavigateTo(`/projects/${project._id}`)}
                         className="flex items-center justify-between w-full px-4 h-8 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                       >
                         <div className="flex items-center">
@@ -307,13 +317,13 @@ export function DashboardSidebar() {
                       </button>
                     ))}
                     <button
-                      onClick={() => router.push('/projects')}
+                      onClick={() => onNavigateTo('/projects')}
                       className="flex items-center w-full px-4 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
                     >
                       Your projects
                     </button>
                     <button
-                      onClick={() => router.push('/public-projects')}
+                      onClick={() => onNavigateTo('/public-projects')}
                       className="flex items-center w-full px-4 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
                     >
                       View all projects
@@ -325,7 +335,7 @@ export function DashboardSidebar() {
                       {projects && projects.length === 0 && 'No projects found'}
                     </div>
                     <button
-                      onClick={() => router.push('/public-projects')}
+                      onClick={() => onNavigateTo('/public-projects')}
                       className="flex items-center w-full px-4 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
                     >
                       View all Projects...
@@ -362,7 +372,7 @@ export function DashboardSidebar() {
             <CollapsibleContent>
               <div className="ml-4 border-l-[1px]">
                 <button
-                  onClick={() => router.push('/tutorials')}
+                  onClick={() => onNavigateTo('/tutorials')}
                   className="flex items-center w-full px-4 py-2 h-8 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                 >
                   <div className="flex items-center gap-2">
@@ -371,7 +381,7 @@ export function DashboardSidebar() {
                   </div>
                 </button>
                 <button
-                  onClick={() => router.push('/faqs')}
+                  onClick={() => onNavigateTo('/faqs')}
                   className="flex items-center w-full px-4 py-2 h-8 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                 >
                   <div className="flex items-center gap-2">
@@ -385,7 +395,7 @@ export function DashboardSidebar() {
 
           {/* Help & Support */}
           <SidebarMenuButton
-            onClick={() => router.push('/faqs')}
+            onClick={() => onNavigateTo('/faqs')}
             className="flex items-center "
           >
             <HelpCircle className="h-4 w-4" />
@@ -394,7 +404,7 @@ export function DashboardSidebar() {
 
           {/* Settings */}
           <SidebarMenuButton
-            onClick={() => router.push('/settings')}
+            onClick={() => onNavigateTo('/settings')}
             className="flex items-center "
           >
             <Settings className="h-4 w-4" />
