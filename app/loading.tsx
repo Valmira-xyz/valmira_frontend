@@ -1,5 +1,6 @@
 'use client';
 import { useLottie } from 'lottie-react';
+
 import loadingAnimation from '../public/valmira-lottie.json';
 
 export default function Loading() {
