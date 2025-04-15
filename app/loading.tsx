@@ -1,11 +1,34 @@
 'use client';
+import { useEffect, useState } from 'react';
+
 import { useLottie } from 'lottie-react';
 
-import loadingAnimation from '../public/valmira-lottie.json';
+import loadingAnimationDark from '../public/valmira-lottie-dark.json';
+import loadingAnimationLight from '../public/valmira-lottie-light.json';
 
 export default function Loading() {
+  const [theme, setTheme] = useState('light');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setTheme(savedTheme);
+
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      setTheme(currentTheme);
+    };
+
+    // Добавляем слушатель события storage
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   const options = {
-    animationData: loadingAnimation,
+    animationData:
+      theme === 'dark' ? loadingAnimationDark : loadingAnimationLight,
     loop: true,
     autoplay: true,
   };
