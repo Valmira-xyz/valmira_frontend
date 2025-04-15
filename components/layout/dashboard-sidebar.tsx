@@ -11,10 +11,10 @@ import {
   HelpCircle,
   HomeIcon,
   Settings,
+  Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTheme } from 'next-themes';
 import { useAccount } from 'wagmi';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -46,7 +46,7 @@ export function DashboardSidebar() {
   const { isConnected } = useAccount();
   const [openProjects, setOpenProjects] = useState(true);
   const [openKnowledge, setOpenKnowledge] = useState(false);
-  const { theme, resolvedTheme } = useTheme();
+  // const { theme, resolvedTheme } = useTheme();
   const { open, setOpen, isMobile } = useSidebar();
   const [mounted, setMounted] = useState(false);
   const [updatedTotalProfit, setUpdatedTotalProfit] = useState<number | null>(
@@ -57,7 +57,7 @@ export function DashboardSidebar() {
   const { user, isAuthenticated } = useSelector(
     (state: RootState) => state.auth
   );
-  const { projects, loading: projectsLoading } = useSelector(
+  const { projects, loading: _projectsLoading } = useSelector(
     (state: RootState) => state.projects
   );
 
@@ -255,6 +255,14 @@ export function DashboardSidebar() {
           >
             <HomeIcon className="h-4 w-4" />
             <span>Dashboard</span>
+          </SidebarMenuButton>
+
+          <SidebarMenuButton
+            onClick={() => onNavigateTo('/portfolio')}
+            className="flex items-center "
+          >
+            <Wallet className="h-4 w-4" />
+            <span className="text-sm">Portfolio</span>
           </SidebarMenuButton>
 
           {/* Projects with submenu */}

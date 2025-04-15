@@ -104,7 +104,7 @@ export function DashboardMetrics() {
             className={`relative overflow-hidden ${loading || isLoading ? 'opacity-60' : ''}`}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base font-bold">
+              <CardTitle className="text-xs font-medium text-black">
                 {metric.title}
               </CardTitle>
               <metric.icon className="h-4 w-4 text-muted-foreground" />
