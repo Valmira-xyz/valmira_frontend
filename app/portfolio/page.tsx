@@ -1,0 +1,108 @@
+'use client';
+
+import { useState } from 'react';
+import type { DateRange } from 'react-day-picker';
+
+import { subDays } from 'date-fns';
+import { Download } from 'lucide-react';
+
+import { PageHeader } from '@/components/layout/page-header';
+import { PortfolioChart } from '@/components/portfolio/portfolio-chart';
+import { PortfolioFilters } from '@/components/portfolio/portfolio-filters';
+import { PortfolioProjects } from '@/components/portfolio/portfolio-projects';
+import { PortfolioSummary } from '@/components/portfolio/portfolio-summary';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/use-toast';
+
+export default function PortfolioPage() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 7),
+    to: new Date(),
+  });
+  const [activeTab, setActiveTab] = useState('overview');
+  const { toast } = useToast();
+
+  const handleExportData = () => {
+    toast({
+      title: 'Exporting data',
+      description: 'Your portfolio data is being exported as CSV.',
+    });
+  };
+
+  return (
+    <div className="">
+      <PageHeader title="Portfolio">
+        <Button variant="outline" onClick={handleExportData}>
+          <Download className="mr-2 h-4 w-4" />
+          Export Data
+        </Button>
+      </PageHeader>
+
+      <div className="p-4 md:p-6">
+        <PortfolioFilters
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+        />
+
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-4 md:space-y-6 mt-4 md:mt-6"
+        >
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="profit">Profit</TabsTrigger>
+            <TabsTrigger value="volume">Volume</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4 md:space-y-6">
+            <PortfolioSummary dateRange={dateRange} />
+            <div className="w-full h-full">
+              <PortfolioChart
+                dateRange={dateRange}
+                metric="combined"
+                height={400}
+              />
+            </div>
+            <PortfolioProjects dateRange={dateRange} />
+          </TabsContent>
+
+          <TabsContent value="profit" className="space-y-4">
+            <div className="w-full h-full">
+              <PortfolioChart
+                dateRange={dateRange}
+                metric="profit"
+                height={400}
+              />
+            </div>
+            <PortfolioProjects dateRange={dateRange} sortBy="profit" />
+          </TabsContent>
+
+          <TabsContent value="volume" className="space-y-4">
+            <div className="w-full h-full">
+              <PortfolioChart
+                dateRange={dateRange}
+                metric="volume"
+                height={400}
+              />
+            </div>
+            <PortfolioProjects dateRange={dateRange} sortBy="volume" />
+          </TabsContent>
+
+          <TabsContent value="activity" className="space-y-4">
+            <div className="w-full h-full">
+              <PortfolioChart
+                dateRange={dateRange}
+                metric="trades"
+                height={400}
+              />
+            </div>
+            <PortfolioProjects dateRange={dateRange} sortBy="activity" />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
