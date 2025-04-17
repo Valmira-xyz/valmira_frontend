@@ -40,22 +40,24 @@ export default function PortfolioPage() {
       </PageHeader>
 
       <div className="p-4 md:p-6">
-        <PortfolioFilters
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-        />
-
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
           className="space-y-4 md:space-y-6 mt-4 md:mt-6"
         >
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="profit">Profit</TabsTrigger>
-            <TabsTrigger value="volume">Volume</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <TabsList className="w-full md:w-auto">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="profit">Profit</TabsTrigger>
+              <TabsTrigger value="volume">Volume</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+            </TabsList>
+
+            <PortfolioFilters
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+            />
+          </div>
 
           <TabsContent value="overview" className="space-y-4 md:space-y-6">
             <PortfolioSummary dateRange={dateRange} />

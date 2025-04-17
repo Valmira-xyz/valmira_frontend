@@ -29,6 +29,7 @@ export function CreateProjectButton() {
                 variant: 'destructive',
               })
         }
+        variant="secondary"
       >
         <Plus className="mr-2 h-4 w-4" /> Create New Project
       </Button>

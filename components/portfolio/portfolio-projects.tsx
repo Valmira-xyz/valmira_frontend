@@ -9,7 +9,9 @@ import {
   ArrowUpRight,
   ChevronDown,
   ChevronUp,
+  Download,
   ExternalLink,
+  Search,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -22,6 +24,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { SparklineChart } from '@/components/ui/sparkline-chart';
 import {
   Table,
@@ -43,6 +54,9 @@ export function PortfolioProjects({
   sortBy = 'profit',
 }: PortfolioProjectsProps) {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
   // Mock data - in a real app, this would come from an API
   const projects = [
@@ -165,25 +179,102 @@ export function PortfolioProjects({
     );
   };
 
+  const handleExport = () => {
+    // Implement export functionality
+    console.log('Exporting data...');
+  };
+
+  const filteredProjects = sortedProjects.filter((project) => {
+    const matchesSearch = project.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === 'all' || project.status.toLowerCase() === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRows(filteredProjects.map((project) => project.id));
+    } else {
+      setSelectedRows([]);
+    }
+  };
+
+  const handleSelectRow = (checked: boolean, projectId: string) => {
+    if (checked) {
+      setSelectedRows([...selectedRows, projectId]);
+    } else {
+      setSelectedRows(selectedRows.filter((id) => id !== projectId));
+    }
+  };
+
+  const isAllSelected =
+    filteredProjects.length > 0 &&
+    selectedRows.length === filteredProjects.length;
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Project Performance</CardTitle>
-        <CardDescription>
-          {dateRange?.from && dateRange?.to ? (
-            <>
-              Performance from {format(dateRange.from, 'MMM d, yyyy')} to{' '}
-              {format(dateRange.to, 'MMM d, yyyy')}
-            </>
-          ) : (
-            <>Recent performance across all projects</>
-          )}
-        </CardDescription>
+      <CardHeader className="!p-0 my-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row items-start gap-2 md:items-center  justify-between">
+            <CardTitle>Project Performance</CardTitle>
+            <CardDescription>
+              {dateRange?.from && dateRange?.to ? (
+                <>
+                  Performance from {format(dateRange.from, 'MMM d, yyyy')} to{' '}
+                  {format(dateRange.to, 'MMM d, yyyy')}
+                </>
+              ) : (
+                <>Recent performance across all projects</>
+              )}
+            </CardDescription>
+          </div>
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full md:w-[200px]">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search projects"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 w-full md:w-[280px]"
+              />
+            </div>
+            <div className="flex w-full md:w-auto items-center gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-1/2 md:w-[160px]">
+                  <SelectValue placeholder="Status: All Project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Status: All Project</SelectItem>
+                  <SelectItem value="active">Status: Active</SelectItem>
+                  <SelectItem value="paused">Status: Paused</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="default"
+                onClick={handleExport}
+                className="w-1/2 md:w-auto"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </div>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="border rounded-lg !p-0">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={isAllSelected}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Select all"
+                />
+              </TableHead>
               <TableHead>Project</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="hidden md:table-cell">Network</TableHead>
@@ -218,8 +309,17 @@ export function PortfolioProjects({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedProjects.map((project) => (
+            {filteredProjects.map((project) => (
               <TableRow key={project.id}>
+                <TableCell className="w-[50px]">
+                  <Checkbox
+                    checked={selectedRows.includes(project.id)}
+                    onCheckedChange={(checked) =>
+                      handleSelectRow(checked as boolean, project.id)
+                    }
+                    aria-label={`Select ${project.name}`}
+                  />
+                </TableCell>
                 <TableCell className="font-medium">{project.name}</TableCell>
                 <TableCell>
                   <Badge

@@ -87,7 +87,7 @@ export function PortfolioChart({
     const dataKey = chartConfig[metric].dataKey;
     const color = chartConfig[metric].color;
 
-    if (chartType === 'line' || metric === 'combined') {
+    if (chartType === 'line') {
       return (
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={mockData}>
@@ -147,13 +147,15 @@ export function PortfolioChart({
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div>
-          <CardTitle>{chartConfig[metric].title}</CardTitle>
+    <Card className="border">
+      <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-2">
+        <div className="mb-4 md:mb-0">
+          <CardTitle className="text-[16px] tracking-wide font-bold">
+            {chartConfig[metric].title}
+          </CardTitle>
           <CardDescription>{chartConfig[metric].description}</CardDescription>
         </div>
-        {metric !== 'combined' && (
+        {
           <Tabs
             value={chartType}
             onValueChange={(v) => setChartType(v as 'line' | 'bar' | 'area')}
@@ -164,7 +166,7 @@ export function PortfolioChart({
               <TabsTrigger value="area">Area</TabsTrigger>
             </TabsList>
           </Tabs>
-        )}
+        }
       </CardHeader>
       <CardContent className="p-4">
         <div style={{ height: height || 350 }}>{renderChart()}</div>

@@ -7,12 +7,20 @@ import { useAccount } from 'wagmi';
 
 import { WalletConnectionButton } from '@/components/wallet/wallet-connection-button';
 
-import { StepperCard } from '../stepper/stepper-card';
+import { AuditCard } from '../dashboard/audit-card';
+import { StepperCard } from '../dashboard/stepper-card';
+import { CreateProjectButton } from '../projects/create-project-button';
 
 const welcomeItems = [
   'No upfront payment',
   '100% transparent fees',
   'Trusted by 1,000+ projects',
+];
+
+const auditors = [
+  { name: 'logoipsum' },
+  { name: 'logoipsum' },
+  { name: 'logoipsum' },
 ];
 
 export function WalletConnectionCTA({
@@ -35,29 +43,32 @@ export function WalletConnectionCTA({
   }, [onConnect]);
 
   return (
-    <div className="flex flex-col md:flex-row items-stretch gap-4">
+    <div className="flex flex-col lg:grid lg:grid-cols-[2fr,1fr] gap-4">
       <StepperCard
-        stepNumber="01"
-        title="Welcome to Valmira.xyz"
-        description="Decentralized, Automated Market-Making."
-        items={welcomeItems}
-        actionElement={
-          isConnected ? (
-            <WalletDisplay variant="header" />
-          ) : (
-            <WalletConnectionButton className="" variant="secondary" />
-          )
-        }
+        steps={[
+          {
+            stepNumber: '01',
+            title: 'Welcome to Valmira.xyz',
+            description: 'Decentralized, Automated Market-Making.',
+            items: welcomeItems,
+            actionElement: isConnected ? (
+              <WalletDisplay variant="header" />
+            ) : (
+              <WalletConnectionButton className="" variant="secondary" />
+            ),
+          },
+          {
+            stepNumber: '02',
+            title: 'Start Managing Projects',
+            description:
+              'Create and manage projects, deploy trading bots, and track performance.',
+            actionElement: <CreateProjectButton />,
+          },
+        ]}
         variant="primary"
+        className="w-full"
       />
-
-      <StepperCard
-        stepNumber="02"
-        title="Start Managing Projects"
-        description="Create and manage projects, deploy trading bots, and track performance."
-        actionElement={<></>}
-        variant="muted"
-      />
+      <AuditCard auditors={auditors} className="w-full" />
     </div>
   );
 }

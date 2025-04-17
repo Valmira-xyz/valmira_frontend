@@ -44,6 +44,8 @@ export function WalletConnectionButton({
             nonce.nonce
           );
 
+          console.log('authResponse', authResponse);
+
           if (onAuthSuccess) {
             onAuthSuccess(authResponse);
           } else {
