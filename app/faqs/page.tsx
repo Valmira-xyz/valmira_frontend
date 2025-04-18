@@ -26,7 +26,7 @@ export default function FAQsPage() {
       <PageHeader title="Frequently Asked Questions" />
 
       <div className="grid gap-6 p-4 md:p-6">
-        <Card>
+        <Card className="border">
           <CardHeader>
             <CardTitle>General Questions</CardTitle>
             <CardDescription>
@@ -74,7 +74,7 @@ export default function FAQsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border">
           <CardHeader>
             <CardTitle>Trading Bots & Projects</CardTitle>
             <CardDescription>
@@ -135,7 +135,7 @@ export default function FAQsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border">
           <CardHeader>
             <CardTitle>Account & Wallet</CardTitle>
             <CardDescription>

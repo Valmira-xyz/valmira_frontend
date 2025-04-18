@@ -407,7 +407,7 @@ export function DashboardSidebar() {
             className="flex items-center "
           >
             <HelpCircle className="h-4 w-4" />
-            <span className="text-sm">Help & Support</span>
+            <span className="text-sm">Ambassador Program</span>
           </SidebarMenuButton>
 
           {/* Settings */}

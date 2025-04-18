@@ -24,7 +24,7 @@ export default function TutorialsPage() {
       <PageHeader title="Tutorials & Resources" />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6 px-4 md:px-6">
-        <Card>
+        <Card className="border">
           <CardHeader>
             <CardTitle>Getting Started</CardTitle>
             <CardDescription>
@@ -66,7 +66,7 @@ export default function TutorialsPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" asChild className="w-full">
+            <Button variant="default" asChild className="w-full">
               <Link href="/tutorials/projects">
                 <BookOpen className="mr-2 h-4 w-4" />
                 View All Basics
@@ -75,7 +75,7 @@ export default function TutorialsPage() {
           </CardFooter>
         </Card>
 
-        <Card>
+        <Card className="border">
           <CardHeader>
             <CardTitle>Add-Ons & Bots</CardTitle>
             <CardDescription>
@@ -117,7 +117,7 @@ export default function TutorialsPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" asChild className="w-full">
+            <Button variant="default" asChild className="w-full">
               <Link href="/tutorials/add-ons">
                 <FileText className="mr-2 h-4 w-4" />
                 View All Add-Ons
@@ -126,7 +126,7 @@ export default function TutorialsPage() {
           </CardFooter>
         </Card>
 
-        <Card>
+        <Card className="border">
           <CardHeader>
             <CardTitle>Helpful Resources</CardTitle>
             <CardDescription>
@@ -168,7 +168,7 @@ export default function TutorialsPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" asChild className="w-full">
+            <Button variant="default" asChild className="w-full">
               <Link href="/faqs">
                 <HelpCircle className="mr-2 h-4 w-4" />
                 View FAQs

@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 
-import { FileQuestion, HelpCircle, MessageCircle } from 'lucide-react';
+import {
+  Bell,
+  FileQuestion,
+  HelpCircle,
+  Mail,
+  MessageCircle,
+} from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 import { PageHeader } from '@/components/layout/page-header';
@@ -37,9 +43,9 @@ export default function SettingsPage() {
     <div className="w-full">
       <PageHeader title="Settings" />
       <div className="space-y-6 p-4 md:p-6">
-        <Card>
+        <Card className="bg-muted">
           <CardHeader>
-            <CardTitle>Profile Overview</CardTitle>
+            <CardTitle className="text-[20px]">Profile Overview</CardTitle>
             <CardDescription>
               Manage your account and wallet connection
             </CardDescription>
@@ -69,8 +75,8 @@ export default function SettingsPage() {
                 </div>
               </>
             ) : (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
                   No wallet connected
                 </p>
                 <WalletConnectionButton />
@@ -79,9 +85,9 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border">
           <CardHeader>
-            <CardTitle>Account Settings</CardTitle>
+            <CardTitle className="text-[20px]">Account Settings</CardTitle>
             <CardDescription>
               Customize your account preferences
             </CardDescription>
@@ -105,14 +111,17 @@ export default function SettingsPage() {
             <Separator />
             <div className="space-y-4">
               <Label>Notification Settings</Label>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="in-app-notifications">
-                    In-app Notifications
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive notifications within the app
-                  </p>
+              <div className="flex items-center justify-between  border rounded-lg p-4">
+                <div className="flex items-center space-x-3">
+                  <Bell className="h-5 w-5 text-muted-foreground" />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="in-app-notifications">
+                      In-app Notifications
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications within the app
+                    </p>
+                  </div>
                 </div>
                 <Switch
                   id="in-app-notifications"
@@ -120,14 +129,17 @@ export default function SettingsPage() {
                   onCheckedChange={setInAppNotifications}
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="email-notifications">
-                    Email Notifications
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive notifications via email
-                  </p>
+              <div className="flex items-center justify-between border rounded-lg p-4">
+                <div className="flex items-center space-x-3">
+                  <Mail className="h-5 w-5 text-muted-foreground" />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="email-notifications">
+                      Email Notifications
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications via email
+                    </p>
+                  </div>
                 </div>
                 <Switch
                   id="email-notifications"
@@ -139,9 +151,9 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border">
           <CardHeader>
-            <CardTitle>Security</CardTitle>
+            <CardTitle className="text-[20px]">Security</CardTitle>
             <CardDescription>
               Manage your account security settings
             </CardDescription>
@@ -154,23 +166,23 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border">
           <CardHeader>
-            <CardTitle>Support & Help</CardTitle>
+            <CardTitle className="text-[20px]">Support & Help</CardTitle>
             <CardDescription>
               Get help and learn more about using our platform
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-start">
+          <CardContent className="space-y-4">
+            <Button variant="outline" className="w-full justify-start py-6">
               <FileQuestion className="mr-2 h-4 w-4" />
               Tutorials & FAQ
             </Button>
-            <Button variant="outline" className="w-full justify-start">
+            <Button variant="outline" className="w-full justify-start py-6">
               <MessageCircle className="mr-2 h-4 w-4" />
               Contact Support
             </Button>
-            <Button variant="outline" className="w-full justify-start">
+            <Button variant="outline" className="w-full justify-start py-6">
               <HelpCircle className="mr-2 h-4 w-4" />
               Help Center
             </Button>
