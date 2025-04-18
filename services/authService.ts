@@ -35,10 +35,7 @@ class AuthService {
   async getNonce(walletAddress: string): Promise<NonceResponse> {
     try {
       const response = await axios.get<ApiResponse<{ nonce: string }>>(
-        `${BACKEND_URL}/users/nonce/${walletAddress}`,
-        {
-          withCredentials: true,
-        }
+        `${BACKEND_URL}/users/nonce/${walletAddress}`
       );
       return response.data.data;
     } catch (error) {
