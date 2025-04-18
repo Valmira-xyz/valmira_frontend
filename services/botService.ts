@@ -1,3 +1,4 @@
+import { config } from './config';
 import api from './walletApi';
 
 import { BotType } from '@/store/slices/botSlice';
@@ -108,8 +109,7 @@ export interface ConfigureVolumeBotParams {
   config: VolumeBotConfig;
 }
 
-const BACKEND_URL =
-  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
+const BACKEND_URL = config.apiUrl;
 
 // Helper function to get auth headers
 export const getAuthHeaders = () => ({

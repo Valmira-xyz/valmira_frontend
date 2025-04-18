@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+import { config } from '@/services/config';
 import type {
   ActivityLog,
   BotPerformanceHistory,
@@ -119,12 +120,6 @@ export const fetchProjectStats = createAsyncThunk(
   ) => {
     try {
       // Convert Date objects to ISO strings for serialization
-      const serializedTimeRange = timeRange
-        ? {
-            start: timeRange.start.toISOString(),
-            end: timeRange.end.toISOString(),
-          }
-        : undefined;
 
       const stats = await projectService.getProjectStats(projectId, timeRange);
 
@@ -195,7 +190,7 @@ export const fetchBnbPrice = createAsyncThunk(
           symbol: string;
           currency: string;
         };
-      }>(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/web3/bnb-price`);
+      }>(`${config.apiUrl}/web3/bnb-price`);
 
       if (response.data.success && response.data.data.price) {
         return response.data.data.price;

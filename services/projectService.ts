@@ -1,9 +1,9 @@
+import { config } from './config';
 import axios from 'axios';
 
 import type { ApiResponse, MigrationResponse, Project } from '@/types';
 
-const BACKEND_URL =
-  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
+const BACKEND_URL = config.apiUrl;
 
 // Rate limiting configuration
 const RATE_LIMIT_DELAY = 2000; // Increase to 5 seconds between requests (was 2000)
@@ -582,8 +582,7 @@ export const projectService = {
   logLPRemoval: async (
     projectId: string,
     tokenAmount: number,
-    bnbAmount: number,
-    lpTokenAmount: number
+    bnbAmount: number
   ): Promise<void> => {
     const bnbPrice = await projectService.fetchBnbPrice();
     return projectService.addActivityLog(projectId, {

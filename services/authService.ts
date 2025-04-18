@@ -1,10 +1,9 @@
+import { config } from './config';
 import axios from 'axios';
 
 import type { ApiResponse, NonceResponse, User, VerifyResponse } from '@/types';
 
-const API_URL =
-  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
-
+const BACKEND_URL = config.apiUrl;
 class AuthService {
   private token: string | null = null;
 
@@ -36,13 +35,14 @@ class AuthService {
   async getNonce(walletAddress: string): Promise<NonceResponse> {
     try {
       const response = await axios.get<ApiResponse<{ nonce: string }>>(
-        `${API_URL}/users/nonce/${walletAddress}`,
+        `${BACKEND_URL}/users/nonce/${walletAddress}`,
         {
           withCredentials: true,
         }
       );
       return response.data.data;
     } catch (error) {
+      console.error('Failed to get nonce:', error);
       throw new Error('Failed to get nonce');
     }
   }
@@ -54,7 +54,7 @@ class AuthService {
   ): Promise<VerifyResponse> {
     try {
       const response = await axios.post<ApiResponse<VerifyResponse>>(
-        `${API_URL}/users/verify-signature`,
+        `${BACKEND_URL}/users/verify-signature`,
         {
           walletAddress,
           verificationToken,
@@ -83,6 +83,7 @@ class AuthService {
         token,
       };
     } catch (error) {
+      console.error('Failed to verify authentication:', error);
       throw new Error('Failed to verify authentication');
     }
   }
@@ -90,7 +91,7 @@ class AuthService {
   async register(walletAddress: string, name?: string): Promise<User> {
     try {
       const response = await axios.post<ApiResponse<{ user: User }>>(
-        `${API_URL}/users/register`,
+        `${BACKEND_URL}/users/register`,
         {
           walletAddress,
           name,
@@ -101,6 +102,7 @@ class AuthService {
       );
       return response.data.data.user;
     } catch (error) {
+      console.error('Failed to register:', error);
       throw new Error('Registration failed');
     }
   }
@@ -108,7 +110,7 @@ class AuthService {
   async getProfile(): Promise<User> {
     try {
       const response = await axios.get<ApiResponse<{ user: User }>>(
-        `${API_URL}/users/profile`,
+        `${BACKEND_URL}/users/profile`,
         {
           headers: this.getAuthHeader(),
           withCredentials: true,
@@ -116,6 +118,7 @@ class AuthService {
       );
       return response.data.data.user;
     } catch (error) {
+      console.error('Failed to get profile:', error);
       throw new Error('Failed to get profile');
     }
   }
@@ -123,7 +126,7 @@ class AuthService {
   async updateProfile(data: Partial<User>): Promise<User> {
     try {
       const response = await axios.put<ApiResponse<{ user: User }>>(
-        `${API_URL}/users/profile`,
+        `${BACKEND_URL}/users/profile`,
         data,
         {
           headers: this.getAuthHeader(),
@@ -132,6 +135,7 @@ class AuthService {
       );
       return response.data.data.user;
     } catch (error) {
+      console.error('Failed to update profile:', error);
       throw new Error('Failed to update profile');
     }
   }

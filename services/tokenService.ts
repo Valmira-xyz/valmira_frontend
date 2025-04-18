@@ -1,3 +1,4 @@
+import { config } from './config';
 import axios from 'axios';
 
 interface TokenInfo {
@@ -21,8 +22,7 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-const BACKEND_URL =
-  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
+const BACKEND_URL = config.apiUrl;
 
 export const tokenService = {
   /**

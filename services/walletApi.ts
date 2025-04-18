@@ -1,8 +1,8 @@
 import { getAuthHeaders } from './botService';
+import { config } from './config';
 import axios from 'axios';
 
-const BACKEND_URL =
-  `${process.env.NEXT_PUBLIC_BACKEND_URL}/api` || 'http://localhost:5000';
+const BACKEND_URL = config.apiUrl;
 
 // Configure axios instance
 const api = axios.create({
