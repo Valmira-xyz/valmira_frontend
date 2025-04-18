@@ -156,7 +156,7 @@ interface PoolInfo {
   bnbAddress: string;
 }
 
-// Change BurnLiquidityResult to _BurnLiquidityResult
+// Fix unused interface
 interface _BurnLiquidityResult {
   success: boolean;
   tokenAmount?: number;
@@ -191,16 +191,35 @@ type SnipeWizardDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+// Define new preset strategy types
+export enum PresetStrategy {
+  RAPID_SNIPE = 'rapid_snipe',
+  STAGGERED_SNIPE = 'staggered_snipe',
+  PASSIVE_EARLY_BUY = 'passive_early_buy',
+}
+
+export interface PresetConfig {
+  strategy: PresetStrategy;
+  targetShare?: number; // Percentage of total supply to aim for
+  targetTokenAmount?: number; // Specific token amount to buy
+  numberOfWallets: number;
+  timeFrame: string; // e.g., "within first 30 minutes of launch" or "only at TGE block"
+  maxPriceImpact?: number; // Max price impact allowed
+  maxSlippage?: number; // Max slippage allowed
+}
+
 // Define the wizard steps
 enum WizardStep {
   INTRODUCTION = 0,
-  LIQUIDITY_MANAGEMENT = 1,
-  WALLET_SETUP = 2,
-  SNIPE_CONFIGURATION = 3,
-  FEE_DISTRIBUTION = 4,
-  SIMULATION = 5,
-  EXECUTION = 6,
-  POST_OPERATION = 7,
+  MODE_SELECTION = 1, // New step for mode selection
+  PRESET_CONFIGURATION = 2, // New step for preset configuration
+  LIQUIDITY_MANAGEMENT = 3,
+  WALLET_SETUP = 4,
+  SNIPE_CONFIGURATION = 5,
+  FEE_DISTRIBUTION = 6,
+  SIMULATION = 7,
+  EXECUTION = 8,
+  POST_OPERATION = 9,
 }
 
 export function SnipeWizardDialog({
@@ -209,10 +228,73 @@ export function SnipeWizardDialog({
 }: SnipeWizardDialogProps) {
   // then read project id from url
   const { id: projectId } = useParams();
+
   // Track the current wizard step
   const [currentStep, setCurrentStep] = useState<WizardStep>(
     WizardStep.INTRODUCTION
   );
+
+  // Mode selection state
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+
+  // Preset configuration state
+  const [presetConfig, setPresetConfig] = useState<PresetConfig>({
+    strategy: PresetStrategy.RAPID_SNIPE,
+    targetShare: 30, // Default to 30%
+    numberOfWallets: 5,
+    timeFrame: 'within first 30 minutes of launch',
+  });
+
+  // Advanced mode configuration state
+  const [advancedConfig, setAdvancedConfig] = useState({
+    snipePhases: [
+      { name: 'TGE Snipe', percentage: 70, priorityFee: 'high' },
+      { name: 'Post-Launch', percentage: 20, priorityFee: 'medium' },
+      { name: 'Marketing Surge', percentage: 10, priorityFee: 'low' },
+    ],
+    timing: {
+      waitBlocks: 0,
+      randomTimeOffset: { min: 3, max: 15 }, // seconds
+      pauseOnPriceSpike: true,
+      priceSpikeTrigger: 20, // %
+    },
+    stealth: {
+      splitBuys: true,
+      randomChunks: { min: 3, max: 7 },
+      distributeAfterSnipe: false,
+    },
+    postSnipe: {
+      enableAutoSell: false,
+      autoSellThreshold: 200, // % profit
+      autoSellPercentage: 50, // % of holdings
+      passToDistributionBot: false,
+    },
+  });
+
+  // Fix unused setPriorityFeeSettings state
+  const [priorityFeeSettings, _setPriorityFeeSettings] = useState({
+    normal: 1.0, // Gwei
+    medium: 2.0, // Gwei
+    high: 5.0, // Gwei
+    max: 10.0, // Gwei
+    useHigherOnCongestion: true,
+  });
+
+  // Fix unused setOperationStatus state
+  const [operationStatus, _setOperationStatus] = useState({
+    status: 'idle', // idle, preparing, executing, completed, failed
+    tokensSnipedSoFar: 0,
+    targetTokens: 0,
+    walletsUsed: 0,
+    totalWallets: 0,
+    feesSpent: 0,
+    currentPhase: '',
+    logs: [] as {
+      time: string;
+      message: string;
+      type: 'info' | 'success' | 'error' | 'warning';
+    }[],
+  });
 
   // State from the original component (we'll maintain the same state variables)
   const dispatch = useDispatch<AppDispatch>();
@@ -305,7 +387,7 @@ export function SnipeWizardDialog({
   };
 
   const [wallets, setWallets] = useState<WalletInfo[]>([]);
-  const [_generatingWallets, setGeneratingWallets] = useState(false);
+  const [isGenerating, _setIsGenerating] = useState(false);
   const [walletCount, setWalletCount] = useState(
     String(project?.addons?.SnipeBot?.subWalletIds?.length || 5)
   ); // Add string type for walletCount
@@ -321,6 +403,7 @@ export function SnipeWizardDialog({
   const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null);
   const [isLoadingPoolInfo, setIsLoadingPoolInfo] = useState(false);
   const { toast } = useToast();
+  const _balanceUpdateTimeoutRef = useRef<NodeJS.Timeout>();
   const lastBalanceUpdateRef = useRef<number>(0);
   const MIN_BALANCE_UPDATE_INTERVAL = 5000; // Minimum 5 seconds between balance updates
   const [isEstimatingFees, setIsEstimatingFees] = useState(false);
@@ -355,7 +438,7 @@ export function SnipeWizardDialog({
     Record<string, boolean>
   >({});
   const [isExecutingMultiSell, setIsExecutingMultiSell] = useState(false);
-  const [slippageTolerance, _setSlippageTolerance] = useState(99);
+  const [slippageTolerance, setSlippageTolerance] = useState(99);
   const [isCollectingBnb, setIsCollectingBnb] = useState(false);
   const balanceFetchInProgressRef = useRef(false);
   const lpTokenFetchInProgressRef = useRef(false);
@@ -364,6 +447,7 @@ export function SnipeWizardDialog({
   >({});
   const [isExecutingMultiBuy, setIsExecutingMultiBuy] = useState(false);
 
+  const [_generatingWallets, setGeneratingWallets] = useState(false);
   const [_isEstimating, setIsEstimating] = useState(false);
 
   // Add a ref to track if we've loaded the project
@@ -373,6 +457,7 @@ export function SnipeWizardDialog({
   useEffect(() => {
     if (open) {
       setCurrentStep(WizardStep.INTRODUCTION);
+      setIsAdvancedMode(false); // Reset to preset mode by default
 
       // If we have a projectId and haven't loaded the project yet
       if (
@@ -392,12 +477,25 @@ export function SnipeWizardDialog({
 
   // Step navigation functions
   const goToNextStep = () => {
+    // Skip the preset configuration step if in advanced mode and we're at mode selection
+    if (isAdvancedMode && currentStep === WizardStep.MODE_SELECTION) {
+      setCurrentStep(WizardStep.LIQUIDITY_MANAGEMENT);
+      return;
+    }
+
+    // Navigate to the normal next step
     if (currentStep < WizardStep.POST_OPERATION) {
       setCurrentStep((prev) => prev + 1);
     }
   };
 
   const goToPreviousStep = () => {
+    // Skip the preset configuration step if in advanced mode and we're at liquidity management
+    if (isAdvancedMode && currentStep === WizardStep.LIQUIDITY_MANAGEMENT) {
+      setCurrentStep(WizardStep.MODE_SELECTION);
+      return;
+    }
+
     if (currentStep > WizardStep.INTRODUCTION) {
       setCurrentStep((prev) => prev - 1);
     }
@@ -408,10 +506,14 @@ export function SnipeWizardDialog({
     switch (currentStep) {
       case WizardStep.INTRODUCTION:
         return renderIntroductionStep();
-      case WizardStep.WALLET_SETUP:
-        return renderWalletSetupStep();
+      case WizardStep.MODE_SELECTION:
+        return renderModeSelectionStep();
+      case WizardStep.PRESET_CONFIGURATION:
+        return renderPresetConfigurationStep();
       case WizardStep.LIQUIDITY_MANAGEMENT:
         return renderLiquidityManagementStep();
+      case WizardStep.WALLET_SETUP:
+        return renderWalletSetupStep();
       case WizardStep.SNIPE_CONFIGURATION:
         return renderSnipeConfigurationStep();
       case WizardStep.FEE_DISTRIBUTION:
@@ -427,45 +529,146 @@ export function SnipeWizardDialog({
     }
   };
 
+  // Implement the mode selection step
+  const renderModeSelectionStep = () => (
+    <Card className="border-none shadow-none">
+      <CardHeader>
+        <CardTitle>Bundle Snipping Bot Setup</CardTitle>
+        <CardDescription>
+          Automate token launch sniping to secure a large supply before
+          distribution or liquidation. Choose a quick preset or customize
+          advanced parameters.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          <div className="flex justify-center p-4 border rounded-lg">
+            <div className="grid grid-cols-2 w-full max-w-md gap-3">
+              <Button
+                variant={!isAdvancedMode ? 'default' : 'outline'}
+                className="h-16 flex flex-col items-center justify-center"
+                onClick={() => setIsAdvancedMode(false)}
+              >
+                <span className="text-lg font-medium">Preset</span>
+                <span className="text-xs">Quick setup with templates</span>
+              </Button>
+              <Button
+                variant={isAdvancedMode ? 'default' : 'outline'}
+                className="h-16 flex flex-col items-center justify-center"
+                onClick={() => setIsAdvancedMode(true)}
+              >
+                <span className="text-lg font-medium">Advanced</span>
+                <span className="text-xs">Full customization</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <h3 className="text-base font-medium mb-3">Mode Description</h3>
+            {!isAdvancedMode ? (
+              <div className="space-y-3">
+                <p className="text-muted-foreground">
+                  <strong>Preset Mode</strong> offers pre-configured strategies
+                  for straightforward sniping operations:
+                </p>
+                <ul className="list-disc ml-5 space-y-2">
+                  <li>
+                    <strong>Rapid Snipe:</strong> Quickly buy up a large portion
+                    of the supply at launch
+                  </li>
+                  <li>
+                    <strong>Staggered Snipe:</strong> Snipe in multiple bursts
+                    over time, appearing less suspicious
+                  </li>
+                  <li>
+                    <strong>Passive Early Buy:</strong> Buy a moderate portion
+                    only if the price remains under a threshold
+                  </li>
+                </ul>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-muted-foreground">
+                  <strong>Advanced Mode</strong> gives you full control over:
+                </p>
+                <ul className="list-disc ml-5 space-y-2">
+                  <li>Wallet setup and multi-wallet distribution</li>
+                  <li>Precise timing and launch detection parameters</li>
+                  <li>Bribe/priority fees for faster transactions</li>
+                  <li>Target token amount and budget constraints</li>
+                  <li>Stealth features for organic appearance on-chain</li>
+                  <li>
+                    Post-snipe distribution and integration with other bots
+                  </li>
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button onClick={goToNextStep}>
+              Continue with {isAdvancedMode ? 'Advanced' : 'Preset'} Mode
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   // Placeholder render functions for each step
   const renderIntroductionStep = () => (
     <Card className="border-none shadow-none">
       <CardHeader>
-        <CardTitle>Welcome to the Snipe Wizard</CardTitle>
+        <CardTitle>Bundle Snipping Bot Setup</CardTitle>
         <CardDescription>
-          This wizard will guide you through the process of setting up and
-          executing a token snipe operation.
+          Automate token launch sniping to secure a large supply before
+          distribution or liquidation. Choose a quick preset or customize
+          advanced parameters.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <p>The wizard consists of the following steps:</p>
-          <ol className="list-decimal pl-6 space-y-2">
-            <li className="font-medium">
-              Introduction - Overview of the process
-            </li>
-            <li className="font-medium">
-              Liquidity Management - Add or remove liquidity (optional)
-            </li>
-            <li className="font-medium">
-              Wallet Setup - Manage your sniping wallets
-            </li>
-            <li className="font-medium">
-              Snipe Configuration - Configure your snipe parameters
-            </li>
-            <li className="font-medium">
-              Fee Distribution - Distribute BNB to your sniping wallets
-            </li>
-            <li className="font-medium">
-              Simulation - Simulate the snipe before execution
-            </li>
-            <li className="font-medium">
-              Execution - Execute the snipe operation
-            </li>
-            <li className="font-medium">
-              Post-Operation - Sell tokens and collect BNB
-            </li>
-          </ol>
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                  1
+                </span>
+                <div>
+                  <h3 className="font-medium">Choose Your Mode</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Select between Preset or Advanced configuration mode.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                  2
+                </span>
+                <div>
+                  <h3 className="font-medium">Configure Your Snipe</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Set up wallets, amounts, and timing for your token snipe.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                  3
+                </span>
+                <div>
+                  <h3 className="font-medium">Execute & Manage</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Run the operation and handle your acquired tokens afterward.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
             <h4 className="text-amber-800 font-medium">Before you start:</h4>
             <ul className="list-disc pl-6 text-amber-700 mt-2">
@@ -473,6 +676,17 @@ export function SnipeWizardDialog({
               <li>Ensure your token contract is properly configured</li>
               <li>Consider the risks involved in token sniping operations</li>
             </ul>
+          </div>
+
+          <div className="flex justify-center mt-4">
+            <Button
+              onClick={goToNextStep}
+              size="lg"
+              className="w-full md:w-auto"
+            >
+              Get Started
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -601,11 +815,11 @@ export function SnipeWizardDialog({
 
               <Button
                 onClick={() => handleGenerateWallets()}
-                disabled={_generatingWallets || isProjectLoading}
+                disabled={isGenerating || isProjectLoading}
                 className="h-8"
                 size="sm"
               >
-                {_generatingWallets ? (
+                {isGenerating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     {project?.addons?.SnipeBot?.subWalletIds?.length
@@ -1210,8 +1424,9 @@ export function SnipeWizardDialog({
       <CardHeader className="px-0 pt-0 pb-2 sm:px-6 sm:pb-4">
         <CardTitle>Snipe Configuration</CardTitle>
         <CardDescription>
-          Configure how much of the token you want to snipe and distribute
-          amounts across your wallets.
+          {isAdvancedMode
+            ? 'Configure detailed parameters for your token snipe operation.'
+            : 'Configure how much of the token you want to snipe and distribute amounts across your wallets.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 sm:px-6">
@@ -1269,234 +1484,556 @@ export function SnipeWizardDialog({
             </div>
           </div>
 
-          {/* Rest of content in a two-column grid for wide screens */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-            {/* Snipe Percentage Configuration */}
-            <div className="border rounded-lg p-2 sm:p-4">
-              <h3 className="text-base font-medium mb-2 sm:mb-3">
-                Snipe Percentage
-              </h3>
-              <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
-                Determine what percentage of the token supply in the pool you
-                want to snipe. This amount will be distributed across your
-                sniping wallets.
-              </p>
+          {/* Show the mode-specific UI */}
+          {isAdvancedMode ? (
+            // Advanced Mode UI
+            <>
+              {/* Phased Approach Configuration */}
+              <div className="border rounded-lg p-4">
+                <h3 className="text-base font-medium mb-3">
+                  Phased Snipe Approach
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Configure different phases of your snipe operation for maximum
+                  effectiveness.
+                </p>
 
-              <div className="space-y-3 sm:space-y-4">
-                <div className="pb-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <Label
-                      htmlFor="snipePercentage"
-                      className="text-xs sm:text-sm"
-                    >
-                      Percentage of pool to snipe:
-                    </Label>
-                    <span className="font-medium">{snipePercentage}%</span>
-                  </div>
-                  <Slider
-                    id="snipePercentage"
-                    defaultValue={[50]}
-                    min={1}
-                    max={100}
-                    step={1}
-                    value={[snipePercentage]}
-                    onValueChange={(values) => setSnipePercentage(values[0])}
-                    className="mb-2"
-                  />
-                  <div className="flex justify-end mt-2">
-                    <Input
-                      type="number"
-                      className="w-20"
-                      value={snipePercentage}
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value >= 1 && value <= 100) {
-                          setSnipePercentage(value);
+                <div className="space-y-4">
+                  {advancedConfig.snipePhases.map((phase, index) => (
+                    <div key={index} className="border rounded-md p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                            {index + 1}
+                          </span>
+                          <Input
+                            value={phase.name}
+                            onChange={(e) => {
+                              const newPhases = [...advancedConfig.snipePhases];
+                              newPhases[index].name = e.target.value;
+                              setAdvancedConfig({
+                                ...advancedConfig,
+                                snipePhases: newPhases,
+                              });
+                            }}
+                            className="h-7 max-w-[150px]"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Label
+                            htmlFor={`phase-${index}-percentage`}
+                            className="text-xs"
+                          >
+                            Allocation:
+                          </Label>
+                          <Input
+                            id={`phase-${index}-percentage`}
+                            value={phase.percentage}
+                            onChange={(e) => {
+                              const newPhases = [...advancedConfig.snipePhases];
+                              newPhases[index].percentage = Number(
+                                e.target.value
+                              );
+                              setAdvancedConfig({
+                                ...advancedConfig,
+                                snipePhases: newPhases,
+                              });
+                            }}
+                            className="h-7 w-16"
+                            type="number"
+                            min="0"
+                            max="100"
+                          />
+                          <span className="text-xs">%</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                        <div>
+                          <Label
+                            htmlFor={`phase-${index}-priority`}
+                            className="text-xs mb-1 block"
+                          >
+                            Priority Fee:
+                          </Label>
+                          <select
+                            id={`phase-${index}-priority`}
+                            value={phase.priorityFee}
+                            onChange={(e) => {
+                              const newPhases = [...advancedConfig.snipePhases];
+                              newPhases[index].priorityFee = e.target.value;
+                              setAdvancedConfig({
+                                ...advancedConfig,
+                                snipePhases: newPhases,
+                              });
+                            }}
+                            className="w-full h-8 rounded-md border px-3 text-sm"
+                          >
+                            <option value="low">
+                              Low ({priorityFeeSettings.normal} Gwei)
+                            </option>
+                            <option value="medium">
+                              Medium ({priorityFeeSettings.medium} Gwei)
+                            </option>
+                            <option value="high">
+                              High ({priorityFeeSettings.high} Gwei)
+                            </option>
+                            <option value="max">
+                              Maximum ({priorityFeeSettings.max} Gwei)
+                            </option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (advancedConfig.snipePhases.length < 5) {
+                          setAdvancedConfig({
+                            ...advancedConfig,
+                            snipePhases: [
+                              ...advancedConfig.snipePhases,
+                              {
+                                name: `Phase ${advancedConfig.snipePhases.length + 1}`,
+                                percentage: 10,
+                                priorityFee: 'medium',
+                              },
+                            ],
+                          });
+                        } else {
+                          toast({
+                            title: 'Maximum phases reached',
+                            description: 'You can have at most 5 snipe phases',
+                            variant: 'destructive',
+                          });
                         }
                       }}
+                    >
+                      Add Phase
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timing & Stealth Configuration */}
+              <div className="border rounded-lg p-4">
+                <h3 className="text-base font-medium mb-3">
+                  Timing & Stealth Options
+                </h3>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Timing Options */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium">
+                      Timing Configuration
+                    </h4>
+
+                    <div>
+                      <Label
+                        htmlFor="wait-blocks"
+                        className="text-xs mb-1 block"
+                      >
+                        Wait Blocks After Launch:
+                      </Label>
+                      <Input
+                        id="wait-blocks"
+                        type="number"
+                        value={advancedConfig.timing.waitBlocks}
+                        onChange={(e) =>
+                          setAdvancedConfig({
+                            ...advancedConfig,
+                            timing: {
+                              ...advancedConfig.timing,
+                              waitBlocks: Number(e.target.value),
+                            },
+                          })
+                        }
+                        className="h-8"
+                        min="0"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="pause-price-spike"
+                        checked={advancedConfig.timing.pauseOnPriceSpike}
+                        onCheckedChange={(checked) =>
+                          setAdvancedConfig({
+                            ...advancedConfig,
+                            timing: {
+                              ...advancedConfig.timing,
+                              pauseOnPriceSpike: checked === true,
+                            },
+                          })
+                        }
+                      />
+                      <Label htmlFor="pause-price-spike">
+                        Pause if price spikes
+                      </Label>
+                    </div>
+
+                    {advancedConfig.timing.pauseOnPriceSpike && (
+                      <div>
+                        <Label
+                          htmlFor="price-spike-trigger"
+                          className="text-xs mb-1 block"
+                        >
+                          Price Spike Trigger (%):
+                        </Label>
+                        <Input
+                          id="price-spike-trigger"
+                          type="number"
+                          value={advancedConfig.timing.priceSpikeTrigger}
+                          onChange={(e) =>
+                            setAdvancedConfig({
+                              ...advancedConfig,
+                              timing: {
+                                ...advancedConfig.timing,
+                                priceSpikeTrigger: Number(e.target.value),
+                              },
+                            })
+                          }
+                          className="h-8"
+                          min="1"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stealth Options */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium">
+                      Stealth Configuration
+                    </h4>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="split-buys"
+                        checked={advancedConfig.stealth.splitBuys}
+                        onCheckedChange={(checked) =>
+                          setAdvancedConfig({
+                            ...advancedConfig,
+                            stealth: {
+                              ...advancedConfig.stealth,
+                              splitBuys: checked === true,
+                            },
+                          })
+                        }
+                      />
+                      <Label htmlFor="split-buys">
+                        Split large buys into smaller chunks
+                      </Label>
+                    </div>
+
+                    {advancedConfig.stealth.splitBuys && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label
+                            htmlFor="min-chunks"
+                            className="text-xs mb-1 block"
+                          >
+                            Min Chunks:
+                          </Label>
+                          <Input
+                            id="min-chunks"
+                            type="number"
+                            value={advancedConfig.stealth.randomChunks.min}
+                            onChange={(e) =>
+                              setAdvancedConfig({
+                                ...advancedConfig,
+                                stealth: {
+                                  ...advancedConfig.stealth,
+                                  randomChunks: {
+                                    ...advancedConfig.stealth.randomChunks,
+                                    min: Number(e.target.value),
+                                  },
+                                },
+                              })
+                            }
+                            className="h-8"
+                            min="2"
+                          />
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor="max-chunks"
+                            className="text-xs mb-1 block"
+                          >
+                            Max Chunks:
+                          </Label>
+                          <Input
+                            id="max-chunks"
+                            type="number"
+                            value={advancedConfig.stealth.randomChunks.max}
+                            onChange={(e) =>
+                              setAdvancedConfig({
+                                ...advancedConfig,
+                                stealth: {
+                                  ...advancedConfig.stealth,
+                                  randomChunks: {
+                                    ...advancedConfig.stealth.randomChunks,
+                                    max: Number(e.target.value),
+                                  },
+                                },
+                              })
+                            }
+                            className="h-8"
+                            min={advancedConfig.stealth.randomChunks.min}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="distribute-after"
+                        checked={advancedConfig.stealth.distributeAfterSnipe}
+                        onCheckedChange={(checked) =>
+                          setAdvancedConfig({
+                            ...advancedConfig,
+                            stealth: {
+                              ...advancedConfig.stealth,
+                              distributeAfterSnipe: checked === true,
+                            },
+                          })
+                        }
+                      />
+                      <Label htmlFor="distribute-after">
+                        Distribute tokens to more wallets after snipe
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            // Original/Simplified UI for preset mode
+            <>
+              {/* Snipe Percentage Configuration */}
+              <div className="border rounded-lg p-2 sm:p-4">
+                <h3 className="text-base font-medium mb-2 sm:mb-3">
+                  Snipe Percentage
+                </h3>
+                <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
+                  Determine what percentage of the token supply in the pool you
+                  want to snipe. This amount will be distributed across your
+                  sniping wallets.
+                </p>
+
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="pb-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <Label
+                        htmlFor="snipePercentage"
+                        className="text-xs sm:text-sm"
+                      >
+                        Percentage of pool to snipe:
+                      </Label>
+                      <span className="font-medium">{snipePercentage}%</span>
+                    </div>
+                    <Slider
+                      id="snipePercentage"
+                      defaultValue={[50]}
                       min={1}
                       max={100}
+                      step={1}
+                      value={[snipePercentage]}
+                      onValueChange={(values) => setSnipePercentage(values[0])}
+                      className="mb-2"
                     />
+                    <div className="flex justify-end mt-2">
+                      <Input
+                        type="number"
+                        className="w-20"
+                        value={snipePercentage}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (!isNaN(value) && value >= 1 && value <= 100) {
+                            setSnipePercentage(value);
+                          }
+                        }}
+                        min={1}
+                        max={100}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="bg-amber-50 border border-amber-200 rounded-md p-2 sm:p-3 text-amber-800 text-xs sm:text-sm">
-                  <p className="font-medium mb-1">
-                    ⚠️ Snipe Percentage Warning
-                  </p>
-                  <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-xs">
-                    <li>
-                      Higher percentages can cause significant price impact
-                    </li>
-                    <li>Recommended range is 5-25% for most tokens</li>
-                    <li>Values over 50% may cause extreme slippage</li>
-                  </ul>
-                </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-2 sm:p-3 text-amber-800 text-xs sm:text-sm">
+                    <p className="font-medium mb-1">
+                      ⚠️ Snipe Percentage Warning
+                    </p>
+                    <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-xs">
+                      <li>
+                        Higher percentages can cause significant price impact
+                      </li>
+                      <li>Recommended range is 5-25% for most tokens</li>
+                      <li>Values over 50% may cause extreme slippage</li>
+                    </ul>
+                  </div>
 
-                <Button
-                  onClick={() => {
-                    // Calculate snipe amounts based on pool liquidity
-                    calculatePoolSnipeAmount(
-                      project?.tokenAddress || '',
-                      snipePercentage,
-                      doAddLiquidity,
-                      doAddLiquidity ? liquidityTokenAmount : 0
-                    )
-                      .then((totalSnipeAmount) => {
-                        // Calculate amounts with random variation for each wallet
-                        const baseAmountPerWallet =
-                          totalSnipeAmount / parseInt(walletCount, 10);
+                  <Button
+                    onClick={() => {
+                      // Calculate snipe amounts based on pool liquidity
+                      calculatePoolSnipeAmount(
+                        project?.tokenAddress || '',
+                        snipePercentage,
+                        doAddLiquidity,
+                        doAddLiquidity ? liquidityTokenAmount : 0
+                      )
+                        .then((totalSnipeAmount) => {
+                          // Calculate amounts with random variation for each wallet
+                          const baseAmountPerWallet =
+                            totalSnipeAmount / parseInt(walletCount, 10);
 
-                        // Update wallets with new amounts
-                        setWallets((prevWallets) =>
-                          prevWallets.map((wallet) => {
-                            if (wallet.role === 'botmain')
-                              return { ...wallet, tokenAmount: 0 };
+                          // Update wallets with new amounts
+                          setWallets((prevWallets) =>
+                            prevWallets.map((wallet) => {
+                              if (wallet.role === 'botmain')
+                                return { ...wallet, tokenAmount: 0 };
 
-                            // Generate random variation between -15% to +15%
-                            const variation = Math.random() * 0.3 - 0.15; // -0.15 to +0.15
-                            const variationMultiplier = 1 + variation;
-                            const adjustedAmount =
-                              baseAmountPerWallet * variationMultiplier;
+                              // Generate random variation between -15% to +15%
+                              const variation = Math.random() * 0.3 - 0.15; // -0.15 to +0.15
+                              const variationMultiplier = 1 + variation;
+                              const adjustedAmount =
+                                baseAmountPerWallet * variationMultiplier;
 
-                            return {
-                              ...wallet,
-                              tokenAmount: Math.floor(adjustedAmount), // Round down to ensure integer amounts
-                            };
-                          })
-                        );
-                        // Reset BNB distribution state when token amounts are reassigned
-                        setIsBnbDistributed(false);
+                              return {
+                                ...wallet,
+                                tokenAmount: Math.floor(adjustedAmount), // Round down to ensure integer amounts
+                              };
+                            })
+                          );
+                          // Reset BNB distribution state when token amounts are reassigned
+                          setIsBnbDistributed(false);
 
-                        toast({
-                          title: 'Success',
-                          description:
-                            'Snipe amounts calculated based on pool liquidity',
+                          toast({
+                            title: 'Success',
+                            description:
+                              'Snipe amounts calculated based on pool liquidity',
+                          });
+                        })
+                        .catch((error) => {
+                          toast({
+                            title: 'Error',
+                            description:
+                              error.message ||
+                              'Failed to calculate snipe amounts',
+                            variant: 'destructive',
+                          });
                         });
-                      })
-                      .catch((error) => {
-                        toast({
-                          title: 'Error',
-                          description:
-                            error.message ||
-                            'Failed to calculate snipe amounts',
-                          variant: 'destructive',
-                        });
-                      });
-                  }}
-                  disabled={
-                    !poolInfo ||
-                    !wallets.length ||
-                    wallets.filter((w) => w.role !== 'botmain').length === 0
-                  }
-                  className="w-full mt-2"
-                >
-                  Calculate Token Amounts
-                </Button>
+                    }}
+                    disabled={
+                      !poolInfo ||
+                      !wallets.length ||
+                      wallets.filter((w) => w.role !== 'botmain').length === 0
+                    }
+                    className="w-full mt-2"
+                  >
+                    Calculate Token Amounts
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            {/* Wallet Distribution Table */}
-            <div className="border rounded-lg p-2 sm:p-4">
-              <h3 className="text-base font-medium mb-2 sm:mb-3">
-                Token Distribution
-              </h3>
-              <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
-                Review how tokens will be distributed across your sniping
-                wallets. You can adjust individual amounts manually if needed.
-              </p>
+              {/* Wallet Distribution Table */}
+              <div className="border rounded-lg p-2 sm:p-4">
+                <h3 className="text-base font-medium mb-2 sm:mb-3">
+                  Token Distribution
+                </h3>
+                <p className="text-sm text-muted-foreground mb-2 sm:mb-4">
+                  Review how tokens will be distributed across your sniping
+                  wallets. You can adjust individual amounts manually if needed.
+                </p>
 
-              {wallets.filter((w) => w.role !== 'botmain').length > 0 ? (
-                <div className="overflow-x-auto border rounded-md">
-                  <div className="max-w-[800px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[8%]">No</TableHead>
-                          <TableHead className="w-[20%]">Wallet</TableHead>
-                          <TableHead className="text-left">
-                            Token Amount
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {wallets
-                          .filter((w) => w.role !== 'botmain')
-                          .map((wallet, _index) => {
-                            const _totalAmount = wallets
-                              .filter((w) => w.role !== 'botmain')
-                              .reduce(
-                                (sum, w) => sum + (w.tokenAmount || 0),
-                                0
+                {wallets.filter((w) => w.role !== 'botmain').length > 0 ? (
+                  <div className="overflow-x-auto border rounded-md">
+                    <div className="max-w-[800px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[8%]">No</TableHead>
+                            <TableHead className="w-[20%]">Wallet</TableHead>
+                            <TableHead className="text-left">
+                              Token Amount
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {wallets
+                            .filter((w) => w.role !== 'botmain')
+                            .map((wallet, index) => {
+                              return (
+                                <TableRow key={wallet.publicKey}>
+                                  <TableCell className="text-left">
+                                    {index + 1}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    <span className="hidden sm:inline">
+                                      {wallet.publicKey.slice(0, 4)}...
+                                      {wallet.publicKey.slice(-4)}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-left">
+                                    <Input
+                                      type="number"
+                                      value={wallet.tokenAmount || 0}
+                                      onChange={(e) => {
+                                        setWallets((prevWallets) =>
+                                          prevWallets.map((w) =>
+                                            w.publicKey === wallet.publicKey
+                                              ? {
+                                                  ...w,
+                                                  tokenAmount: Number(
+                                                    e.target.value
+                                                  ),
+                                                }
+                                              : w
+                                          )
+                                        );
+                                        // Reset BNB distribution state when amounts change
+                                        setIsBnbDistributed(false);
+                                      }}
+                                      className="h-7 w-20 sm:w-32 ml-auto"
+                                    />
+                                  </TableCell>
+                                </TableRow>
                               );
-
-                            return (
-                              <TableRow key={wallet.publicKey}>
-                                <TableCell className="text-left">
-                                  {_index + 1}
-                                </TableCell>
-                                <TableCell className="font-mono text-xs">
-                                  <span className="hidden sm:inline">
-                                    {wallet.publicKey.slice(0, 4)}...
-                                    {wallet.publicKey.slice(-4)}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="text-left">
-                                  <Input
-                                    type="number"
-                                    value={wallet.tokenAmount || 0}
-                                    onChange={(e) => {
-                                      setWallets((prevWallets) =>
-                                        prevWallets.map((w) =>
-                                          w.publicKey === wallet.publicKey
-                                            ? {
-                                                ...w,
-                                                tokenAmount: Number(
-                                                  e.target.value
-                                                ),
-                                              }
-                                            : w
-                                        )
-                                      );
-                                      // Reset BNB distribution state when amounts change
-                                      setIsBnbDistributed(false);
-                                    }}
-                                    className="h-7 w-20 sm:w-32 ml-auto"
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        <TableRow className="bg-muted/20 font-medium">
-                          <TableCell>Total</TableCell>
-                          <TableCell className="text-left">
-                            {wallets
-                              .filter((w) => w.role !== 'botmain')
-                              .reduce(
-                                (sum, wallet) =>
-                                  sum + (wallet.tokenAmount || 0),
-                                0
-                              )
-                              .toLocaleString()}
-                            ({snipePercentage}% of pool)
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                            })}
+                          <TableRow className="bg-muted/20 font-medium">
+                            <TableCell>Total</TableCell>
+                            <TableCell className="text-left">
+                              {wallets
+                                .filter((w) => w.role !== 'botmain')
+                                .reduce(
+                                  (sum, wallet) =>
+                                    sum + (wallet.tokenAmount || 0),
+                                  0
+                                )
+                                .toLocaleString()}
+                              ({snipePercentage}% of pool)
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-4 sm:py-6 bg-muted/10 rounded-md">
-                  <p className="text-muted-foreground">
-                    No sniping wallets available
-                  </p>
-                  <p className="text-xs mt-2">
-                    Please go back to the Wallet Setup step to create wallets
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+                ) : (
+                  <div className="text-center py-4 sm:py-6 bg-muted/10 rounded-md">
+                    <p className="text-muted-foreground">
+                      No sniping wallets available
+                    </p>
+                    <p className="text-xs mt-2">
+                      Please go back to the Wallet Setup step to create wallets
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Help Section */}
           <div className="bg-muted/20 rounded-lg p-2 sm:p-4">
@@ -2974,6 +3511,315 @@ export function SnipeWizardDialog({
     </Card>
   );
 
+  // Preset configuration step
+  const renderPresetConfigurationStep = () => (
+    <Card className="border-none shadow-none">
+      <CardHeader>
+        <CardTitle>Preset Snipe Configuration</CardTitle>
+        <CardDescription>
+          Configure your snipe operation using a preset strategy.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {/* Strategy Selection */}
+          <div className="border rounded-lg p-4">
+            <h3 className="text-base font-medium mb-3">Preset Strategy</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Button
+                variant={
+                  presetConfig.strategy === PresetStrategy.RAPID_SNIPE
+                    ? 'default'
+                    : 'outline'
+                }
+                className="h-auto py-4 flex flex-col items-center justify-start"
+                onClick={() =>
+                  setPresetConfig({
+                    ...presetConfig,
+                    strategy: PresetStrategy.RAPID_SNIPE,
+                  })
+                }
+              >
+                <span className="text-lg font-medium mb-1">Rapid Snipe</span>
+                <span className="text-xs text-center">
+                  Quickly buy a large portion of supply at launch
+                </span>
+              </Button>
+
+              <Button
+                variant={
+                  presetConfig.strategy === PresetStrategy.STAGGERED_SNIPE
+                    ? 'default'
+                    : 'outline'
+                }
+                className="h-auto py-4 flex flex-col items-center justify-start"
+                onClick={() =>
+                  setPresetConfig({
+                    ...presetConfig,
+                    strategy: PresetStrategy.STAGGERED_SNIPE,
+                  })
+                }
+              >
+                <span className="text-lg font-medium mb-1">
+                  Staggered Snipe
+                </span>
+                <span className="text-xs text-center">
+                  Snipe in multiple bursts over time
+                </span>
+              </Button>
+
+              <Button
+                variant={
+                  presetConfig.strategy === PresetStrategy.PASSIVE_EARLY_BUY
+                    ? 'default'
+                    : 'outline'
+                }
+                className="h-auto py-4 flex flex-col items-center justify-start"
+                onClick={() =>
+                  setPresetConfig({
+                    ...presetConfig,
+                    strategy: PresetStrategy.PASSIVE_EARLY_BUY,
+                  })
+                }
+              >
+                <span className="text-lg font-medium mb-1">
+                  Passive Early Buy
+                </span>
+                <span className="text-xs text-center">
+                  Buy only if price remains under threshold
+                </span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Basic Options */}
+          <div className="border rounded-lg p-4">
+            <h3 className="text-base font-medium mb-3">Basic Options</h3>
+
+            <div className="space-y-4">
+              {/* Target Share */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="targetShare">Target Share:</Label>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-medium">
+                      {presetConfig.targetShare}%
+                    </div>
+                    <div className="w-24">
+                      <Input
+                        id="targetShare"
+                        type="number"
+                        value={presetConfig.targetShare}
+                        onChange={(e) =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            targetShare: Number(e.target.value),
+                          })
+                        }
+                        className="h-8"
+                        min="1"
+                        max="100"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <Slider
+                  defaultValue={[30]}
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={[presetConfig.targetShare || 30]}
+                  onValueChange={(values) =>
+                    setPresetConfig({
+                      ...presetConfig,
+                      targetShare: values[0],
+                    })
+                  }
+                />
+                <div className="text-xs text-muted-foreground mt-1">
+                  Aim for up to {presetConfig.targetShare}% of total supply
+                </div>
+              </div>
+
+              {/* Number of Wallets */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="numberOfWallets">Number of Wallets:</Label>
+                  <div className="w-24">
+                    <Input
+                      id="numberOfWallets"
+                      type="number"
+                      value={presetConfig.numberOfWallets}
+                      onChange={(e) =>
+                        setPresetConfig({
+                          ...presetConfig,
+                          numberOfWallets: Number(e.target.value),
+                        })
+                      }
+                      className="h-8"
+                      min="1"
+                      max="50"
+                    />
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Distribute snipes among {presetConfig.numberOfWallets} wallets
+                  for less detection
+                </div>
+              </div>
+
+              {/* Time Frame */}
+              <div>
+                <Label htmlFor="timeFrame" className="mb-2 block">
+                  Time Frame:
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <Button
+                    variant={
+                      presetConfig.timeFrame === 'only at TGE block'
+                        ? 'default'
+                        : 'outline'
+                    }
+                    className="h-auto py-2"
+                    onClick={() =>
+                      setPresetConfig({
+                        ...presetConfig,
+                        timeFrame: 'only at TGE block',
+                      })
+                    }
+                  >
+                    Only at TGE block
+                  </Button>
+                  <Button
+                    variant={
+                      presetConfig.timeFrame ===
+                      'within first 30 minutes of launch'
+                        ? 'default'
+                        : 'outline'
+                    }
+                    className="h-auto py-2"
+                    onClick={() =>
+                      setPresetConfig({
+                        ...presetConfig,
+                        timeFrame: 'within first 30 minutes of launch',
+                      })
+                    }
+                  >
+                    Within first 30 minutes
+                  </Button>
+                </div>
+              </div>
+
+              {/* Strategy-specific options */}
+              {presetConfig.strategy === PresetStrategy.PASSIVE_EARLY_BUY && (
+                <div>
+                  <Label htmlFor="maxSlippage" className="mb-2 block">
+                    Maximum Slippage Tolerance:
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="maxSlippage"
+                      type="number"
+                      value={presetConfig.maxSlippage || 3}
+                      onChange={(e) =>
+                        setPresetConfig({
+                          ...presetConfig,
+                          maxSlippage: Number(e.target.value),
+                        })
+                      }
+                      className="w-24 h-8"
+                      min="0.1"
+                      max="100"
+                      step="0.1"
+                    />
+                    <span>%</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Only buy if slippage is under this percentage
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Summary */}
+          <div className="border rounded-lg p-4 bg-muted/10">
+            <h3 className="text-base font-medium mb-3">Preset Summary</h3>
+            <div className="space-y-2">
+              <p>
+                <span className="text-muted-foreground">Strategy:</span>{' '}
+                {presetConfig.strategy === PresetStrategy.RAPID_SNIPE
+                  ? 'Rapid Snipe'
+                  : presetConfig.strategy === PresetStrategy.STAGGERED_SNIPE
+                    ? 'Staggered Snipe'
+                    : 'Passive Early Buy'}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Target Share:</span> Up
+                to {presetConfig.targetShare}% of total supply
+              </p>
+              <p>
+                <span className="text-muted-foreground">Wallets:</span>{' '}
+                {presetConfig.numberOfWallets} sniping wallets
+              </p>
+              <p>
+                <span className="text-muted-foreground">Time Frame:</span>{' '}
+                {presetConfig.timeFrame}
+              </p>
+              {presetConfig.strategy === PresetStrategy.PASSIVE_EARLY_BUY &&
+                presetConfig.maxSlippage && (
+                  <p>
+                    <span className="text-muted-foreground">Max Slippage:</span>{' '}
+                    {presetConfig.maxSlippage}%
+                  </p>
+                )}
+            </div>
+          </div>
+
+          {/* Apply Preset Button */}
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={goToPreviousStep}>
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Back to Mode Selection
+            </Button>
+            <Button
+              onClick={() => {
+                // Apply preset configuration to actual sniping parameters
+
+                // Set wallet count
+                setWalletCount(String(presetConfig.numberOfWallets));
+
+                // Set snipe percentage based on target share
+                setSnipePercentage(presetConfig.targetShare || 30);
+
+                // Decide on slippage tolerance
+                if (presetConfig.strategy === PresetStrategy.RAPID_SNIPE) {
+                  setSlippageTolerance(99); // High slippage for rapid snipe
+                } else if (
+                  presetConfig.strategy === PresetStrategy.STAGGERED_SNIPE
+                ) {
+                  setSlippageTolerance(50); // Moderate slippage for staggered
+                } else {
+                  setSlippageTolerance(presetConfig.maxSlippage || 3); // Low slippage for passive
+                }
+
+                // After applying preset, skip to wallet setup if in preset mode
+                if (!isAdvancedMode) {
+                  setCurrentStep(WizardStep.WALLET_SETUP);
+                } else {
+                  goToNextStep();
+                }
+              }}
+            >
+              Apply Preset
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   // Utility function to copy text to clipboard
   const copyToClipboard = async (text: string) => {
     try {
@@ -3815,7 +4661,7 @@ export function SnipeWizardDialog({
         walletAddress,
         tokenAddress: project?.tokenAddress || '',
         sellPercentage,
-        slippageTolerance: slippageTolerance,
+        slippageTolerance,
         targetWalletAddress:
           project?.addons?.SnipeBot?.depositWalletId?.publicKey,
       });
@@ -3949,7 +4795,7 @@ export function SnipeWizardDialog({
         walletAddresses: selectedWallets.map((w) => w.publicKey),
         tokenAddress: project?.tokenAddress || '',
         sellPercentages: selectedWallets.map((w) => w.sellPercentage || 100), // Default to 100% if not set
-        slippageTolerance: slippageTolerance,
+        slippageTolerance,
         targetWalletAddress:
           project?.addons.SnipeBot?.depositWalletId?.publicKey,
       })) as MultiSellResult;
@@ -4104,7 +4950,7 @@ export function SnipeWizardDialog({
         botId: project?.addons.SnipeBot._id || '',
         walletAddress,
         tokenAddress: project?.tokenAddress || '',
-        slippageTolerance: slippageTolerance,
+        slippageTolerance,
         targetWalletAddress: walletAddress,
         bnbSpendRate,
       });
@@ -4506,7 +5352,7 @@ export function SnipeWizardDialog({
         botId: project?.addons.SnipeBot._id || '',
         walletAddresses: selectedWallets.map((w) => w.publicKey),
         tokenAddress: project?.tokenAddress || '',
-        slippageTolerance: slippageTolerance,
+        slippageTolerance,
         bnbSpendRates: selectedWallets.map((w) => w.bnbSpendRate || 90), // Default to 90% if not set
       });
 
@@ -4541,124 +5387,273 @@ export function SnipeWizardDialog({
     }
   };
 
+  // Render the dialog with a summary panel
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] lg:max-w-[1100px] xl:max-w-[1200px] max-h-[90vh] overflow-y-auto p-4 md:p-6">
-        <DialogHeader className="pb-2">
-          <DialogTitle>Snipe Wizard</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex flex-col lg:flex-row lg:gap-6">
-          {/* Left side - progress and navigation */}
-          <div className="lg:w-64 lg:flex-shrink-0 mb-4 lg:mb-0">
-            {/* Progress bar */}
-            <div className="mb-4">
-              <div className="flex justify-between text-xs mb-1">
-                <span>
-                  Step {currentStep + 1} of {WizardStep.POST_OPERATION + 1}
+      <DialogContent className="sm:max-w-[90vw] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex justify-between items-center">
+            <span>Bundle Snipping Bot Setup</span>
+            {currentStep > WizardStep.MODE_SELECTION && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Mode:</span>
+                <span className="font-medium">
+                  {isAdvancedMode ? 'Advanced' : 'Preset'}
                 </span>
-                <span className="hidden sm:inline">
-                  {
-                    Object.keys(WizardStep).filter((key) => isNaN(Number(key)))[
-                      currentStep
-                    ]
-                  }
-                </span>
-              </div>
-              <Progress
-                value={
-                  ((currentStep + 1) / (WizardStep.POST_OPERATION + 1)) * 100
-                }
-              />
-            </div>
-
-            {/* Navigation buttons */}
-            <div className="flex justify-between mb-4">
-              <Button
-                variant="outline"
-                onClick={goToPreviousStep}
-                disabled={currentStep === WizardStep.INTRODUCTION}
-                className="h-9 px-2 sm:px-4"
-                size="sm"
-              >
-                <ChevronLeft className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Previous</span>
-              </Button>
-
-              <Button
-                onClick={goToNextStep}
-                disabled={currentStep === WizardStep.POST_OPERATION}
-                className="h-9 px-2 sm:px-4"
-                size="sm"
-              >
-                {currentStep === WizardStep.POST_OPERATION ? (
+                {!isAdvancedMode && presetConfig.strategy && (
                   <>
-                    <CheckCircle className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Finish</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="hidden sm:inline">Next</span>
-                    <ChevronRight className="h-4 w-4 sm:ml-2" />
+                    <span className="text-muted-foreground ml-2">
+                      Strategy:
+                    </span>
+                    <span className="font-medium">
+                      {presetConfig.strategy === PresetStrategy.RAPID_SNIPE
+                        ? 'Rapid Snipe'
+                        : presetConfig.strategy ===
+                            PresetStrategy.STAGGERED_SNIPE
+                          ? 'Staggered Snipe'
+                          : 'Passive Early Buy'}
+                    </span>
                   </>
                 )}
-              </Button>
-            </div>
-
-            {/* Step indicator - visible only on larger screens */}
-            <div className="hidden lg:block mt-6">
-              <h3 className="text-sm font-medium mb-3">Wizard Steps</h3>
-              <ul className="space-y-2 text-sm">
-                {Object.entries(WizardStep)
-                  .filter(([key]) => isNaN(Number(key)))
-                  .map(([step, index]) => (
-                    <li
-                      key={step}
-                      className={`px-3 py-2 rounded-md flex items-center gap-2 ${
-                        currentStep === Number(index)
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">
-                        {Number(index) + 1}
-                      </span>
-                      <span>{step.replace(/_/g, ' ')}</span>
-                    </li>
-                  ))}
-              </ul>
-
-              <div className="mt-4">
-                <div className="border rounded-lg p-4 ">
-                  <h3 className="text-base font-medium mb-2 flex items-center gap-2">
-                    <span>🤖 Recommended: AutoSellBot</span>
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Enhance your trading strategy by setting up automated sell
-                    conditions for your sniping wallets. Configure target prices
-                    and stop losses to protect your investment. You can set this
-                    up right after successful sniping to automate your exit
-                    strategy.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      // Close the current wizard
-                      onOpenChange(false);
-                      // TODO: Open AutoSellBot modal with current sniping wallets
-                      // This should be implemented by the parent component
-                    }}
-                    variant="outline"
-                    className="w-full "
-                  >
-                    Configure AutoSellBot
-                  </Button>
-                </div>
               </div>
-            </div>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col lg:flex-row gap-4 h-full">
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto">
+            {renderStepContent()}
+
+            {/* Navigation Controls (if not in intro) */}
+            {currentStep !== WizardStep.INTRODUCTION && (
+              <div className="flex justify-between mt-4 px-0 sm:px-6">
+                <Button
+                  variant="outline"
+                  onClick={goToPreviousStep}
+                  disabled={currentStep <= WizardStep.MODE_SELECTION}
+                >
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
+                </Button>
+
+                <Button
+                  onClick={goToNextStep}
+                  disabled={
+                    currentStep === WizardStep.POST_OPERATION ||
+                    (currentStep === WizardStep.PRESET_CONFIGURATION &&
+                      isAdvancedMode) ||
+                    (currentStep === WizardStep.EXECUTION && !executionSuccess)
+                  }
+                >
+                  {currentStep === WizardStep.EXECUTION ? 'Finish' : 'Next'}
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
-          {/* Right side - step content */}
-          <div className="flex-1">{renderStepContent()}</div>
+          {/* Live Overview Panel (only show after mode selection) */}
+          {currentStep > WizardStep.MODE_SELECTION &&
+            currentStep < WizardStep.POST_OPERATION && (
+              <div className="w-full lg:w-80 xl:w-96 border-t lg:border-t-0 lg:border-l pt-4 lg:pt-0 lg:pl-4 mt-4 lg:mt-0">
+                <div className="border rounded-lg p-3 h-full">
+                  <h3 className="text-base font-medium mb-3">Live Overview</h3>
+
+                  {/* Summary Stats */}
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Target Token Supply:
+                      </p>
+                      <p className="font-medium">
+                        {wallets
+                          .filter((w) => w.role !== 'botmain')
+                          .reduce(
+                            (sum, wallet) => sum + (wallet.tokenAmount || 0),
+                            0
+                          )
+                          .toLocaleString()}{' '}
+                        {project?.symbol || 'tokens'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Wallets Configured:
+                      </p>
+                      <p className="font-medium">
+                        {wallets.filter((w) => w.role !== 'botmain').length}{' '}
+                        wallets
+                      </p>
+                    </div>
+
+                    {feeEstimationResult && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Total BNB Required:
+                        </p>
+                        <p className="font-medium">
+                          {feeEstimationResult.totalBnbNeeded.toFixed(6)} BNB
+                        </p>
+                      </div>
+                    )}
+
+                    {isAdvancedMode && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Execution Phases:
+                        </p>
+                        <p className="font-medium">
+                          {advancedConfig.snipePhases.length} phases configured
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Progress and Status */}
+                  {currentStep >= WizardStep.EXECUTION && (
+                    <div className="space-y-3 border-t pt-3">
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <p className="text-xs text-muted-foreground">
+                            Execution Progress:
+                          </p>
+                          <p className="text-xs font-medium">
+                            {operationStatus.status === 'idle'
+                              ? 'Not started'
+                              : operationStatus.status === 'preparing'
+                                ? 'Preparing...'
+                                : operationStatus.status === 'executing'
+                                  ? 'Executing...'
+                                  : operationStatus.status === 'completed'
+                                    ? 'Completed'
+                                    : 'Failed'}
+                          </p>
+                        </div>
+                        <Progress
+                          value={
+                            operationStatus.status === 'idle'
+                              ? 0
+                              : operationStatus.status === 'preparing'
+                                ? 25
+                                : operationStatus.status === 'executing'
+                                  ? 75
+                                  : operationStatus.status === 'completed'
+                                    ? 100
+                                    : 0
+                          }
+                          className="h-2"
+                        />
+                      </div>
+
+                      <div className="bg-muted/10 rounded-md p-2 h-28 overflow-y-auto text-xs">
+                        <h4 className="font-medium mb-1">Execution Logs:</h4>
+                        <div className="space-y-1">
+                          {operationStatus.logs.length > 0 ? (
+                            operationStatus.logs.map((log, index) => (
+                              <div
+                                key={index}
+                                className={`
+                              ${log.type === 'success' ? 'text-green-600' : ''}
+                              ${log.type === 'error' ? 'text-red-600' : ''}
+                              ${log.type === 'warning' ? 'text-amber-600' : ''}
+                            `}
+                              >
+                                <span className="text-muted-foreground">
+                                  {log.time}
+                                </span>
+                                : {log.message}
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-muted-foreground">
+                              No logs available yet.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Setup Progress Checklist */}
+                  {currentStep < WizardStep.EXECUTION && (
+                    <div className="border-t pt-3">
+                      <h4 className="text-sm font-medium mb-2">
+                        Setup Progress:
+                      </h4>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.MODE_SELECTION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
+                          >
+                            {currentStep > WizardStep.MODE_SELECTION && (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                          </div>
+                          <p className="text-xs">Mode Selection</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.WALLET_SETUP ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
+                          >
+                            {currentStep > WizardStep.WALLET_SETUP && (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                          </div>
+                          <p className="text-xs">Wallet Setup</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.SNIPE_CONFIGURATION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
+                          >
+                            {currentStep > WizardStep.SNIPE_CONFIGURATION && (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                          </div>
+                          <p className="text-xs">Snipe Configuration</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.FEE_DISTRIBUTION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
+                          >
+                            {currentStep > WizardStep.FEE_DISTRIBUTION && (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                          </div>
+                          <p className="text-xs">Fee Distribution</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.SIMULATION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
+                          >
+                            {currentStep > WizardStep.SIMULATION && (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                          </div>
+                          <p className="text-xs">Simulation</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.EXECUTION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
+                          >
+                            {currentStep > WizardStep.EXECUTION && (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                          </div>
+                          <p className="text-xs">Execution</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
         </div>
       </DialogContent>
     </Dialog>
