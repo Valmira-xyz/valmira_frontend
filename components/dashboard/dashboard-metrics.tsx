@@ -101,10 +101,10 @@ export function DashboardMetrics() {
         {metrics.map((metric, index) => (
           <Card
             key={index}
-            className={`relative overflow-hidden ${loading || isLoading ? 'opacity-60' : ''}`}
+            className={`relative border overflow-hidden ${loading || isLoading ? 'opacity-60' : ''}`}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs font-medium text-black">
+              <CardTitle className="text-xs font-medium text-foreground">
                 {metric.title}
               </CardTitle>
               <metric.icon className="h-4 w-4 text-muted-foreground" />
@@ -121,12 +121,21 @@ export function DashboardMetrics() {
                     {index !== 0 && index !== 3 ? '$' : ''}
                     {formatNumber(metric.value)}
                   </div>
-                  {/* {metric.trend && (
-                  <div className={`text-xs mt-1 ${metric.trend === 'increasing' ? 'text-green-500' : metric.trend === 'decreasing' ? 'text-red-500' : 'text-gray-500'}`}>
-                    {metric.trend === 'increasing' ? '↑' : metric.trend === 'decreasing' ? '↓' : '→'} {metric.changePercent}%
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground mt-2">Public metrics for all platform projects</p> */}
+                  {metric.trend && (
+                    <div
+                      className={`text-xs mt-1 ${metric.trend === 'increasing' ? 'text-green-500' : metric.trend === 'decreasing' ? 'text-red-500' : 'text-gray-500'}`}
+                    >
+                      {metric.trend === 'increasing'
+                        ? '↑'
+                        : metric.trend === 'decreasing'
+                          ? '↓'
+                          : '→'}{' '}
+                      {metric.changePercent}%
+                      <span className="m-1 text-xs text-muted-foreground mt-2">
+                        from last month
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>

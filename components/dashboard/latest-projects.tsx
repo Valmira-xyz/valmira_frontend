@@ -15,11 +15,7 @@ import { CreateProjectButton } from '../projects/create-project-button';
 
 export function LatestProjects() {
   const dispatch = useDispatch();
-  const {
-    projects,
-    loading: isLoading,
-    error,
-  } = useSelector((state) => state.projects);
+  const { projects, error } = useSelector((state) => state.projects);
   const fetchInProgress = useRef(false);
   const hasInitialFetch = useRef(false);
 
@@ -74,7 +70,7 @@ export function LatestProjects() {
                   : 'No Active Projects Found'}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center text-center">
+          <CardContent className="flex flex-col items-center text-center p-4">
             <p className="mb-4 text-muted-foreground">
               {!projects?.length
                 ? 'Create your first project to start managing your crypto assets and trading bots.'

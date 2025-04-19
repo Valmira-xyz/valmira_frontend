@@ -43,7 +43,7 @@ export default function PortfolioPage() {
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className="space-y-4 md:space-y-6 mt-4 md:mt-6"
+          className="space-y-4 md:space-y-6"
         >
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <TabsList className="w-full md:w-auto">

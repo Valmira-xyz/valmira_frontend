@@ -42,6 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useToast } from '@/components/ui/use-toast';
 import { formatNumber } from '@/lib/utils';
 
 interface PortfolioProjectsProps {
@@ -57,6 +58,7 @@ export function PortfolioProjects({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const { toast } = useToast();
 
   // Mock data - in a real app, this would come from an API
   const projects = [
@@ -181,6 +183,10 @@ export function PortfolioProjects({
 
   const handleExport = () => {
     // Implement export functionality
+    toast({
+      title: 'Exporting data',
+      description: 'Your portfolio data is being exported as CSV.',
+    });
     console.log('Exporting data...');
   };
 

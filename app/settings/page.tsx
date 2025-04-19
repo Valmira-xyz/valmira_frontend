@@ -6,10 +6,12 @@ import {
   Bell,
   FileQuestion,
   HelpCircle,
+  LogOut,
   Mail,
   MessageCircle,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useAccount, useDisconnect } from 'wagmi';
 
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
@@ -20,22 +22,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { WalletConnectionButton } from '@/components/wallet/wallet-connection-button';
-import { useWallet } from '@/components/wallet/wallet-provider';
+import { WalletDisplay } from '@/components/wallet/wallet-display';
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { isConnected, walletAddress, onDisconnect } = useWallet();
-  const [nickname, setNickname] = useState('');
+  const { isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const [inAppNotifications, setInAppNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(false);
 
   const handleDisconnect = () => {
-    onDisconnect();
+    disconnect();
     // Additional cleanup if needed
   };
 
@@ -54,17 +55,14 @@ export default function SettingsPage() {
             {isConnected ? (
               <>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Connected Wallet</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-                    </p>
-                  </div>
+                  <WalletDisplay variant="simple" />
+
                   <Button variant="outline" onClick={handleDisconnect}>
+                    <LogOut className="h-4 w-4" />
                     Disconnect Wallet
                   </Button>
                 </div>
-                <div>
+                {/* <div>
                   <Label htmlFor="nickname">Nickname (optional)</Label>
                   <Input
                     id="nickname"
@@ -72,7 +70,7 @@ export default function SettingsPage() {
                     onChange={(e) => setNickname(e.target.value)}
                     placeholder="Enter a nickname"
                   />
-                </div>
+                </div> */}
               </>
             ) : (
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg">
