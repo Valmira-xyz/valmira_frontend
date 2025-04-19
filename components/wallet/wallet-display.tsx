@@ -15,9 +15,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/components/ui/use-toast';
 import { generateAvatarColor } from '@/lib/utils';
 import { logout } from '@/store/slices/authSlice';
-import { useToast } from '@/components/ui/use-toast';
 interface WalletDisplayProps {
   variant: 'header' | 'sidebar' | 'simple';
 }

@@ -7,7 +7,6 @@ import Link from 'next/link';
 import { DashboardMetrics } from '@/components/dashboard/dashboard-metrics';
 import { LatestProjects } from '@/components/dashboard/latest-projects';
 import { PageHeader } from '@/components/layout/page-header';
-import { CreateProjectButton } from '@/components/projects/create-project-button';
 import { Button } from '@/components/ui/button';
 import { WalletConnectionCTA } from '@/components/wallet/wallet-connection-cta';
 import { RootState } from '@/store/store';

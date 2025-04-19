@@ -42,8 +42,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
+import { formatNumber } from '@/lib/utils';
 
 interface PortfolioProjectsProps {
   dateRange: DateRange | undefined;

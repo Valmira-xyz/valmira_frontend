@@ -2,7 +2,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { Separator } from '@/components/ui/separator';
 import {
   AlertCircleIcon,
   BookOpen,
@@ -11,18 +10,16 @@ import {
   FolderKanban,
   HelpCircle,
   HomeIcon,
+  Repeat2,
   Settings,
   Wallet,
-  LogOut,
-  Repeat2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAccount, useDisconnect } from 'wagmi';
-import { WalletDisplay } from '../wallet/wallet-display';
+import { useAccount } from 'wagmi';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Collapsible,
   CollapsibleContent,
@@ -37,20 +34,20 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { generateAvatarColor, getBadgeVariant } from '@/lib/utils';
+import { getBadgeVariant } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import Logo from '@/public/sidebar/logo.svg';
 import websocketService, { WebSocketEvents } from '@/services/websocketService';
 import { fetchProjects } from '@/store/slices/projectSlice';
 import { RootState } from '@/store/store';
-import { Card, CardContent } from '@/components/ui/card';
+
 import { WalletConnectionButton } from '../wallet/wallet-connection-button';
+import { WalletDisplay } from '../wallet/wallet-display';
 
 export function DashboardSidebar() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
   const [openProjects, setOpenProjects] = useState(true);
   const [openKnowledge, setOpenKnowledge] = useState(false);
   // const { theme, resolvedTheme } = useTheme();
@@ -137,7 +134,6 @@ export function DashboardSidebar() {
   const activeProjects = userProjects.filter(
     (project) => project.status === 'active'
   );
-  const avatarColor = generateAvatarColor(user?.walletAddress || '');
 
   // Calculate total profit based on all user projects
   const totalProfit =
@@ -434,23 +430,30 @@ export function DashboardSidebar() {
             <span className="text-sm">Settings</span>
           </SidebarMenuButton>
         </div>
-        
 
         {/* Profile section at the bottom */}
         <div className={cn('mt-auto px-2', open && 'space-y-4')}>
           {isAuthenticated && isConnected && user ? (
-            <Card className="border bg-card text-card-foreground">
+            <Card className="border bg-card text-card-foreground mb-4">
               <CardContent className="p-4 space-y-4">
                 <WalletDisplay variant="sidebar" />
 
                 <div className="flex justify-between">
                   <div>
-                    <p className="text-[12px] text-muted-foreground">Active Projects</p>
-                    <p className="text-[12px] font-medium">{activeProjects?.length || 0}</p>
+                    <p className="text-[12px] text-muted-foreground">
+                      Active Projects
+                    </p>
+                    <p className="text-[12px] font-medium">
+                      {activeProjects?.length || 0}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-[12px] text-muted-foreground">Total Profit</p>
-                    <p className="text-[12px] font-medium text-right">${Number(totalProfit || 0).toFixed(2)}</p>
+                    <p className="text-[12px] text-muted-foreground">
+                      Total Profit
+                    </p>
+                    <p className="text-[12px] font-medium text-right">
+                      ${Number(totalProfit || 0).toFixed(2)}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -459,7 +462,9 @@ export function DashboardSidebar() {
             open && (
               <div className="text-sm text-muted-foreground flex flex-col items-center justify-center gap-2 mb-4">
                 <WalletConnectionButton variant="default" />
-                <p className="text-xs mx-4 text-center text-muted-foreground">Connect your wallet and login to see your profile</p>
+                <p className="text-xs mx-4 text-center text-muted-foreground">
+                  Connect your wallet and login to see your profile
+                </p>
               </div>
             )
           )}

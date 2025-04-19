@@ -11,6 +11,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useAccount, useDisconnect } from 'wagmi';
 
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
@@ -21,22 +22,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { WalletConnectionButton } from '@/components/wallet/wallet-connection-button';
-import { useWallet } from '@/components/wallet/wallet-provider';
-import { useAccount, useDisconnect } from 'wagmi';
 import { WalletDisplay } from '@/components/wallet/wallet-display';
-
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { walletAddress, onDisconnect } = useWallet();
   const { isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const [nickname, setNickname] = useState('');
   const [inAppNotifications, setInAppNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(false);
 

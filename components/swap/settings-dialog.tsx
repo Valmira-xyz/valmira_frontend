@@ -1,10 +1,20 @@
 import { Info } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -48,24 +58,25 @@ export function SettingsDialog({
         <div className="space-y-6 py-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 justify-between">
-              <div className='flex items-center gap-2'>
+              <div className="flex items-center gap-2">
                 <Label>Slippage Tolerance</Label>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info className="h-4 w-4 text-muted-foreground" />
                   </TooltipTrigger>
-                  <TooltipContent className="w-[280px] p-3" align='start'>
-                    Your transaction will revert if the price changes unfavorably by more than this percentage.
+                  <TooltipContent className="w-[280px] p-3" align="start">
+                    Your transaction will revert if the price changes
+                    unfavorably by more than this percentage.
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <span className='text-sm text-muted-foreground'>{slippage}%</span>
+              <span className="text-sm text-muted-foreground">{slippage}%</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {slippageOptions.map((option) => (
                 <Button
                   key={option.value}
-                  variant={slippage === option.value ? "default" : "outline"}
+                  variant={slippage === option.value ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSlippage(option.value)}
                   className="px-3 py-1 h-8"
@@ -78,7 +89,7 @@ export function SettingsDialog({
                   type="number"
                   onChange={(e) => setSlippage(e.target.value)}
                   className="w-24 md:w-24 h-8"
-                  placeholder='Custom'
+                  placeholder="Custom"
                 />
                 <span className="text-sm">%</span>
               </div>
@@ -98,10 +109,7 @@ export function SettingsDialog({
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <Switch 
-                checked={autoRouter}
-                onCheckedChange={setAutoRouter}
-              />
+              <Switch checked={autoRouter} onCheckedChange={setAutoRouter} />
             </div>
             <p className="text-sm text-muted-foreground">
               Automatically find the best route for your swap
@@ -119,20 +127,13 @@ export function SettingsDialog({
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={() => onOpenChange(false)}
-            >
-              Save Changes
-            </Button>
+            <Button onClick={() => onOpenChange(false)}>Save Changes</Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
   );
-} 
+}

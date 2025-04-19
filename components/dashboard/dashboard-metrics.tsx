@@ -99,7 +99,7 @@ export function DashboardMetrics() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {metrics.map((metric, index) => (
-          <Card 
+          <Card
             key={index}
             className={`relative border overflow-hidden ${loading || isLoading ? 'opacity-60' : ''}`}
           >
@@ -121,12 +121,21 @@ export function DashboardMetrics() {
                     {index !== 0 && index !== 3 ? '$' : ''}
                     {formatNumber(metric.value)}
                   </div>
-                 {metric.trend && (
-                  <div className={`text-xs mt-1 ${metric.trend === 'increasing' ? 'text-green-500' : metric.trend === 'decreasing' ? 'text-red-500' : 'text-gray-500'}`}>
-                    {metric.trend === 'increasing' ? '↑' : metric.trend === 'decreasing' ? '↓' : '→'} {metric.changePercent}%
-                    <span className="m-1 text-xs text-muted-foreground mt-2">from last month</span>
-                  </div>
-                )}
+                  {metric.trend && (
+                    <div
+                      className={`text-xs mt-1 ${metric.trend === 'increasing' ? 'text-green-500' : metric.trend === 'decreasing' ? 'text-red-500' : 'text-gray-500'}`}
+                    >
+                      {metric.trend === 'increasing'
+                        ? '↑'
+                        : metric.trend === 'decreasing'
+                          ? '↓'
+                          : '→'}{' '}
+                      {metric.changePercent}%
+                      <span className="m-1 text-xs text-muted-foreground mt-2">
+                        from last month
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>

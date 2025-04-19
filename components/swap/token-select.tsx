@@ -1,8 +1,14 @@
 import { useState } from 'react';
+
 import { ChevronDown, Search } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 const tokens = [
   { symbol: 'BNB', name: 'Binance Coin', icon: '/eth-logo.png' },
@@ -21,15 +27,19 @@ interface TokenSelectProps {
 export function TokenSelect({ value, onChange }: TokenSelectProps) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
-  const filteredTokens = tokens.filter(token => 
-    token.symbol.toLowerCase().includes(search.toLowerCase()) ||
-    token.name.toLowerCase().includes(search.toLowerCase())
+  const filteredTokens = tokens.filter(
+    (token) =>
+      token.symbol.toLowerCase().includes(search.toLowerCase()) ||
+      token.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-[140px] flex items-center justify-between">
+        <Button
+          variant="outline"
+          className="w-[140px] flex items-center justify-between"
+        >
           <div className="flex items-center gap-2">
             <img src="/eth-logo.png" alt={value} className="w-5 h-5" />
             <span>{value}</span>
@@ -73,4 +83,4 @@ export function TokenSelect({ value, onChange }: TokenSelectProps) {
       </PopoverContent>
     </Popover>
   );
-} 
+}

@@ -15,11 +15,7 @@ import { CreateProjectButton } from '../projects/create-project-button';
 
 export function LatestProjects() {
   const dispatch = useDispatch();
-  const {
-    projects,
-    loading: isLoading,
-    error,
-  } = useSelector((state) => state.projects);
+  const { projects, error } = useSelector((state) => state.projects);
   const fetchInProgress = useRef(false);
   const hasInitialFetch = useRef(false);
 

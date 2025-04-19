@@ -1,7 +1,14 @@
 import { ArrowDown } from 'lucide-react';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export function ManageWallet() {
   return (
@@ -73,4 +80,4 @@ export function ManageWallet() {
       </CardContent>
     </Card>
   );
-} 
+}
