@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
+import { Separator } from '@/components/ui/separator';
 import {
   AlertCircleIcon,
   BookOpen,
@@ -12,10 +13,13 @@ import {
   HomeIcon,
   Settings,
   Wallet,
+  LogOut,
+  Repeat2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAccount } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
+import { WalletDisplay } from '../wallet/wallet-display';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -39,11 +43,14 @@ import Logo from '@/public/sidebar/logo.svg';
 import websocketService, { WebSocketEvents } from '@/services/websocketService';
 import { fetchProjects } from '@/store/slices/projectSlice';
 import { RootState } from '@/store/store';
+import { Card, CardContent } from '@/components/ui/card';
+import { WalletConnectionButton } from '../wallet/wallet-connection-button';
 
 export function DashboardSidebar() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const [openProjects, setOpenProjects] = useState(true);
   const [openKnowledge, setOpenKnowledge] = useState(false);
   // const { theme, resolvedTheme } = useTheme();
@@ -265,6 +272,14 @@ export function DashboardSidebar() {
             <span className="text-sm">Portfolio</span>
           </SidebarMenuButton>
 
+          <SidebarMenuButton
+            onClick={() => onNavigateTo('/swap')}
+            className="flex items-center"
+          >
+            <Repeat2 className="h-4 w-4" />
+            <span className="text-sm">Swap</span>
+          </SidebarMenuButton>
+
           {/* Projects with submenu */}
           <Collapsible
             open={openProjects && open}
@@ -419,53 +434,32 @@ export function DashboardSidebar() {
             <span className="text-sm">Settings</span>
           </SidebarMenuButton>
         </div>
+        
 
         {/* Profile section at the bottom */}
-        <div
-          className={cn(
-            'mx-4 mb-6 mt-auto border-border p-4 space-y-4 rounded-xl',
-            open && 'border'
-          )}
-        >
+        <div className={cn('mt-auto px-2', open && 'space-y-4')}>
           {isAuthenticated && isConnected && user ? (
-            <>
-              <div className="flex items-center space-x-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback style={{ backgroundColor: avatarColor }}>
-                    {user.walletAddress?.substring(2, 4).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {user.name ||
-                      `${user.walletAddress.substring(
-                        0,
-                        6
-                      )}...${user.walletAddress.substring(
-                        user.walletAddress.length - 4
-                      )}`}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{user.role}</p>
-                </div>
-              </div>
+            <Card className="border bg-card text-card-foreground">
+              <CardContent className="p-4 space-y-4">
+                <WalletDisplay variant="sidebar" />
 
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground">Active Projects</span>
-                  <span className="font-medium">{activeProjects?.length}</span>
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-[12px] text-muted-foreground">Active Projects</p>
+                    <p className="text-[12px] font-medium">{activeProjects?.length || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12px] text-muted-foreground">Total Profit</p>
+                    <p className="text-[12px] font-medium text-right">${Number(totalProfit || 0).toFixed(2)}</p>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground">Total Profit</span>
-                  <span className="font-medium">
-                    ${Number(totalProfit).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            </>
+              </CardContent>
+            </Card>
           ) : (
             open && (
-              <div className="text-sm text-muted-foreground">
-                <p>Connect your wallet and login to see your profile</p>
+              <div className="text-sm text-muted-foreground flex flex-col items-center justify-center gap-2 mb-4">
+                <WalletConnectionButton variant="default" />
+                <p className="text-xs mx-4 text-center text-muted-foreground">Connect your wallet and login to see your profile</p>
               </div>
             )
           )}

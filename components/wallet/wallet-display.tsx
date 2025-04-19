@@ -17,16 +17,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { generateAvatarColor } from '@/lib/utils';
 import { logout } from '@/store/slices/authSlice';
-
+import { useToast } from '@/components/ui/use-toast';
 interface WalletDisplayProps {
-  variant: 'header' | 'sidebar';
+  variant: 'header' | 'sidebar' | 'simple';
 }
 
 export function WalletDisplay({ variant }: WalletDisplayProps) {
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const dispatch = useDispatch();
-
+  const { toast } = useToast();
   // Format address for display (0x1234...5678)
   const formatAddress = (address: string) => {
     if (!address) return '';
@@ -39,6 +39,10 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
   const copyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address);
+      toast({
+        title: 'Copied to clipboard',
+        description: 'Address copied to clipboard',
+      });
     }
   };
 
@@ -59,7 +63,7 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
             {address?.substring(2, 4).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <div className="flex flex-col">
+        <div className="flex flex-col cursor-pointer" onClick={copyAddress}>
           <span className="text-xs font-medium">
             {formatAddress(address || '')}
           </span>
@@ -73,6 +77,24 @@ export function WalletDisplay({ variant }: WalletDisplayProps) {
           <LogOut className="h-3 w-3" />
           <span className="sr-only">Disconnect</span>
         </Button>
+      </div>
+    );
+  }
+
+  if (variant === 'simple') {
+    return (
+      <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+        <Avatar className="h-8 w-8 border-2 border-primary/20">
+          <AvatarFallback style={{ backgroundColor: avatarColor }}>
+            {address?.substring(2, 4).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col cursor-pointer" onClick={copyAddress}>
+          <span className="text-xs font-medium">
+            {formatAddress(address || '')}
+          </span>
+          <span className="text-xs text-muted-foreground">Connected</span>
+        </div>
       </div>
     );
   }

@@ -18,7 +18,7 @@ export default function DashboardPage() {
   return (
     <div className="">
       <PageHeader title="Dashboard">
-        {isAuthenticated && <CreateProjectButton />}
+        {/* {isAuthenticated && <CreateProjectButton />} */}
       </PageHeader>
 
       <section className="p-6 space-y-10">
