@@ -39,6 +39,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import {
   Table,
@@ -156,14 +163,6 @@ interface PoolInfo {
   bnbAddress: string;
 }
 
-// Fix unused interface
-interface _BurnLiquidityResult {
-  success: boolean;
-  tokenAmount?: number;
-  bnbAmount?: number;
-  error?: string;
-}
-
 interface FailedTransaction {
   wallet: string;
   walletAddress?: string;
@@ -201,11 +200,17 @@ export enum PresetStrategy {
 export interface PresetConfig {
   strategy: PresetStrategy;
   targetShare?: number; // Percentage of total supply to aim for
+  totalShare?: number; // Total percentage for staggered snipe
   targetTokenAmount?: number; // Specific token amount to buy
   numberOfWallets: number;
+  minWallets?: number; // Min wallets for staggered snipe
+  maxWallets?: number; // Max wallets for staggered snipe
   timeFrame: string; // e.g., "within first 30 minutes of launch" or "only at TGE block"
   maxPriceImpact?: number; // Max price impact allowed
   maxSlippage?: number; // Max slippage allowed
+  buyStageDuration?: string; // Time between buys for staggered snipe
+  buyStageCounts?: number; // Number of buy stages for staggered snipe
+  priceThreshold?: number; // Price threshold for passive early buy
 }
 
 // Define the wizard steps
@@ -240,10 +245,25 @@ export function BundleSnipingDialog({
   // Preset configuration state
   const [presetConfig, setPresetConfig] = useState<PresetConfig>({
     strategy: PresetStrategy.RAPID_SNIPE,
-    targetShare: 30, // Default to 30%
-    numberOfWallets: 5,
-    timeFrame: 'within first 30 minutes of launch',
+    targetShare: 70, // Default to 70%
+    totalShare: 70, // Default total share for staggered snipe
+    numberOfWallets: 40,
+    minWallets: 5, // Default for staggered snipe
+    maxWallets: 20, // Default for staggered snipe
+    timeFrame: 'only at TGE block', // Default for Rapid Snipe
+    maxPriceImpact: 50, // Default for Rapid Snipe
+    maxSlippage: 3, // Default for Passive Early Buy
+    buyStageDuration: 'medium', // Default for Staggered Snipe
+    buyStageCounts: 3, // Default for Staggered Snipe
+    priceThreshold: 0.00001, // Default for Passive Early Buy (in BNB)
   });
+
+  // Price threshold unit state
+  const [priceThresholdUnit, setPriceThresholdUnit] = useState('BNB');
+
+  // Amount type toggles for percentage vs direct token amount
+  const [targetAmountType, setTargetAmountType] = useState('percentage');
+  const [totalAmountType, setTotalAmountType] = useState('percentage');
 
   // Advanced mode configuration state
   const [advancedConfig, setAdvancedConfig] = useState({
@@ -3548,17 +3568,23 @@ export function BundleSnipingDialog({
                     : 'outline'
                 }
                 className="h-auto py-4 flex flex-col items-center justify-start"
-                onClick={() =>
+                onClick={() => {
                   setPresetConfig({
                     ...presetConfig,
                     strategy: PresetStrategy.RAPID_SNIPE,
-                  })
-                }
+                    // Rapid snipe defaults
+                    targetShare: 70,
+                    targetTokenAmount: 1000000, // Default token amount (1 million)
+                    numberOfWallets: 40,
+                    timeFrame: 'only at TGE block',
+                    maxPriceImpact: 50,
+                    maxSlippage: 3,
+                  });
+                  // Reset to percentage mode
+                  setTargetAmountType('percentage');
+                }}
               >
                 <span className="text-lg font-medium mb-1">Rapid Snipe</span>
-                <span className="text-xs text-center">
-                  Quickly buy a large portion of supply at launch
-                </span>
               </Button>
 
               <Button
@@ -3568,18 +3594,26 @@ export function BundleSnipingDialog({
                     : 'outline'
                 }
                 className="h-auto py-4 flex flex-col items-center justify-start"
-                onClick={() =>
+                onClick={() => {
                   setPresetConfig({
                     ...presetConfig,
                     strategy: PresetStrategy.STAGGERED_SNIPE,
-                  })
-                }
+                    // Staggered snipe defaults
+                    totalShare: 70,
+                    targetTokenAmount: 1000000, // Default token amount (1 million)
+                    buyStageCounts: 3,
+                    minWallets: 5,
+                    maxWallets: 20,
+                    buyStageDuration: 'medium',
+                    timeFrame: 'within first 30 minutes of launch',
+                    maxSlippage: 3,
+                  });
+                  // Reset to percentage mode
+                  setTotalAmountType('percentage');
+                }}
               >
                 <span className="text-lg font-medium mb-1">
                   Staggered Snipe
-                </span>
-                <span className="text-xs text-center">
-                  Snipe in multiple bursts over time
                 </span>
               </Button>
 
@@ -3590,20 +3624,46 @@ export function BundleSnipingDialog({
                     : 'outline'
                 }
                 className="h-auto py-4 flex flex-col items-center justify-start"
-                onClick={() =>
+                onClick={() => {
                   setPresetConfig({
                     ...presetConfig,
                     strategy: PresetStrategy.PASSIVE_EARLY_BUY,
-                  })
-                }
+                    // Passive early buy defaults
+                    targetShare: 20,
+                    targetTokenAmount: 500000, // Default token amount (500K)
+                    numberOfWallets: 3,
+                    timeFrame: 'ASAP',
+                    priceThreshold: 0.00001,
+                    maxSlippage: 3,
+                  });
+                  // Reset price threshold unit to BNB by default
+                  setPriceThresholdUnit('BNB' as const);
+                  // Reset to percentage mode
+                  setTargetAmountType('percentage');
+                }}
               >
                 <span className="text-lg font-medium mb-1">
                   Passive Early Buy
                 </span>
-                <span className="text-xs text-center">
+              </Button>
+            </div>
+            <div className="mt-5 text-md text-muted-foreground">
+              {presetConfig.strategy === PresetStrategy.RAPID_SNIPE && (
+                <span className=" text-center">
+                  Quickly buy a large portion of supply at launch
+                </span>
+              )}
+              {presetConfig.strategy === PresetStrategy.STAGGERED_SNIPE && (
+                <span className=" text-center">
+                  Snipes in multiple bursts over the first hour/day, avoiding a
+                  single big wave of buys.
+                </span>
+              )}
+              {presetConfig.strategy === PresetStrategy.PASSIVE_EARLY_BUY && (
+                <span className=" text-center">
                   Buy only if price remains under threshold
                 </span>
-              </Button>
+              )}
             </div>
           </div>
 
@@ -3612,147 +3672,636 @@ export function BundleSnipingDialog({
             <h3 className="text-base font-medium mb-3">Basic Options</h3>
 
             <div className="space-y-4">
-              {/* Target Share */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label htmlFor="targetShare">Target Share:</Label>
-                  <div className="flex items-center gap-2">
-                    <div className="text-sm font-medium">
-                      {presetConfig.targetShare}%
+              {/* RAPID_SNIPE Strategy Options */}
+              {presetConfig.strategy === PresetStrategy.RAPID_SNIPE && (
+                <>
+                  {/* Target Share with unit toggle */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="targetShare">Target Amount:</Label>
+                      <div className="flex items-center gap-2">
+                        {targetAmountType === 'percentage' ? (
+                          <>
+                            <div className="text-sm font-medium">
+                              {presetConfig.targetShare}%
+                            </div>
+                            <div className="w-24">
+                              <Input
+                                id="targetShare"
+                                type="number"
+                                value={presetConfig.targetShare}
+                                onChange={(e) =>
+                                  setPresetConfig({
+                                    ...presetConfig,
+                                    targetShare: Number(e.target.value),
+                                  })
+                                }
+                                className="h-8"
+                                min="1"
+                                max="100"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-36">
+                            <Input
+                              id="targetTokenAmount"
+                              type="number"
+                              value={presetConfig.targetTokenAmount || 0}
+                              onChange={(e) =>
+                                setPresetConfig({
+                                  ...presetConfig,
+                                  targetTokenAmount: Number(e.target.value),
+                                })
+                              }
+                              className="h-8"
+                              min="1"
+                              placeholder="Token amount"
+                            />
+                          </div>
+                        )}
+                        <Select
+                          value={targetAmountType}
+                          onValueChange={(value) => setTargetAmountType(value)}
+                        >
+                          <SelectTrigger className="h-8 w-24">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">
+                              Percentage
+                            </SelectItem>
+                            <SelectItem value="amount">Token Amount</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="w-24">
+                    {targetAmountType === 'percentage' && (
+                      <Slider
+                        defaultValue={[30]}
+                        min={1}
+                        max={100}
+                        step={1}
+                        value={[presetConfig.targetShare || 30]}
+                        onValueChange={(values) =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            targetShare: values[0],
+                          })
+                        }
+                      />
+                    )}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {targetAmountType === 'percentage'
+                        ? `Aim for up to ${presetConfig.targetShare}% of tokens in the pool at launch`
+                        : `Aim to buy ${presetConfig.targetTokenAmount?.toLocaleString() || 0} tokens at launch`}
+                    </div>
+                  </div>
+
+                  {/* Number of Wallets */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="numberOfWallets">
+                        Number of Wallets:
+                      </Label>
+                      <div className="w-24">
+                        <Input
+                          id="numberOfWallets"
+                          type="number"
+                          value={presetConfig.numberOfWallets}
+                          onChange={(e) =>
+                            setPresetConfig({
+                              ...presetConfig,
+                              numberOfWallets: Number(e.target.value),
+                            })
+                          }
+                          className="h-8"
+                          min="1"
+                          max="50"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Distribute rapid snipe across{' '}
+                      {presetConfig.numberOfWallets} wallets for higher chance
+                      of success
+                    </div>
+                  </div>
+
+                  {/* Time Frame - For Rapid, always TGE block */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label>Time Frame:</Label>
+                      <div className="font-medium text-sm">
+                        Only at TGE block
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Rapid snipe executes at token generation event block for
+                      maximum efficiency
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* STAGGERED_SNIPE Strategy Options */}
+              {presetConfig.strategy === PresetStrategy.STAGGERED_SNIPE && (
+                <>
+                  {/* Total Share with unit toggle */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="totalShare">Total Amount:</Label>
+                      <div className="flex items-center gap-2">
+                        {totalAmountType === 'percentage' ? (
+                          <>
+                            <div className="text-sm font-medium">
+                              {presetConfig.totalShare}%
+                            </div>
+                            <div className="w-24">
+                              <Input
+                                id="totalShare"
+                                type="number"
+                                value={presetConfig.totalShare}
+                                onChange={(e) =>
+                                  setPresetConfig({
+                                    ...presetConfig,
+                                    totalShare: Number(e.target.value),
+                                  })
+                                }
+                                className="h-8"
+                                min="1"
+                                max="100"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-36">
+                            <Input
+                              id="totalTokenAmount"
+                              type="number"
+                              value={presetConfig.targetTokenAmount || 0}
+                              onChange={(e) =>
+                                setPresetConfig({
+                                  ...presetConfig,
+                                  targetTokenAmount: Number(e.target.value),
+                                })
+                              }
+                              className="h-8"
+                              min="1"
+                              placeholder="Token amount"
+                            />
+                          </div>
+                        )}
+                        <Select
+                          value={totalAmountType}
+                          onValueChange={(value) => setTotalAmountType(value)}
+                        >
+                          <SelectTrigger className="h-8 w-24">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">
+                              Percentage
+                            </SelectItem>
+                            <SelectItem value="amount">Token Amount</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {totalAmountType === 'percentage' && (
+                      <Slider
+                        defaultValue={[70]}
+                        min={1}
+                        max={100}
+                        step={1}
+                        value={[presetConfig.totalShare || 70]}
+                        onValueChange={(values) =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            totalShare: values[0],
+                          })
+                        }
+                      />
+                    )}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {totalAmountType === 'percentage'
+                        ? `Total target share of ${presetConfig.totalShare}% to accumulate across all buy stages`
+                        : `Total token amount of ${presetConfig.targetTokenAmount?.toLocaleString() || 0} to accumulate across all buy stages`}
+                    </div>
+                  </div>
+
+                  {/* Buy Stage Counts */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="buyStageCounts">
+                        Number of Buy Stages:
+                      </Label>
+                      <div className="w-24">
+                        <Input
+                          id="buyStageCounts"
+                          type="number"
+                          value={presetConfig.buyStageCounts}
+                          onChange={(e) =>
+                            setPresetConfig({
+                              ...presetConfig,
+                              buyStageCounts: Number(e.target.value),
+                            })
+                          }
+                          className="h-8"
+                          min="2"
+                          max="10"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Split your buys into {presetConfig.buyStageCounts} stages
+                      to avoid large price impact
+                    </div>
+                  </div>
+
+                  {/* Wallet Range */}
+                  <div>
+                    <Label htmlFor="walletRange" className="mb-2 block">
+                      Wallets Per Stage:
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label htmlFor="minWallets" className="text-xs">
+                          Min:
+                        </Label>
+                        <Input
+                          id="minWallets"
+                          type="number"
+                          value={presetConfig.minWallets}
+                          onChange={(e) =>
+                            setPresetConfig({
+                              ...presetConfig,
+                              minWallets: Number(e.target.value),
+                            })
+                          }
+                          className="h-8"
+                          min="1"
+                          max={presetConfig.maxWallets || 20}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="maxWallets" className="text-xs">
+                          Max:
+                        </Label>
+                        <Input
+                          id="maxWallets"
+                          type="number"
+                          value={presetConfig.maxWallets}
+                          onChange={(e) =>
+                            setPresetConfig({
+                              ...presetConfig,
+                              maxWallets: Number(e.target.value),
+                            })
+                          }
+                          className="h-8"
+                          min={presetConfig.minWallets || 1}
+                          max="50"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Random number of wallets used in each buy stage
+                    </div>
+                  </div>
+
+                  {/* Time Between Buys */}
+                  <div>
+                    <Label htmlFor="buyStageDuration" className="mb-2 block">
+                      Time Between Buys:
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <Button
+                        variant={
+                          presetConfig.buyStageDuration === 'very short'
+                            ? 'default'
+                            : 'outline'
+                        }
+                        className="h-auto py-2"
+                        onClick={() =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            buyStageDuration: 'very short',
+                          })
+                        }
+                      >
+                        Very Short (30s)
+                      </Button>
+                      <Button
+                        variant={
+                          presetConfig.buyStageDuration === 'medium'
+                            ? 'default'
+                            : 'outline'
+                        }
+                        className="h-auto py-2"
+                        onClick={() =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            buyStageDuration: 'medium',
+                          })
+                        }
+                      >
+                        Medium (2-5 min)
+                      </Button>
+                      <Button
+                        variant={
+                          presetConfig.buyStageDuration === 'long'
+                            ? 'default'
+                            : 'outline'
+                        }
+                        className="h-auto py-2"
+                        onClick={() =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            buyStageDuration: 'long',
+                          })
+                        }
+                      >
+                        Long (15+ min)
+                      </Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Time interval between staggered buy transactions
+                    </div>
+                  </div>
+
+                  {/* Maximum Slippage Tolerance */}
+                  <div>
+                    <Label htmlFor="maxSlippage" className="mb-2 block">
+                      Maximum Slippage Tolerance:
+                    </Label>
+                    <div className="flex items-center gap-2">
                       <Input
-                        id="targetShare"
+                        id="maxSlippage"
                         type="number"
-                        value={presetConfig.targetShare}
+                        value={presetConfig.maxSlippage || 3}
                         onChange={(e) =>
                           setPresetConfig({
                             ...presetConfig,
-                            targetShare: Number(e.target.value),
+                            maxSlippage: Number(e.target.value),
                           })
                         }
-                        className="h-8"
-                        min="1"
+                        className="w-24 h-8"
+                        min="0.1"
                         max="100"
+                        step="0.1"
                       />
+                      <span>%</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Maximum slippage tolerance for each buy transaction
                     </div>
                   </div>
-                </div>
-                <Slider
-                  defaultValue={[30]}
-                  min={1}
-                  max={100}
-                  step={1}
-                  value={[presetConfig.targetShare || 30]}
-                  onValueChange={(values) =>
-                    setPresetConfig({
-                      ...presetConfig,
-                      targetShare: values[0],
-                    })
-                  }
-                />
-                <div className="text-xs text-muted-foreground mt-1">
-                  Aim for up to {presetConfig.targetShare}% of total supply
-                </div>
-              </div>
+                </>
+              )}
 
-              {/* Number of Wallets */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label htmlFor="numberOfWallets">Number of Wallets:</Label>
-                  <div className="w-24">
-                    <Input
-                      id="numberOfWallets"
-                      type="number"
-                      value={presetConfig.numberOfWallets}
-                      onChange={(e) =>
-                        setPresetConfig({
-                          ...presetConfig,
-                          numberOfWallets: Number(e.target.value),
-                        })
-                      }
-                      className="h-8"
-                      min="1"
-                      max="50"
-                    />
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Distribute snipes among {presetConfig.numberOfWallets} wallets
-                  for less detection
-                </div>
-              </div>
-
-              {/* Time Frame */}
-              <div>
-                <Label htmlFor="timeFrame" className="mb-2 block">
-                  Time Frame:
-                </Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Button
-                    variant={
-                      presetConfig.timeFrame === 'only at TGE block'
-                        ? 'default'
-                        : 'outline'
-                    }
-                    className="h-auto py-2"
-                    onClick={() =>
-                      setPresetConfig({
-                        ...presetConfig,
-                        timeFrame: 'only at TGE block',
-                      })
-                    }
-                  >
-                    Only at TGE block
-                  </Button>
-                  <Button
-                    variant={
-                      presetConfig.timeFrame ===
-                      'within first 30 minutes of launch'
-                        ? 'default'
-                        : 'outline'
-                    }
-                    className="h-auto py-2"
-                    onClick={() =>
-                      setPresetConfig({
-                        ...presetConfig,
-                        timeFrame: 'within first 30 minutes of launch',
-                      })
-                    }
-                  >
-                    Within first 30 minutes
-                  </Button>
-                </div>
-              </div>
-
-              {/* Strategy-specific options */}
+              {/* PASSIVE_EARLY_BUY Strategy Options */}
               {presetConfig.strategy === PresetStrategy.PASSIVE_EARLY_BUY && (
-                <div>
-                  <Label htmlFor="maxSlippage" className="mb-2 block">
-                    Maximum Slippage Tolerance:
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="maxSlippage"
-                      type="number"
-                      value={presetConfig.maxSlippage || 3}
-                      onChange={(e) =>
-                        setPresetConfig({
-                          ...presetConfig,
-                          maxSlippage: Number(e.target.value),
-                        })
-                      }
-                      className="w-24 h-8"
-                      min="0.1"
-                      max="100"
-                      step="0.1"
-                    />
-                    <span>%</span>
+                <>
+                  {/* Price Threshold with Unit Selection */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="priceThreshold">Price Threshold:</Label>
+                      <div className="flex items-center w-36 gap-2">
+                        <Input
+                          id="priceThreshold"
+                          type="number"
+                          value={presetConfig.priceThreshold}
+                          onChange={(e) =>
+                            setPresetConfig({
+                              ...presetConfig,
+                              priceThreshold: Number(e.target.value),
+                            })
+                          }
+                          className="h-8"
+                          min="0.000001"
+                          max={priceThresholdUnit === 'BNB' ? '0.1' : '1000'}
+                          step="0.000001"
+                        />
+                        <Select
+                          value={priceThresholdUnit}
+                          onValueChange={(value) =>
+                            setPriceThresholdUnit(value)
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-16">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="BNB">BNB</SelectItem>
+                            <SelectItem value="USD">USD</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Only buy if token price remains under this threshold (in{' '}
+                      {priceThresholdUnit})
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Only buy if slippage is under this percentage
+
+                  {/* Target Share - Representing total buying amount */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="targetShare">Target Amount:</Label>
+                      <div className="flex items-center gap-2">
+                        {targetAmountType === 'percentage' ? (
+                          <>
+                            <div className="text-sm font-medium">
+                              {presetConfig.targetShare}%
+                            </div>
+                            <div className="w-24">
+                              <Input
+                                id="targetShare"
+                                type="number"
+                                value={presetConfig.targetShare}
+                                onChange={(e) =>
+                                  setPresetConfig({
+                                    ...presetConfig,
+                                    targetShare: Number(e.target.value),
+                                  })
+                                }
+                                className="h-8"
+                                min="1"
+                                max="100"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-36">
+                            <Input
+                              id="targetTokenAmount"
+                              type="number"
+                              value={presetConfig.targetTokenAmount || 0}
+                              onChange={(e) =>
+                                setPresetConfig({
+                                  ...presetConfig,
+                                  targetTokenAmount: Number(e.target.value),
+                                })
+                              }
+                              className="h-8"
+                              min="1"
+                              placeholder="Token amount"
+                            />
+                          </div>
+                        )}
+                        <Select
+                          value={targetAmountType}
+                          onValueChange={(value) => setTargetAmountType(value)}
+                        >
+                          <SelectTrigger className="h-8 w-24">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">
+                              Percentage
+                            </SelectItem>
+                            <SelectItem value="amount">Token Amount</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {targetAmountType === 'percentage' && (
+                      <Slider
+                        defaultValue={[20]}
+                        min={1}
+                        max={100}
+                        step={1}
+                        value={[presetConfig.targetShare || 20]}
+                        onValueChange={(values) =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            targetShare: values[0],
+                          })
+                        }
+                      />
+                    )}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {targetAmountType === 'percentage'
+                        ? `Total buying amount across all wallets (${presetConfig.targetShare}% of tokens in the pool)`
+                        : `Total buying amount across all wallets (${presetConfig.targetTokenAmount?.toLocaleString() || 0} tokens)`}
+                    </div>
                   </div>
-                </div>
+
+                  {/* Number of Wallets - Default to 3 */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="numberOfWallets">
+                        Number of Wallets:
+                      </Label>
+                      <div className="w-24">
+                        <Input
+                          id="numberOfWallets"
+                          type="number"
+                          value={presetConfig.numberOfWallets || 3}
+                          onChange={(e) =>
+                            setPresetConfig({
+                              ...presetConfig,
+                              numberOfWallets: Number(e.target.value) || 3,
+                            })
+                          }
+                          className="h-8"
+                          min="1"
+                          max="50"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Distribute buys among {presetConfig.numberOfWallets || 3}{' '}
+                      wallets
+                    </div>
+                  </div>
+
+                  {/* Time Frame - Default to ASAP */}
+                  {/* <div>
+                    <Label htmlFor="timeFrame" className="mb-2 block">
+                      Time Frame:
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <Button
+                        variant={
+                          presetConfig.timeFrame === 'ASAP'
+                            ? 'default'
+                            : 'outline'
+                        }
+                        className="h-auto py-2"
+                        onClick={() =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            timeFrame: 'ASAP',
+                          })
+                        }
+                      >
+                        ASAP
+                      </Button>
+                      <Button
+                        variant={
+                          presetConfig.timeFrame === 'only at TGE block'
+                            ? 'default'
+                            : 'outline'
+                        }
+                        className="h-auto py-2"
+                        onClick={() =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            timeFrame: 'only at TGE block',
+                          })
+                        }
+                      >
+                        Only at TGE block
+                      </Button>
+                      <Button
+                        variant={
+                          presetConfig.timeFrame ===
+                          'within first 30 minutes of launch'
+                            ? 'default'
+                            : 'outline'
+                        }
+                        className="h-auto py-2"
+                        onClick={() =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            timeFrame: 'within first 30 minutes of launch',
+                          })
+                        }
+                      >
+                        Within first 30 minutes
+                      </Button>
+                    </div>
+                  </div> */}
+
+                  {/* Maximum Slippage Tolerance */}
+                  <div>
+                    <Label htmlFor="maxSlippage" className="mb-2 block">
+                      Maximum Slippage Tolerance:
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="maxSlippage"
+                        type="number"
+                        value={presetConfig.maxSlippage || 3}
+                        onChange={(e) =>
+                          setPresetConfig({
+                            ...presetConfig,
+                            maxSlippage: Number(e.target.value),
+                          })
+                        }
+                        className="w-24 h-8"
+                        min="0.1"
+                        max="100"
+                        step="0.1"
+                      />
+                      <span>%</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Only buy if slippage is under this percentage
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -3854,25 +4403,86 @@ export function BundleSnipingDialog({
                     ? 'Staggered Snipe'
                     : 'Passive Early Buy'}
               </p>
-              <p>
-                <span className="text-muted-foreground">Target Share:</span> Up
-                to {presetConfig.targetShare}% of total supply
-              </p>
-              <p>
-                <span className="text-muted-foreground">Wallets:</span>{' '}
-                {presetConfig.numberOfWallets} sniping wallets
-              </p>
-              <p>
-                <span className="text-muted-foreground">Time Frame:</span>{' '}
-                {presetConfig.timeFrame}
-              </p>
-              {presetConfig.strategy === PresetStrategy.PASSIVE_EARLY_BUY &&
-                presetConfig.maxSlippage && (
+
+              {/* Strategy-specific summaries */}
+              {presetConfig.strategy === PresetStrategy.RAPID_SNIPE && (
+                <>
+                  <p>
+                    <span className="text-muted-foreground">Target Share:</span>{' '}
+                    Up to {presetConfig.targetShare}% of tokens in the pool
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Wallets:</span>{' '}
+                    {presetConfig.numberOfWallets} sniping wallets
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Time Frame:</span>{' '}
+                    Only at TGE block
+                  </p>
+                </>
+              )}
+
+              {/* Staggered Snipe Summary */}
+              {presetConfig.strategy === PresetStrategy.STAGGERED_SNIPE && (
+                <>
+                  <p>
+                    <span className="text-muted-foreground">Total Share:</span>{' '}
+                    Up to {presetConfig.totalShare}% of tokens in the pool
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Buy Stages:</span>{' '}
+                    {presetConfig.buyStageCounts} stages
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">
+                      Wallets Per Stage:
+                    </span>{' '}
+                    {presetConfig.minWallets} to {presetConfig.maxWallets}{' '}
+                    wallets
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">
+                      Time Between Buys:
+                    </span>{' '}
+                    {presetConfig.buyStageDuration === 'very short'
+                      ? 'Very Short (30s)'
+                      : presetConfig.buyStageDuration === 'medium'
+                        ? 'Medium (2-5 min)'
+                        : 'Long (15+ min)'}
+                  </p>
                   <p>
                     <span className="text-muted-foreground">Max Slippage:</span>{' '}
                     {presetConfig.maxSlippage}%
                   </p>
-                )}
+                </>
+              )}
+
+              {/* Passive Early Buy Summary */}
+              {presetConfig.strategy === PresetStrategy.PASSIVE_EARLY_BUY && (
+                <>
+                  <p>
+                    <span className="text-muted-foreground">
+                      Price Threshold:
+                    </span>{' '}
+                    {presetConfig.priceThreshold} BNB
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">
+                      Target Amount:
+                    </span>{' '}
+                    {presetConfig.targetTokenAmount?.toLocaleString()} tokens
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Wallets:</span>{' '}
+                    {presetConfig.numberOfWallets} wallets
+                  </p>
+
+                  <p>
+                    <span className="text-muted-foreground">Max Slippage:</span>{' '}
+                    {presetConfig.maxSlippage}%
+                  </p>
+                </>
+              )}
             </div>
           </div>
 
@@ -3892,7 +4502,7 @@ export function BundleSnipingDialog({
                 // Set snipe percentage based on target share
                 setSnipePercentage(presetConfig.targetShare || 30);
 
-                // Decide on slippage tolerance
+                // Apply strategy-specific settings
                 if (presetConfig.strategy === PresetStrategy.RAPID_SNIPE) {
                   setSlippageTolerance(99); // High slippage for rapid snipe
                 } else if (
@@ -3900,8 +4510,45 @@ export function BundleSnipingDialog({
                 ) {
                   setSlippageTolerance(50); // Moderate slippage for staggered
                 } else {
+                  // Passive Early Buy
                   setSlippageTolerance(presetConfig.maxSlippage || 3); // Low slippage for passive
                 }
+
+                // Set additional configuration based on the preset strategy
+                // These will be applied when we move to the snipe configuration step
+                setAdvancedConfig({
+                  ...advancedConfig,
+                  timing: {
+                    ...advancedConfig.timing,
+                    waitBlocks:
+                      presetConfig.timeFrame === 'only at TGE block' ? 0 : 5,
+                    pauseOnPriceSpike:
+                      presetConfig.strategy ===
+                      PresetStrategy.PASSIVE_EARLY_BUY,
+                  },
+                  stealth: {
+                    ...advancedConfig.stealth,
+                    splitBuys:
+                      presetConfig.strategy === PresetStrategy.STAGGERED_SNIPE,
+                    randomChunks:
+                      presetConfig.strategy === PresetStrategy.STAGGERED_SNIPE
+                        ? {
+                            min:
+                              presetConfig.buyStageDuration === 'very short'
+                                ? 2
+                                : presetConfig.buyStageDuration === 'medium'
+                                  ? 3
+                                  : 5,
+                            max:
+                              presetConfig.buyStageDuration === 'very short'
+                                ? 4
+                                : presetConfig.buyStageDuration === 'medium'
+                                  ? 6
+                                  : 10,
+                          }
+                        : advancedConfig.stealth.randomChunks,
+                  },
+                });
 
                 // After applying preset, skip to wallet setup if in preset mode
                 if (!isAdvancedMode) {
