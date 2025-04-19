@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
+import { ethers } from 'ethers';
 import {
   ArrowRightLeft,
-  CheckCircle,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -21,6 +21,7 @@ import { useParams } from 'next/navigation';
 import { useAccount, useChainId } from 'wagmi';
 
 import { ApproveAndAddLiquidityButtons } from '@/components/projects/ApproveAndAddLiquidityButtons';
+import { BnbDepositDialog } from '@/components/projects/bnb-deposit-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -38,7 +39,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import {
   Table,
@@ -222,7 +222,7 @@ enum WizardStep {
   POST_OPERATION = 9,
 }
 
-export function SnipeWizardDialog({
+export function BundleSnipingDialog({
   open,
   onOpenChange,
 }: SnipeWizardDialogProps) {
@@ -281,7 +281,7 @@ export function SnipeWizardDialog({
   });
 
   // Fix unused setOperationStatus state
-  const [operationStatus, _setOperationStatus] = useState({
+  const [_operationStatus, _setOperationStatus] = useState({
     status: 'idle', // idle, preparing, executing, completed, failed
     tokensSnipedSoFar: 0,
     targetTokens: 0,
@@ -422,6 +422,12 @@ export function SnipeWizardDialog({
   }>({ bnb: 0, token: 0 });
   const [isLoadingConnectedWalletBalance, setIsLoadingConnectedWalletBalance] =
     useState(false);
+  const [isOpenBnbDepositDialog, setIsOpenBnbDepositDialog] = useState(false);
+  const [depositWalletBalance, setDepositWalletBalance] = useState<
+    number | null
+  >(null);
+  const [isLoadingDepositWalletBalance, setIsLoadingDepositWalletBalance] =
+    useState(false);
   const [lpTokenBalance, setLpTokenBalance] = useState<number>(0);
   const [isLoadingLpBalance, setIsLoadingLpBalance] = useState(false);
   const [isBurningLiquidity, setIsBurningLiquidity] = useState(false);
@@ -474,6 +480,16 @@ export function SnipeWizardDialog({
       hasLoadedProjectRef.current = false;
     }
   }, [open, projectId]);
+
+  // Effect to fetch deposit wallet balance when on preset configuration step
+  useEffect(() => {
+    if (
+      currentStep === WizardStep.PRESET_CONFIGURATION &&
+      project?.addons?.SnipeBot?.depositWalletId?.publicKey
+    ) {
+      fetchDepositWalletBalance();
+    }
+  }, [currentStep, project?.addons?.SnipeBot?.depositWalletId?.publicKey]);
 
   // Step navigation functions
   const goToNextStep = () => {
@@ -533,7 +549,6 @@ export function SnipeWizardDialog({
   const renderModeSelectionStep = () => (
     <Card className="border-none shadow-none">
       <CardHeader>
-        <CardTitle>Bundle Snipping Bot Setup</CardTitle>
         <CardDescription>
           Automate token launch sniping to secure a large supply before
           distribution or liquidation. Choose a quick preset or customize
@@ -620,7 +635,7 @@ export function SnipeWizardDialog({
   const renderIntroductionStep = () => (
     <Card className="border-none shadow-none">
       <CardHeader>
-        <CardTitle>Bundle Snipping Bot Setup</CardTitle>
+        <CardTitle>Choose Preferred Mode</CardTitle>
         <CardDescription>
           Automate token launch sniping to secure a large supply before
           distribution or liquidation. Choose a quick preset or customize
@@ -3742,6 +3757,91 @@ export function SnipeWizardDialog({
             </div>
           </div>
 
+          {/* Deposit Wallet Section */}
+          <div className="border rounded-lg p-4">
+            <h3 className="text-base font-medium mb-3">Deposit Wallet</h3>
+
+            {project?.addons?.SnipeBot?.depositWalletId?.publicKey ? (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Wallet Address:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm">
+                        {project.addons.SnipeBot.depositWalletId.publicKey.slice(
+                          0,
+                          6
+                        )}
+                        ...
+                        {project.addons.SnipeBot.depositWalletId.publicKey.slice(
+                          -4
+                        )}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() =>
+                          copyToClipboard(
+                            project?.addons?.SnipeBot?.depositWalletId
+                              ?.publicKey || ''
+                          )
+                        }
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      BNB Balance:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {isLoadingDepositWalletBalance
+                          ? 'Loading...'
+                          : depositWalletBalance !== null
+                            ? `${depositWalletBalance.toFixed(4)} BNB`
+                            : '0.0000 BNB'}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={fetchDepositWalletBalance}
+                        disabled={isLoadingDepositWalletBalance}
+                      >
+                        <RefreshCw
+                          className={`h-3 w-3 ${isLoadingDepositWalletBalance ? 'animate-spin' : ''}`}
+                        />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsOpenBnbDepositDialog(true)}
+                  >
+                    Deposit BNB
+                  </Button>
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  This wallet will be used to distribute BNB to sniping wallets
+                  and pay transaction fees.
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No deposit wallet is configured for this project.
+              </div>
+            )}
+          </div>
+
           {/* Summary */}
           <div className="border rounded-lg p-4 bg-muted/10">
             <h3 className="text-base font-medium mb-3">Preset Summary</h3>
@@ -4018,6 +4118,41 @@ export function SnipeWizardDialog({
       });
     } finally {
       setIsLoadingConnectedWalletBalance(false);
+    }
+  };
+
+  // Function to fetch deposit wallet balance
+  const fetchDepositWalletBalance = async () => {
+    if (
+      !project?.addons?.SnipeBot?.depositWalletId?.publicKey ||
+      isLoadingDepositWalletBalance
+    )
+      return;
+
+    try {
+      setIsLoadingDepositWalletBalance(true);
+      const provider = new ethers.JsonRpcProvider(
+        process.env.NEXT_PUBLIC_BSC_RPC_URL
+      );
+
+      // Get balance in ETH/BNB
+      const balanceWei = await provider.getBalance(
+        project.addons.SnipeBot.depositWalletId.publicKey
+      );
+
+      // Convert to ethers and format as number
+      const balance = parseFloat(ethers.formatEther(balanceWei));
+
+      setDepositWalletBalance(balance);
+    } catch (error) {
+      console.error('Error fetching deposit wallet balance:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch deposit wallet balance',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingDepositWalletBalance(false);
     }
   };
 
@@ -5390,272 +5525,28 @@ export function SnipeWizardDialog({
   // Render the dialog with a summary panel
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[90vw] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="flex justify-between items-center">
-            <span>Bundle Snipping Bot Setup</span>
-            {currentStep > WizardStep.MODE_SELECTION && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Mode:</span>
-                <span className="font-medium">
-                  {isAdvancedMode ? 'Advanced' : 'Preset'}
-                </span>
-                {!isAdvancedMode && presetConfig.strategy && (
-                  <>
-                    <span className="text-muted-foreground ml-2">
-                      Strategy:
-                    </span>
-                    <span className="font-medium">
-                      {presetConfig.strategy === PresetStrategy.RAPID_SNIPE
-                        ? 'Rapid Snipe'
-                        : presetConfig.strategy ===
-                            PresetStrategy.STAGGERED_SNIPE
-                          ? 'Staggered Snipe'
-                          : 'Passive Early Buy'}
-                    </span>
-                  </>
-                )}
-              </div>
-            )}
-          </DialogTitle>
+          <DialogTitle>Bundle Sniping Wizard</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col lg:flex-row gap-4 h-full">
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto">
-            {renderStepContent()}
-
-            {/* Navigation Controls (if not in intro) */}
-            {currentStep !== WizardStep.INTRODUCTION && (
-              <div className="flex justify-between mt-4 px-0 sm:px-6">
-                <Button
-                  variant="outline"
-                  onClick={goToPreviousStep}
-                  disabled={currentStep <= WizardStep.MODE_SELECTION}
-                >
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Previous
-                </Button>
-
-                <Button
-                  onClick={goToNextStep}
-                  disabled={
-                    currentStep === WizardStep.POST_OPERATION ||
-                    (currentStep === WizardStep.PRESET_CONFIGURATION &&
-                      isAdvancedMode) ||
-                    (currentStep === WizardStep.EXECUTION && !executionSuccess)
-                  }
-                >
-                  {currentStep === WizardStep.EXECUTION ? 'Finish' : 'Next'}
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Live Overview Panel (only show after mode selection) */}
-          {currentStep > WizardStep.MODE_SELECTION &&
-            currentStep < WizardStep.POST_OPERATION && (
-              <div className="w-full lg:w-80 xl:w-96 border-t lg:border-t-0 lg:border-l pt-4 lg:pt-0 lg:pl-4 mt-4 lg:mt-0">
-                <div className="border rounded-lg p-3 h-full">
-                  <h3 className="text-base font-medium mb-3">Live Overview</h3>
-
-                  {/* Summary Stats */}
-                  <div className="space-y-3 mb-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">
-                        Target Token Supply:
-                      </p>
-                      <p className="font-medium">
-                        {wallets
-                          .filter((w) => w.role !== 'botmain')
-                          .reduce(
-                            (sum, wallet) => sum + (wallet.tokenAmount || 0),
-                            0
-                          )
-                          .toLocaleString()}{' '}
-                        {project?.symbol || 'tokens'}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">
-                        Wallets Configured:
-                      </p>
-                      <p className="font-medium">
-                        {wallets.filter((w) => w.role !== 'botmain').length}{' '}
-                        wallets
-                      </p>
-                    </div>
-
-                    {feeEstimationResult && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">
-                          Total BNB Required:
-                        </p>
-                        <p className="font-medium">
-                          {feeEstimationResult.totalBnbNeeded.toFixed(6)} BNB
-                        </p>
-                      </div>
-                    )}
-
-                    {isAdvancedMode && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">
-                          Execution Phases:
-                        </p>
-                        <p className="font-medium">
-                          {advancedConfig.snipePhases.length} phases configured
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Progress and Status */}
-                  {currentStep >= WizardStep.EXECUTION && (
-                    <div className="space-y-3 border-t pt-3">
-                      <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <p className="text-xs text-muted-foreground">
-                            Execution Progress:
-                          </p>
-                          <p className="text-xs font-medium">
-                            {operationStatus.status === 'idle'
-                              ? 'Not started'
-                              : operationStatus.status === 'preparing'
-                                ? 'Preparing...'
-                                : operationStatus.status === 'executing'
-                                  ? 'Executing...'
-                                  : operationStatus.status === 'completed'
-                                    ? 'Completed'
-                                    : 'Failed'}
-                          </p>
-                        </div>
-                        <Progress
-                          value={
-                            operationStatus.status === 'idle'
-                              ? 0
-                              : operationStatus.status === 'preparing'
-                                ? 25
-                                : operationStatus.status === 'executing'
-                                  ? 75
-                                  : operationStatus.status === 'completed'
-                                    ? 100
-                                    : 0
-                          }
-                          className="h-2"
-                        />
-                      </div>
-
-                      <div className="bg-muted/10 rounded-md p-2 h-28 overflow-y-auto text-xs">
-                        <h4 className="font-medium mb-1">Execution Logs:</h4>
-                        <div className="space-y-1">
-                          {operationStatus.logs.length > 0 ? (
-                            operationStatus.logs.map((log, index) => (
-                              <div
-                                key={index}
-                                className={`
-                              ${log.type === 'success' ? 'text-green-600' : ''}
-                              ${log.type === 'error' ? 'text-red-600' : ''}
-                              ${log.type === 'warning' ? 'text-amber-600' : ''}
-                            `}
-                              >
-                                <span className="text-muted-foreground">
-                                  {log.time}
-                                </span>
-                                : {log.message}
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-muted-foreground">
-                              No logs available yet.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Setup Progress Checklist */}
-                  {currentStep < WizardStep.EXECUTION && (
-                    <div className="border-t pt-3">
-                      <h4 className="text-sm font-medium mb-2">
-                        Setup Progress:
-                      </h4>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.MODE_SELECTION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
-                          >
-                            {currentStep > WizardStep.MODE_SELECTION && (
-                              <CheckCircle className="h-3 w-3" />
-                            )}
-                          </div>
-                          <p className="text-xs">Mode Selection</p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.WALLET_SETUP ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
-                          >
-                            {currentStep > WizardStep.WALLET_SETUP && (
-                              <CheckCircle className="h-3 w-3" />
-                            )}
-                          </div>
-                          <p className="text-xs">Wallet Setup</p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.SNIPE_CONFIGURATION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
-                          >
-                            {currentStep > WizardStep.SNIPE_CONFIGURATION && (
-                              <CheckCircle className="h-3 w-3" />
-                            )}
-                          </div>
-                          <p className="text-xs">Snipe Configuration</p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.FEE_DISTRIBUTION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
-                          >
-                            {currentStep > WizardStep.FEE_DISTRIBUTION && (
-                              <CheckCircle className="h-3 w-3" />
-                            )}
-                          </div>
-                          <p className="text-xs">Fee Distribution</p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.SIMULATION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
-                          >
-                            {currentStep > WizardStep.SIMULATION && (
-                              <CheckCircle className="h-3 w-3" />
-                            )}
-                          </div>
-                          <p className="text-xs">Simulation</p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`h-4 w-4 rounded-full flex items-center justify-center ${currentStep > WizardStep.EXECUTION ? 'bg-green-100 text-green-600' : 'bg-muted/50'}`}
-                          >
-                            {currentStep > WizardStep.EXECUTION && (
-                              <CheckCircle className="h-3 w-3" />
-                            )}
-                          </div>
-                          <p className="text-xs">Execution</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+        {/* Wizard content area */}
+        <div className="flex flex-col space-y-4 max-h-[70vh] overflow-y-auto p-1">
+          {renderStepContent()}
         </div>
       </DialogContent>
+
+      {/* BNB Deposit Dialog */}
+      {project?.addons?.SnipeBot?.depositWalletId?.publicKey && (
+        <BnbDepositDialog
+          open={isOpenBnbDepositDialog}
+          onOpenChange={setIsOpenBnbDepositDialog}
+          depositWalletAddress={
+            project.addons.SnipeBot.depositWalletId.publicKey
+          }
+          onSuccess={fetchDepositWalletBalance}
+        />
+      )}
     </Dialog>
   );
 }

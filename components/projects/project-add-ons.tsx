@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { AutoSellWizardDialog, WalletInfo } from './auto-sell-wizard-dialog';
-import { SnipeWizardDialog } from './snipe-wizard-dialog';
+// import { SnipeWizardDialog } from './snipe-wizard-dialog';
+import { BundleSnipingDialog } from './bundle-sniping-dialog';
 import { VolumeBotWizardDialog } from './volume-bot-wizard-dialog';
 import {
   Copy,
@@ -109,45 +110,6 @@ type BotConfig = {
 
 type ConfigsType = {
   [key: string]: BotConfig;
-};
-
-// Define types for the project data
-type DepositWallet = {
-  _id: string;
-  publicKey: string;
-  botType: string;
-  role: string;
-  userId: string;
-  projectId: string;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-};
-
-type BotData = {
-  _id: string;
-  isEnabled: boolean;
-  projectId: string;
-  userId: string;
-  bnbBalance: number;
-  estimatedFee: number;
-  subWalletIds: any[];
-  botType: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  depositWalletId: DepositWallet;
-  __v: number;
-  tokenBalance?: number;
-  generatedVolume?: number;
-  generatedHolders?: number;
-  countsOfActivaveWallets?: number;
-};
-
-type ProjectAddons = {
-  SnipeBot?: BotData;
-  VolumeBot?: BotData;
-  HolderBot?: BotData;
 };
 
 interface ProjectAddOnsProps {
@@ -273,13 +235,13 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       {} as ConfigsType
     )
   );
-  const [editingBot, setEditingBot] = useState<string | null>(null);
+  const [_editingBot, _setEditingBot] = useState<string | null>(null);
   const [isSimulateDialogOpen, setIsSimulateDialogOpen] = useState(false);
   const [isAutoSellDialogOpen, setIsAutoSellDialogOpen] = useState(false);
   const [isVolumeDialogOpen, setIsVolumeDialogOpen] = useState(false);
   const { toast } = useToast();
   const dispatch = useDispatch<AppDispatch>();
-  const botState = useSelector((state: RootState) => state.bots);
+  const _botState = useSelector((state: RootState) => state.bots);
   const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
   const initialBalancesFetched = useRef(false);
   // Get current user from auth state
@@ -745,7 +707,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
       });
   };
 
-  const handleSave = (id: string) => {
+  const _handleSave = (id: string) => {
     if (id === 'SnipeBot' && configs[id].status === 'auto_selling') {
       handleSaveAutoSell({ wallets: configs[id].wallets || [] });
       return;
@@ -1106,7 +1068,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
             ))}
           </div>
 
-          <SnipeWizardDialog
+          <BundleSnipingDialog
             open={isSimulateDialogOpen}
             onOpenChange={setIsSimulateDialogOpen}
           />
