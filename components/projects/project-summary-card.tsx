@@ -1,7 +1,6 @@
 'use client';
 
 import type { MouseEvent } from 'react';
-import { useSelector } from 'react-redux';
 
 import { Clock, ExternalLink, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -21,7 +20,6 @@ import {
   generateAvatarColor,
   getBadgeVariant,
 } from '@/lib/utils';
-import type { RootState } from '@/store/store';
 import type { ProjectWithAddons } from '@/types';
 
 interface ProjectSummaryCardProps {
@@ -30,9 +28,9 @@ interface ProjectSummaryCardProps {
 
 export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
   const router = useRouter();
-  const { projects, projectStats } = useSelector(
-    (state: RootState) => state.projects
-  );
+  // const { projectStats } = useSelector(
+  //   (state: RootState) => state.projects
+  // );
 
   // Format the last updated time if available
   const formattedLastUpdate = project.metrics?.lastUpdate
@@ -66,20 +64,20 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
     lastUpdate: project.updatedAt,
   };
 
-  const trends = projectStats?.trends || {
-    profitTrend: [],
-    volumeTrend: [],
-  };
+  // const trends = projectStats?.trends || {
+  //   profitTrend: [],
+  //   volumeTrend: [],
+  // };
 
   return (
     <Card
-      className="overflow-hidden border border-base-border hover:border-primary/20 hover:bg-muted/10 transition-all duration-200 cursor-pointer"
+      className="overflow-hidden border border-base-border hover:border-primary/20 hover:bg-muted/10 transition-all duration-200 cursor-pointer flex flex-col h-full justify-between"
       onClick={handleCardClick}
     >
       <CardHeader className="pb-4 space-y-0">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex gap-3 items-center">
-            <Avatar className="h-12 w-12">
+            <Avatar className="h-10 w-10">
               <AvatarFallback
                 style={{
                   backgroundColor: generateAvatarColor(
@@ -95,7 +93,7 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <CardTitle className="text-lg">{project.name}</CardTitle>
+              <CardTitle className="text-md">{project.name}</CardTitle>
 
               <div className="text-sm text-muted-foreground flex items-center">
                 <span>
@@ -132,13 +130,13 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="pb-2">
+      <CardContent className="pb-2 flex-1">
         <div className="grid grid-cols-2 gap-4">
           <div className="flex w-full flex-col items-start justify-center gap-2">
             <p className="text-xs font-medium text-muted-foreground">
               Cumulative Profit
             </p>
-            <p className="text-2xl font-bold text-primary">
+            <p className="text-xl font-bold text-primary">
               ${formatNumber(metrics.cumulativeProfit)}
             </p>
             {/* <div className="h-10">
@@ -150,7 +148,7 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               Cumulative Volume
             </p>
             <p className="text-xl font-bold">
-              ${formatNumber(metrics.volume24h)}
+              ${formatNumber(metrics.volume24h ?? 0)}
             </p>
             {/* <div className="h-10">
               <SparklineChart data={trends.volumeTrend.map(d => d.value)} color="hsl(var(--chart-3))" />

@@ -6,7 +6,6 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import { CreateProjectButton } from './create-project-button';
 import { ChevronDown, Download, Search } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 import { ProjectSummaryCard } from '@/components/projects/project-summary-card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +36,6 @@ export function ProjectsList({
   isPublic = false,
   pageSize = 10,
 }: ProjectsListProps) {
-  const router = useRouter();
   const dispatch = useDispatch();
   const { projects, loading, error } = useSelector(
     (state: RootState) =>
@@ -146,7 +144,9 @@ export function ProjectsList({
         project.tokenAddress.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesStatus =
-      statusFilter === 'All Bots' || project.status === statusFilter;
+      statusFilter === 'All Bots' ||
+      (project.status &&
+        project.status.toLowerCase() === statusFilter.toLowerCase());
 
     return matchesSearch && matchesStatus;
   });
@@ -154,10 +154,6 @@ export function ProjectsList({
   const displayedProjects = limit
     ? filteredProjects.slice(0, limit)
     : filteredProjects;
-
-  const handleCreateNew = () => {
-    router.push('/projects/new');
-  };
 
   const handleExport = () => {
     // Don't export if no projects to export
@@ -262,11 +258,11 @@ export function ProjectsList({
   }, [loading, displayedProjects?.length, pageSize]);
 
   return (
-    <div className="mt-6 space-y-6">
+    <div className="my-6 space-y-6">
       <div className="flex flex-col space-y-4">
         {/* Search & Filters */}
-        <div className="flex flex-wrap items-center gap-4 pl-4 md:pl-6">
-          <div className="relative w-full md:max-w-[260px] max-md:pr-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 md:p-6">
+          <div className="relative w-full md:max-w-[260px] md:pr-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search orders"
@@ -276,47 +272,50 @@ export function ProjectsList({
             />
           </div>
 
-          <div className="flex gap-3 overflow-x-scroll no-scrollbar">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="min-w-[180px]">
-                  Status: {statusFilter}{' '}
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setStatusFilter('All Bots')}>
-                  All Bots
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('Active')}>
-                  Active
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('Paused')}>
-                  Paused
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto sm:overflow-x-scroll sm:no-scrollbar">
+            <div className="flex gap-3 justify-between">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-auto sm:min-w-[180px]">
+                    Status: {statusFilter}{' '}
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setStatusFilter('All Bots')}>
+                    All Bots
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('Active')}>
+                    Active
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('Inactive')}>
+                    Inactive
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <DateRangePicker
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              className="min-w-[260px]"
-            />
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                className="w-auto sm:min-w-[260px] "
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                variant="outline"
+                className="ml-auto w-full sm:w-auto"
+                onClick={handleExport}
+              >
+                <Download className="sm:mr-2 h-4 w-4" /> Export
+              </Button>
 
-            <Button
-              variant="outline"
-              className="ml-auto"
-              onClick={handleExport}
-            >
-              <Download className="mr-2 h-4 w-4" /> Export
-            </Button>
-
-            <CreateProjectButton />
+              <CreateProjectButton buttonText="Create New" />
+            </div>
           </div>
         </div>
 
         {/* Project Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-4 md:px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 px-4 md:px-6">
           {displayedProjects.map((project) => (
             <ProjectSummaryCard key={project._id} project={project} />
           ))}
@@ -324,7 +323,7 @@ export function ProjectsList({
 
         {/* Pagination (if needed) */}
         {isPublic && !limit && displayedProjects.length > 0 && (
-          <div className="flex justify-center items-center mt-4 gap-2">
+          <div className="flex justify-center items-center gap-2">
             <Button
               variant="outline"
               onClick={handlePreviousPage}

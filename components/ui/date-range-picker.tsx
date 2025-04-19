@@ -78,7 +78,7 @@ export function DateRangePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
+        <PopoverContent className="w-auto p-0 z-50" align="end" side="bottom">
           <div className="border-b border-border p-3">
             <div className="flex flex-wrap gap-2">
               {presets.map((preset) => (

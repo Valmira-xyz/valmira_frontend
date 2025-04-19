@@ -312,24 +312,29 @@ export function DashboardSidebar() {
                         onClick={() => onNavigateTo(`/projects/${project._id}`)}
                         className="flex items-center justify-between w-full px-4 h-8 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                       >
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-2">
                           <span
                             className="relative"
                             title={`Status: ${project.status}`}
                           >
                             <Circle
-                              className={`h-2 w-2 ${
+                              className={`h-3 w-3 ${
                                 project.status === 'active'
                                   ? 'text-green-500 animate-pulse'
                                   : 'text-gray-400'
                               }`}
                             />
                           </span>
-                          <span>{project.name}</span>
+                          <span>
+                            {project.name.length > 12
+                              ? project.name.slice(0, 12) + '...'
+                              : project.name}
+                          </span>
                         </div>
                         <Badge
                           variant={getBadgeVariant(project.status)}
-                          className="font-medium text-sm px-3 py-1 rounded-full"
+                          className="font-medium text-[10px] px-1 rounded-full"
+                          size="default"
                         >
                           {project.status}
                         </Badge>
@@ -432,41 +437,43 @@ export function DashboardSidebar() {
         </div>
 
         {/* Profile section at the bottom */}
-        <div className={cn('mt-auto px-2', open && 'space-y-4')}>
-          {isAuthenticated && isConnected && user ? (
-            <Card className="border bg-card text-card-foreground mb-4">
-              <CardContent className="p-4 space-y-4">
-                <WalletDisplay variant="sidebar" />
+        <div className="mt-auto px-2">
+          {open && (
+            <>
+              {isAuthenticated && isConnected && user ? (
+                <Card className="border bg-card text-card-foreground mb-4">
+                  <CardContent className="p-4 space-y-4">
+                    <WalletDisplay variant="sidebar" />
 
-                <div className="flex justify-between">
-                  <div>
-                    <p className="text-[12px] text-muted-foreground">
-                      Active Projects
-                    </p>
-                    <p className="text-[12px] font-medium">
-                      {activeProjects?.length || 0}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[12px] text-muted-foreground">
-                      Total Profit
-                    </p>
-                    <p className="text-[12px] font-medium text-right">
-                      ${Number(totalProfit || 0).toFixed(2)}
-                    </p>
-                  </div>
+                    <div className="flex justify-between">
+                      <div>
+                        <p className="text-[12px] text-muted-foreground">
+                          Active Projects
+                        </p>
+                        <p className="text-[12px] font-medium">
+                          {activeProjects?.length || 0}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[12px] text-muted-foreground">
+                          Total Profit
+                        </p>
+                        <p className="text-[12px] font-medium text-right">
+                          ${Number(totalProfit || 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="text-sm text-muted-foreground flex flex-col items-center justify-center gap-2 mb-4">
+                  <WalletConnectionButton variant="default" />
+                  <p className="text-xs mx-4 text-center text-muted-foreground">
+                    Connect your wallet and login to see your profile
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          ) : (
-            open && (
-              <div className="text-sm text-muted-foreground flex flex-col items-center justify-center gap-2 mb-4">
-                <WalletConnectionButton variant="default" />
-                <p className="text-xs mx-4 text-center text-muted-foreground">
-                  Connect your wallet and login to see your profile
-                </p>
-              </div>
-            )
+              )}
+            </>
           )}
         </div>
       </SidebarContent>

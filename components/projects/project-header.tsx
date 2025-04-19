@@ -19,7 +19,7 @@ export function ProjectHeader({
   const { toast } = useToast();
   if (!project) {
     return (
-      <Card>
+      <Card className="border">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -49,7 +49,7 @@ export function ProjectHeader({
   };
 
   return (
-    <Card>
+    <Card className="bg-muted">
       <CardContent className="p-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center space-x-4">
@@ -69,7 +69,7 @@ export function ProjectHeader({
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-lg font-bold">
                 {project.name || 'Untitled Project'}
               </h1>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -86,16 +86,16 @@ export function ProjectHeader({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-4"
+                  className="h-8 w-8"
                   onClick={() =>
                     copyToClipboard(project.tokenAddress || 'No token address')
                   }
                 >
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-8 w-8" />
                   <span className="sr-only">Copy address</span>
                 </Button>
 
-                <Button variant="ghost" size="icon" className="h-8 w-4" asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                   <a
                     href={`https://bscscan.com/address/${project.tokenAddress || 'No token address'}`}
                     target="_blank"

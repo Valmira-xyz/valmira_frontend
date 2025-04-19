@@ -1,6 +1,7 @@
 'use client';
 
 import { PageHeader } from '@/components/layout/page-header';
+import { BuySellForm } from '@/components/swap/buysell-form';
 import { DepositWallet } from '@/components/swap/deposit-wallet';
 import { SwapForm } from '@/components/swap/swap-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,7 +21,7 @@ export default function SwapPage() {
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-y-4 lg:gap-y-6 lg:gap-x-4">
           <Tabs defaultValue="swap" className="col-span-2">
-            <TabsList className="bg-muted/50 w-full p-1 h-10">
+            <TabsList className="bg-muted w-full p-1 h-10">
               <TabsTrigger
                 value="swap"
                 className="w-1/2 h-full data-[state=active]:bg-background"
@@ -40,9 +41,7 @@ export default function SwapPage() {
             </TabsContent>
 
             <TabsContent value="buy-sell" className="mt-6">
-              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                Coming soon...
-              </div>
+              <BuySellForm />
             </TabsContent>
           </Tabs>
 

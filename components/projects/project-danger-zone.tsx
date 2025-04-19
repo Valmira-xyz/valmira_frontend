@@ -100,7 +100,7 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
   };
 
   return (
-    <Card className="border-destructive/20 bg-destructive/5 mt-16">
+    <Card className="border-destructive/20 bg-destructive/5 mt-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       <CardHeader>
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -111,10 +111,10 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
           proceed with caution.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="w-full md:w-auto">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" className="w-full sm:w-auto">
+            <Button variant="destructive" className="md:mt-4 w-full md:w-auto">
               <Trash2 className="mr-2 h-4 w-4" /> Stop/Destroy Project
             </Button>
           </AlertDialogTrigger>

@@ -2,20 +2,12 @@ import { useState } from 'react';
 
 import { ManageWallet } from './manage-wallet';
 import { SettingsDialog } from './settings-dialog';
-import { TokenSelect } from './token-select';
+import { TokenInput } from './token-input';
 import { ArrowUpDown, Info } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
   Tooltip,
@@ -23,63 +15,63 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+const networks = [
+  { value: 'ethereum', label: 'Ethereum' },
+  { value: 'bsc', label: 'BSC' },
+  { value: 'polygon', label: 'Polygon' },
+  { value: 'arbitrum', label: 'Arbitrum' },
+];
+
 export function SwapForm() {
   const [fromAmount, setFromAmount] = useState('0.0');
   const [toAmount, setToAmount] = useState('0.0');
-  const [fromToken, setFromToken] = useState('BNB');
+  const [fromToken, setFromToken] = useState('ETH');
   const [toToken, setToToken] = useState('USDT');
+  const [fromNetwork, setFromNetwork] = useState('ethereum');
+  const [toNetwork, setToNetwork] = useState('ethereum');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [slippage, setSlippage] = useState('0.5');
   const [autoRouter, setAutoRouter] = useState(true);
   const [speedupFee, setSpeedupFee] = useState('0.0');
+
+  const handleSwap = () => {
+    // Swap amounts
+    const tempAmount = fromAmount;
+    setFromAmount(toAmount);
+    setToAmount(tempAmount);
+
+    // Swap tokens
+    const tempToken = fromToken;
+    setFromToken(toToken);
+    setToToken(tempToken);
+
+    // Swap networks
+    const tempNetwork = fromNetwork;
+    setFromNetwork(toNetwork);
+    setToNetwork(tempNetwork);
+  };
 
   return (
     <Card className="border">
       <CardContent className="p-4">
         <div className="space-y-6">
           {/* From Section */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label className="text-md">You Pay</Label>
-              <div className="flex items-center gap-2">
-                <Label className="text-muted-foreground">
-                  Balance: 1.245 ETH
-                </Label>
-                <Button variant="outline" size="sm">
-                  MAX
-                </Button>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Input
-                  type="number"
-                  placeholder="0.0"
-                  value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
-                  className="text-2xl"
-                />
-                <div className="text-sm text-muted-foreground mt-2">$1.3K</div>
-              </div>
-              <TokenSelect value={fromToken} onChange={setFromToken} />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Select defaultValue="ethereum">
-              <SelectTrigger className="">
-                <SelectValue>
-                  <div className="flex items-center gap-2">
-                    <span>Network: Ethereum</span>
-                  </div>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ethereum">Ethereum</SelectItem>
-                <SelectItem value="bsc">BSC</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <TokenInput
+            type="from"
+            amount={fromAmount}
+            onAmountChange={setFromAmount}
+            token={fromToken}
+            onTokenChange={setFromToken}
+            balance="1.245 ETH"
+            usdValue={
+              fromAmount
+                ? `$${(parseFloat(fromAmount) * 1850).toFixed(2)}`
+                : undefined
+            }
+            network={fromNetwork}
+            onNetworkChange={setFromNetwork}
+            networks={networks}
+          />
 
           <div className="flex items-center justify-between gap-2 bg-muted/50 p-2 rounded-lg">
             <div className="flex items-center gap-2">
@@ -89,15 +81,16 @@ export function SwapForm() {
             <span className="text-sm">1 ETH = 1,850 USDT</span>
           </div>
 
-          {/* Swap Button */}
+          {/* Change Button */}
           <div className="flex justify-center">
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 className="flex items-center gap-2 px-3"
+                onClick={handleSwap}
               >
                 <ArrowUpDown className="h-4 w-4" />
-                <span>Swap</span>
+                <span>Change</span>
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -111,7 +104,7 @@ export function SwapForm() {
                     <span className="font-medium">Swap tool</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    this tool enables you to swap tokens between same chain and
+                    This tool enables you to swap tokens between same chain and
                     other chains
                   </p>
                 </TooltipContent>
@@ -120,42 +113,17 @@ export function SwapForm() {
           </div>
 
           {/* To Section */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <Label className="text-md">You Receive</Label>
-              <Label className="text-muted-foreground">
-                Balance: 2500 USDT
-              </Label>
-            </div>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Input
-                  type="number"
-                  placeholder="0.0"
-                  value={toAmount}
-                  onChange={(e) => setToAmount(e.target.value)}
-                  className="text-2xl"
-                />
-              </div>
-              <TokenSelect value={toToken} onChange={setToToken} />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Select defaultValue="ethereum">
-              <SelectTrigger className="">
-                <SelectValue>
-                  <div className="flex items-center gap-2">
-                    <span>Network: Ethereum</span>
-                  </div>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ethereum">Ethereum</SelectItem>
-                <SelectItem value="bsc">BSC</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <TokenInput
+            type="to"
+            amount={toAmount}
+            onAmountChange={setToAmount}
+            token={toToken}
+            onTokenChange={setToToken}
+            balance="2500 USDT"
+            network={toNetwork}
+            onNetworkChange={setToNetwork}
+            networks={networks}
+          />
 
           <ManageWallet />
 
@@ -166,8 +134,12 @@ export function SwapForm() {
               <span className="text-sm font-medium">Summary</span>
             </div>
             <p className="text-sm text-foreground">
-              You are going to pay 20 ETH (USD 20000) from Ethereum Network and
-              you will receive 20000 HDUS (USD 199999) on Binance Smart Chain.
+              You are going to pay {fromAmount} {fromToken} (USD{' '}
+              {(parseFloat(fromAmount) * 1850).toFixed(2)}) from{' '}
+              {networks.find((n) => n.value === fromNetwork)?.label} Network and
+              you will receive {toAmount} {toToken} (USD{' '}
+              {(parseFloat(toAmount) * 1).toFixed(2)}) on{' '}
+              {networks.find((n) => n.value === toNetwork)?.label} Network.
             </p>
           </div>
 
@@ -219,7 +191,7 @@ export function SwapForm() {
           />
 
           <Button className="w-full" size="sm">
-            Swap
+            Swap {fromToken} to {toToken}
           </Button>
 
           <div className="flex items-center justify-center text-[12px] text-muted-foreground">

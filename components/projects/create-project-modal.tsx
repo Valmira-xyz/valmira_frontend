@@ -53,8 +53,8 @@ interface CreateProjectModalProps {
   onClose: () => void;
 }
 
-type TokenDeploymentStatus = 'idle' | 'deploying' | 'success' | 'error';
-type TokenImportStatus = 'idle' | 'validating' | 'valid' | 'invalid';
+// type TokenDeploymentStatus = 'idle' | 'deploying' | 'success' | 'error';
+// type TokenImportStatus = 'idle' | 'validating' | 'valid' | 'invalid';
 
 export function CreateProjectModal({
   isOpen,
@@ -92,8 +92,8 @@ export function CreateProjectModal({
   const [twitter, setTwitter] = useState('');
 
   // State for deploying new token
-  const [deploymentStatus, setDeploymentStatus] =
-    useState<TokenDeploymentStatus>('idle');
+  // const [deploymentStatus, setDeploymentStatus] =
+  //   useState<TokenDeploymentStatus>('idle');
   const [deploymentError, setDeploymentError] = useState('');
 
   // State for importing existing token
@@ -463,7 +463,7 @@ export function CreateProjectModal({
         }
       }}
     >
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="m-4 sm:max-w-[580px]">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
           <DialogDescription>
@@ -481,10 +481,10 @@ export function CreateProjectModal({
           </TabsList>
           <TabsContent value="deploy">
             <form onSubmit={handleDeployNewToken}>
-              <div className={`grid grid-cols-4 gap-4 py-4`}>
+              <div className={`grid grid-cols-2 gap-4 py-4`}>
                 <div className="col-span-2 flex flex-col gap-x-8 gap-4">
                   <div className="flex gap-2 justify-between">
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-full">
                       <Label htmlFor="newTokenName">Token Name</Label>
                       <Input
                         id="newTokenName"
@@ -499,7 +499,7 @@ export function CreateProjectModal({
                         }
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-full">
                       <Label htmlFor="newTokenSymbol">Token Symbol</Label>
                       <Input
                         id="newTokenSymbol"
@@ -629,7 +629,7 @@ export function CreateProjectModal({
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-4">
                         <div className="space-y-2">
                           <Label
                             htmlFor="website"
@@ -805,7 +805,7 @@ export function CreateProjectModal({
           <TabsContent value="import">
             <form onSubmit={handleImportToken}>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-x-8">
+                <div className="grid gap-x-8">
                   <div className="space-y-2">
                     <Label htmlFor="existingContractAddress">
                       Contract Address

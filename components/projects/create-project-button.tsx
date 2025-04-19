@@ -10,7 +10,11 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { RootState } from '@/store/store';
 
-export function CreateProjectButton() {
+export function CreateProjectButton({
+  buttonText = 'Create New Project',
+}: {
+  buttonText?: string;
+}) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   // Get auth state from Redux store
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -31,7 +35,7 @@ export function CreateProjectButton() {
         }
         variant="default"
       >
-        <Plus className="mr-2 h-4 w-4" /> Create New Project
+        <Plus className="h-4 w-4" /> {buttonText}
       </Button>
       <CreateProjectModal
         isOpen={isDialogOpen}

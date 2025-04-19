@@ -15,25 +15,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { format, isWithinInterval, subDays, subMonths } from 'date-fns';
 import { ChevronDown, Download } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 
+import { AnalyticsChart } from '@/components/projects/analytics-chart';
 import { BotFilter } from '@/components/projects/bot-filter';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import {
@@ -65,24 +51,24 @@ import { RootState } from '@/store/store';
 type TimePeriod = '24h' | '7d' | '1m';
 
 // Utility function to format milliseconds to a readable duration
-const formatUptime = (ms: number): string => {
-  if (isNaN(ms) || ms <= 0) return '0s';
+// const formatUptime = (ms: number): string => {
+//   if (isNaN(ms) || ms <= 0) return '0s';
 
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
+//   const seconds = Math.floor(ms / 1000);
+//   const minutes = Math.floor(seconds / 60);
+//   const hours = Math.floor(minutes / 60);
+//   const days = Math.floor(hours / 24);
 
-  if (days > 0) {
-    return `${days}d ${hours % 24}h`;
-  } else if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`;
-  } else if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`;
-  } else {
-    return `${seconds}s`;
-  }
-};
+//   if (days > 0) {
+//     return `${days}d ${hours % 24}h`;
+//   } else if (hours > 0) {
+//     return `${hours}h ${minutes % 60}m`;
+//   } else if (minutes > 0) {
+//     return `${minutes}m ${seconds % 60}s`;
+//   } else {
+//     return `${seconds}s`;
+//   }
+// };
 
 // Utility function to extract the base bot name from the full identifier
 const extractBaseBotName = (fullBotName: string): string => {
@@ -95,40 +81,40 @@ const extractBaseBotName = (fullBotName: string): string => {
 };
 
 // Utility function to safely check if a value is a valid date
-const isValidDate = (value: any): boolean => {
-  if (!value) return false;
+// const isValidDate = (value: any): boolean => {
+//   if (!value) return false;
 
-  try {
-    // For Date objects
-    if (value instanceof Date) {
-      return !isNaN(value.getTime());
-    }
+//   try {
+//     // For Date objects
+//     if (value instanceof Date) {
+//       return !isNaN(value.getTime());
+//     }
 
-    // For timestamps (numbers) and ISO date strings
-    const date = new Date(value);
-    return !isNaN(date.getTime());
-  } catch (error) {
-    return false;
-  }
-};
+//     // For timestamps (numbers) and ISO date strings
+//     const date = new Date(value);
+//     return !isNaN(date.getTime());
+//   } catch (error) {
+//     return false;
+//   }
+// };
 
-// Utility function to safely convert a value to a Date object
-const toSafeDate = (value: any): Date | null => {
-  if (!value) return null;
+// // Utility function to safely convert a value to a Date object
+// const toSafeDate = (value: any): Date | null => {
+//   if (!value) return null;
 
-  try {
-    // For Date objects
-    if (value instanceof Date) {
-      return !isNaN(value.getTime()) ? value : null;
-    }
+//   try {
+//     // For Date objects
+//     if (value instanceof Date) {
+//       return !isNaN(value.getTime()) ? value : null;
+//     }
 
-    // For timestamps (numbers) and ISO date strings
-    const date = new Date(value);
-    return !isNaN(date.getTime()) ? date : null;
-  } catch (error) {
-    return null;
-  }
-};
+//     // For timestamps (numbers) and ISO date strings
+//     const date = new Date(value);
+//     return !isNaN(date.getTime()) ? date : null;
+//   } catch (error) {
+//     return null;
+//   }
+// };
 
 // Add a helper function to get end-of-day date
 const getEndOfDay = (date: Date): Date => {
@@ -156,13 +142,11 @@ export const ProjectAnalytics = forwardRef<
   ProjectAnalyticsHandle,
   ProjectAnalyticsProps
 >(({ project }, ref) => {
-  const [volumeTrends, setVolumeTrends] = useState<TimeSeriesDataPoint[]>([]);
-  const [profitTrends, setProfitTrends] = useState<TimeSeriesDataPoint[]>([]);
-  const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>('1m');
-  const [volumeTimePeriod, setVolumeTimePeriod] = useState<TimePeriod>('1m');
-  const { projectStats, loading } = useSelector(
-    (state: RootState) => state.projects
-  );
+  const [_volumeTrends, setVolumeTrends] = useState<TimeSeriesDataPoint[]>([]);
+  const [_profitTrends, setProfitTrends] = useState<TimeSeriesDataPoint[]>([]);
+  const [profitTimePeriod, _setProfitTimePeriod] = useState<TimePeriod>('1m');
+  const [volumeTimePeriod, _setVolumeTimePeriod] = useState<TimePeriod>('1m');
+  const { projectStats } = useSelector((state: RootState) => state.projects);
   const dispatch = useDispatch();
   const { id: projectId } = useParams() as { id: string };
 
@@ -950,26 +934,6 @@ export const ProjectAnalytics = forwardRef<
     project?.recentActivity,
   ]);
 
-  const TimePeriodButtons = ({
-    currentPeriod,
-    onChange,
-  }: {
-    currentPeriod: TimePeriod;
-    onChange: (period: TimePeriod) => void;
-  }) => (
-    <div className="flex justify-start space-x-2 mb-4">
-      {(['24h', '7d', '1m'] as TimePeriod[]).map((period) => (
-        <Button
-          key={period}
-          variant={currentPeriod === period ? 'default' : 'outline'}
-          onClick={() => onChange(period)}
-        >
-          {period}
-        </Button>
-      ))}
-    </div>
-  );
-
   // Function to export data as CSV
   const exportToCSV = (data: any[], filename: string) => {
     // Check if data is empty
@@ -1090,12 +1054,12 @@ export const ProjectAnalytics = forwardRef<
   }, [fetchTrendingData]);
 
   // Update the chartData memo to use the new state
-  const chartData = useMemo(() => {
-    return {
-      profitTrend: profitTrends,
-      volumeTrend: volumeTrends,
-    };
-  }, [profitTrends, volumeTrends]);
+  // const chartData = useMemo(() => {
+  //   return {
+  //     profitTrend: profitTrends,
+  //     volumeTrend: volumeTrends,
+  //   };
+  // }, [profitTrends, volumeTrends]);
 
   // Modified loading check that shows content if props data is available
   // const isLoading = useMemo(() => {
@@ -1160,54 +1124,56 @@ export const ProjectAnalytics = forwardRef<
     }
 
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Bot Name</TableHead>
-            <TableHead>Actions</TableHead>
-            <TableHead>Trades</TableHead>
-            <TableHead>Profit Contribution</TableHead>
-            <TableHead>Time</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {(isBotPerformanceExpanded
-            ? filteredBotPerformanceData
-            : filteredBotPerformanceData.slice(0, 3)
-          ).map((bot: BotPerformanceHistory, index: number) => (
-            <TableRow key={index}>
-              <TableCell>{extractBaseBotName(bot.botName)}</TableCell>
-              <TableCell>
-                {bot?.action
-                  ? bot?.action
-                  : bot.profit === 0
-                    ? 'Snipe'
-                    : 'Sell'}
-              </TableCell>
-              <TableCell>{bot.trades}</TableCell>
-              <TableCell>
-                <span
-                  className={
-                    Number(bot.profitContribution || bot.profit) > 0
-                      ? 'text-green-600'
-                      : Number(bot.profitContribution || bot.profit) < 0
-                        ? 'text-red-600'
-                        : ''
-                  }
-                >
-                  {formatCurrency(bot.profitContribution || bot.profit)}
-                </span>
-              </TableCell>
-              <TableCell>
-                {format(
-                  new Date(bot?.lastUpdated || bot?.date),
-                  'dd/MM/yyyy HH:mm:ss'
-                )}
-              </TableCell>
+      <ScrollArea className="max-h-[300px]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Bot Name</TableHead>
+              <TableHead>Actions</TableHead>
+              <TableHead>Trades</TableHead>
+              <TableHead>Profit Contribution</TableHead>
+              <TableHead>Time</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {(isBotPerformanceExpanded
+              ? filteredBotPerformanceData
+              : filteredBotPerformanceData.slice(0, 3)
+            ).map((bot: BotPerformanceHistory, index: number) => (
+              <TableRow key={index}>
+                <TableCell>{extractBaseBotName(bot.botName)}</TableCell>
+                <TableCell>
+                  {bot?.action
+                    ? bot?.action
+                    : bot.profit === 0
+                      ? 'Snipe'
+                      : 'Sell'}
+                </TableCell>
+                <TableCell>{bot.trades}</TableCell>
+                <TableCell>
+                  <span
+                    className={
+                      Number(bot.profitContribution || bot.profit) > 0
+                        ? 'text-green-600'
+                        : Number(bot.profitContribution || bot.profit) < 0
+                          ? 'text-red-600'
+                          : ''
+                    }
+                  >
+                    {formatCurrency(bot.profitContribution || bot.profit)}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {format(
+                    new Date(bot?.lastUpdated || bot?.date),
+                    'dd/MM/yyyy HH:mm:ss'
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
     );
   };
 
@@ -1223,11 +1189,11 @@ export const ProjectAnalytics = forwardRef<
     }
 
     return (
-      <ScrollArea className="h-[300px]">
+      <ScrollArea className="max-h-[300px]">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Bot</TableHead>
+              <TableHead>Bot Name</TableHead>
               <TableHead>Action</TableHead>
               <TableHead>Volume</TableHead>
               <TableHead>Impact</TableHead>
@@ -1275,112 +1241,16 @@ export const ProjectAnalytics = forwardRef<
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profit Trend</CardTitle>
-            <CardDescription>
-              Trading profit over {profitTimePeriod}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TimePeriodButtons
-              currentPeriod={profitTimePeriod}
-              onChange={setProfitTimePeriod}
-            />
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData.profitTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="timestamp"
-                    tickFormatter={(value) =>
-                      format(
-                        value,
-                        profitTimePeriod === '24h' ? 'HH:mm' : 'MMM dd'
-                      )
-                    }
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                  <Tooltip
-                    labelFormatter={(label) =>
-                      format(
-                        label as number,
-                        profitTimePeriod === '24h'
-                          ? 'HH:mm'
-                          : 'MMM dd, yyyy HH:mm'
-                      )
-                    }
-                    formatter={(value: any) => [
-                      formatCurrency(value as number),
-                      'Profit',
-                    ]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Volume Trend</CardTitle>
-            <CardDescription>
-              Trading volume over {volumeTimePeriod}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TimePeriodButtons
-              currentPeriod={volumeTimePeriod}
-              onChange={setVolumeTimePeriod}
-            />
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData.volumeTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="timestamp"
-                    tickFormatter={(value) =>
-                      format(
-                        value,
-                        volumeTimePeriod === '24h' ? 'HH:mm' : 'MMM dd'
-                      )
-                    }
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                  <Tooltip
-                    labelFormatter={(label) =>
-                      format(
-                        label as number,
-                        volumeTimePeriod === '24h'
-                          ? 'HH:mm'
-                          : 'MMM dd, yyyy HH:mm'
-                      )
-                    }
-                    formatter={(value: any) => [
-                      formatCurrency(value as number),
-                      'Volume',
-                    ]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <AnalyticsChart
+          title="Profit Trend"
+          description="Trading profit"
+          type="profit"
+        />
+        <AnalyticsChart
+          title="Trading Volume Trend"
+          description="Trading volume"
+          type="volume"
+        />
       </div>
 
       <Collapsible
@@ -1390,53 +1260,55 @@ export const ProjectAnalytics = forwardRef<
       >
         <Card>
           <CardHeader className="flex flex-row items-center flex-wrap gap-4 justify-between">
-            <CardTitle>Bot Performance</CardTitle>
-            <div className="flex items-center gap-2 overflow-x-scroll no-scrollbar">
+            <CardTitle className="w-full">Bot Performance</CardTitle>
+            <div className="w-full md:w-auto flex flex-col md:flex-row items-center gap-2 overflow-x-scroll no-scrollbar">
               <BotFilter
                 bots={availableBots}
                 selectedBot={selectedBotPerformance}
                 onSelectBot={setSelectedBotPerformance}
-                className="min-w-[150px]"
+                className="w-full md:max-w-[150px]"
               />
               <DateRangePicker
                 dateRange={botPerformanceDateRange}
                 onDateRangeChange={(range) => {
                   setBotPerformanceDateRange(range);
                 }}
-                className="min-w-[240px]"
+                className="w-full md:min-w-[240px]"
               />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="min-w-[40px]"
-                    disabled={isLoadingBotPerformance}
-                  >
-                    <Download className="h-4 w-4" />
+              <div className="w-full flex items-center justify-between md:justify-start gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="min-w-[40px]"
+                      disabled={isLoadingBotPerformance}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() =>
+                        exportToCSV(
+                          filteredBotPerformanceData,
+                          'bot-performance.csv'
+                        )
+                      }
+                    >
+                      Export as CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <CollapsibleTrigger asChild>
+                  <Button variant="secondary" size="sm">
+                    {isBotPerformanceExpanded ? 'Show Less' : 'Show More'}
+                    <ChevronDown
+                      className={`ml-2 h-4 w-4 transition-transform ${isBotPerformanceExpanded ? 'rotate-180' : ''}`}
+                    />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() =>
-                      exportToCSV(
-                        filteredBotPerformanceData,
-                        'bot-performance.csv'
-                      )
-                    }
-                  >
-                    Export as CSV
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  {isBotPerformanceExpanded ? 'Show Less' : 'Show More'}
-                  <ChevronDown
-                    className={`ml-2 h-4 w-4 transition-transform ${isBotPerformanceExpanded ? 'rotate-180' : ''}`}
-                  />
-                </Button>
-              </CollapsibleTrigger>
+                </CollapsibleTrigger>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -1482,50 +1354,52 @@ export const ProjectAnalytics = forwardRef<
       >
         <Card>
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-            <CardTitle>Recent Activity</CardTitle>
-            <div className="flex items-center gap-2 overflow-x-scroll no-scrollbar">
+            <CardTitle className="w-full">Recent Activity</CardTitle>
+            <div className="w-full md:w-auto flex flex-col md:flex-row items-center gap-2 overflow-x-scroll no-scrollbar">
               <BotFilter
                 bots={availableBots}
                 selectedBot={selectedBot}
                 onSelectBot={setSelectedBot}
-                className="min-w-[150px]"
+                className="w-full md:max-w-[150px]"
               />
               <DateRangePicker
                 dateRange={activityLogDateRange}
                 onDateRangeChange={(range) => {
                   setActivityLogDateRange(range);
                 }}
-                className="min-w-[240px]"
+                className="w-full md:min-w-[240px]"
               />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="min-w-[40px]"
-                    disabled={isLoadingActivity}
-                  >
-                    <Download className="h-4 w-4" />
+              <div className="w-full flex items-center justify-between md:justify-start gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="min-w-[40px]"
+                      disabled={isLoadingActivity}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() =>
+                        exportToCSV(filteredActivityLogData, 'activity-log.csv')
+                      }
+                    >
+                      Export as CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <CollapsibleTrigger asChild>
+                  <Button variant="secondary" size="sm">
+                    {isActivityLogExpanded ? 'Show Less' : 'Show More'}
+                    <ChevronDown
+                      className={`ml-2 h-4 w-4 transition-transform ${isActivityLogExpanded ? 'rotate-180' : ''}`}
+                    />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() =>
-                      exportToCSV(filteredActivityLogData, 'activity-log.csv')
-                    }
-                  >
-                    Export as CSV
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  {isActivityLogExpanded ? 'Show Less' : 'Show More'}
-                  <ChevronDown
-                    className={`ml-2 h-4 w-4 transition-transform ${isActivityLogExpanded ? 'rotate-180' : ''}`}
-                  />
-                </Button>
-              </CollapsibleTrigger>
+                </CollapsibleTrigger>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

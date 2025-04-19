@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 
-import { WalletDisplay } from './wallet-display';
 import { useAccount } from 'wagmi';
 
 import { WalletConnectionButton } from '@/components/wallet/wallet-connection-button';
@@ -52,9 +51,13 @@ export function WalletConnectionCTA({
             description: 'Decentralized, Automated Market-Making.',
             items: welcomeItems,
             actionElement: isConnected ? (
-              <WalletDisplay variant="header" />
+              <WalletConnectionButton
+                buttonText="Switch Wallet"
+                variant="secondary"
+              />
             ) : (
-              <WalletConnectionButton className="" variant="secondary" />
+              // <WalletDisplay variant="header" />
+              <WalletConnectionButton variant="secondary" />
             ),
           },
           {

@@ -773,7 +773,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
           </div>
           <div className="flex flex-col lg:flex-row gap-6 pb-4">
             {addOns.map((addon) => (
-              <Card key={addon.botType} className="w-full">
+              <Card key={addon.botType} className="w-full flex flex-col">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>{addon.name}</CardTitle>
@@ -800,7 +800,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     </Button>
                   )}
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 flex-1">
                   <div className="flex items-center justify-between">
                     <Label htmlFor={`${addon.botType}-toggle`}>Enable</Label>
                     <Switch
@@ -989,7 +989,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     </div>
                   )}
                 </CardContent>
-                <CardFooter className="flex flex-col items-start gap-4">
+                <CardFooter className="flex flex-col items-start gap-4 mt-auto">
                   {addon.botType === 'HolderBot' ? (
                     <>
                       <p className="text-sm text-muted-foreground mb-2">
