@@ -1048,16 +1048,17 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       </p>
                       <Button
                         className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                        onClick={() =>
-                          isProjectOwner
-                            ? setIsSimulateDialogOpen(true)
-                            : toast({
-                                title: 'Error',
-                                description:
-                                  'You are not the owner of this project',
-                                variant: 'destructive',
-                              })
-                        }
+                        // onClick={() =>
+                        //   isProjectOwner
+                        //     ? setIsSimulateDialogOpen(true)
+                        //     : toast({
+                        //         title: 'Error',
+                        //         description:
+                        //           'You are not the owner of this project',
+                        //         variant: 'destructive',
+                        //       })
+                        // }
+                        onClick={() => setIsSimulateDialogOpen(true)}
                       >
                         Simulate & Execute
                       </Button>
