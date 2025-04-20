@@ -6,9 +6,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ethers } from 'ethers';
 import {
   ArrowRightLeft,
+  CheckCircle,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Circle,
+  Clock,
   Copy,
   Download,
   ExternalLink,
@@ -16,6 +19,7 @@ import {
   Info,
   Loader2,
   RefreshCw,
+  XCircle,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useAccount, useChainId } from 'wagmi';
@@ -218,13 +222,14 @@ enum WizardStep {
   INTRODUCTION = 0,
   MODE_SELECTION = 1, // New step for mode selection
   PRESET_CONFIGURATION = 2, // New step for preset configuration
-  LIQUIDITY_MANAGEMENT = 3,
-  WALLET_SETUP = 4,
-  SNIPE_CONFIGURATION = 5,
-  FEE_DISTRIBUTION = 6,
-  SIMULATION = 7,
-  EXECUTION = 8,
-  POST_OPERATION = 9,
+  PRESET_EXECUTION = 3, // New step for preset execution monitoring
+  LIQUIDITY_MANAGEMENT = 4,
+  WALLET_SETUP = 5,
+  SNIPE_CONFIGURATION = 6,
+  FEE_DISTRIBUTION = 7,
+  SIMULATION = 8,
+  EXECUTION = 9,
+  POST_OPERATION = 10,
 }
 
 export function BundleSnipingDialog({
@@ -257,6 +262,18 @@ export function BundleSnipingDialog({
     buyStageCounts: 3, // Default for Staggered Snipe
     priceThreshold: 0.00001, // Default for Passive Early Buy (in BNB)
   });
+
+  // Task statuses and wallets for preset execution step
+  const [taskStatuses, setTaskStatuses] = useState({
+    walletSetup: { status: 'pending', message: '' },
+    fundDistribution: { status: 'pending', message: '' },
+    snipePreparation: { status: 'pending', message: '' },
+    execution: { status: 'pending', message: '' },
+    verification: { status: 'pending', message: '' },
+  });
+
+  // For storing wallet details that will be displayed in the table in preset execution step
+  const [snipingWallets, setSnipingWallets] = useState<WalletInfo[]>([]);
 
   // Price threshold unit state
   const [priceThresholdUnit, setPriceThresholdUnit] = useState('BNB');
@@ -513,7 +530,13 @@ export function BundleSnipingDialog({
 
   // Step navigation functions
   const goToNextStep = () => {
-    // Skip the preset configuration step if in advanced mode and we're at mode selection
+    // If in preset mode, go to PRESET_EXECUTION after PRESET_CONFIGURATION
+    if (!isAdvancedMode && currentStep === WizardStep.PRESET_CONFIGURATION) {
+      setCurrentStep(WizardStep.PRESET_EXECUTION);
+      return;
+    }
+
+    // Skip the preset configuration step if in advanced mode
     if (isAdvancedMode && currentStep === WizardStep.MODE_SELECTION) {
       setCurrentStep(WizardStep.LIQUIDITY_MANAGEMENT);
       return;
@@ -526,6 +549,12 @@ export function BundleSnipingDialog({
   };
 
   const goToPreviousStep = () => {
+    // When in PRESET_EXECUTION step, go back to PRESET_CONFIGURATION
+    if (currentStep === WizardStep.PRESET_EXECUTION) {
+      setCurrentStep(WizardStep.PRESET_CONFIGURATION);
+      return;
+    }
+
     // Skip the preset configuration step if in advanced mode and we're at liquidity management
     if (isAdvancedMode && currentStep === WizardStep.LIQUIDITY_MANAGEMENT) {
       setCurrentStep(WizardStep.MODE_SELECTION);
@@ -546,6 +575,8 @@ export function BundleSnipingDialog({
         return renderModeSelectionStep();
       case WizardStep.PRESET_CONFIGURATION:
         return renderPresetConfigurationStep();
+      case WizardStep.PRESET_EXECUTION:
+        return renderPresetExecutionStep();
       case WizardStep.LIQUIDITY_MANAGEMENT:
         return renderLiquidityManagementStep();
       case WizardStep.WALLET_SETUP:
@@ -4549,9 +4580,9 @@ export function BundleSnipingDialog({
 
                 // After applying preset, skip to wallet setup if in preset mode
                 if (!isAdvancedMode) {
-                  setCurrentStep(WizardStep.WALLET_SETUP);
+                  setCurrentStep(WizardStep.PRESET_EXECUTION);
                 } else {
-                  goToNextStep();
+                  setCurrentStep(WizardStep.WALLET_SETUP);
                 }
               }}
             >
@@ -4560,7 +4591,6 @@ export function BundleSnipingDialog({
             </Button>
           </div>
         </div>
-        {renderNavigationFooter()}
       </CardContent>
     </Card>
   );
@@ -6196,6 +6226,253 @@ export function BundleSnipingDialog({
       </div>
     </div>
   );
+
+  const renderPresetExecutionStep = () => {
+    const getStatusIcon = (status: string) => {
+      switch (status) {
+        case 'completed':
+          return <CheckCircle className="h-5 w-5 text-green-500" />;
+        case 'pending':
+          return <Clock className="h-5 w-5 text-yellow-500" />;
+        case 'failed':
+          return <XCircle className="h-5 w-5 text-red-500" />;
+        default:
+          return <Circle className="h-5 w-5 text-gray-300" />;
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="p-4 border rounded-lg bg-muted">
+          <h3 className="text-lg font-semibold mb-4">
+            Preset Snipe Configuration Summary
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Strategy</p>
+              <p className="font-medium">
+                {presetConfig?.strategy || 'Not set'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Number of Wallets</p>
+              <p className="font-medium">
+                {presetConfig?.numberOfWallets || 'Not set'}
+              </p>
+            </div>
+            {presetConfig?.targetShare && (
+              <div>
+                <p className="text-sm text-muted-foreground">Target Share</p>
+                <p className="font-medium">{presetConfig.targetShare}%</p>
+              </div>
+            )}
+            {presetConfig?.totalShare && (
+              <div>
+                <p className="text-sm text-muted-foreground">Total Share</p>
+                <p className="font-medium">{presetConfig.totalShare}%</p>
+              </div>
+            )}
+            {presetConfig?.maxPriceImpact && (
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Max Price Impact
+                </p>
+                <p className="font-medium">{presetConfig.maxPriceImpact}%</p>
+              </div>
+            )}
+            {presetConfig?.maxSlippage && (
+              <div>
+                <p className="text-sm text-muted-foreground">Max Slippage</p>
+                <p className="font-medium">{presetConfig.maxSlippage}%</p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm text-muted-foreground">Time Frame</p>
+              <p className="font-medium">
+                {presetConfig?.timeFrame || 'Not set'}
+              </p>
+            </div>
+            {presetConfig?.buyStageDuration && (
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Buy Stage Duration
+                </p>
+                <p className="font-medium">{presetConfig.buyStageDuration}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 border rounded-lg">
+          <h3 className="text-lg font-semibold mb-4">Execution Progress</h3>
+          <div className="space-y-4">
+            {Object.entries(taskStatuses).map(([key, { status, message }]) => (
+              <div key={key} className="flex items-center gap-2">
+                {getStatusIcon(status)}
+                <div>
+                  <p className="font-medium">
+                    {key
+                      .replace(/([A-Z])/g, ' $1')
+                      .replace(/^./, (str) => str.toUpperCase())}
+                  </p>
+                  {message && (
+                    <p className="text-sm text-muted-foreground">{message}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {snipingWallets.length > 0 && (
+          <div className="p-4 border rounded-lg">
+            <h3 className="text-lg font-semibold mb-4">Sniping Wallets</h3>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Wallet Address</TableHead>
+                    <TableHead>BNB Balance</TableHead>
+                    <TableHead>BNB To Spend</TableHead>
+                    <TableHead>Token Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {snipingWallets.map((wallet) => (
+                    <TableRow key={wallet._id}>
+                      <TableCell className="font-mono text-xs">
+                        {wallet.publicKey.slice(0, 6)}...
+                        {wallet.publicKey.slice(-4)}
+                      </TableCell>
+                      <TableCell>
+                        {wallet.bnbBalance?.toFixed(4) || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {wallet.bnbToSpend?.toFixed(4) || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {wallet.tokenAmount?.toLocaleString() || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {wallet.tokenAmount ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <CheckCircle className="h-3 w-3 mr-1" /> Success
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <Clock className="h-3 w-3 mr-1" /> Pending
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        {renderNavigationFooter(false, false, 'Finish', true)}
+      </div>
+    );
+  };
+
+  // Mock websocket connection and updates for preset execution step
+  useEffect(() => {
+    // Only run this effect when on the preset execution step
+    if (currentStep !== WizardStep.PRESET_EXECUTION) return;
+
+    // Reset task statuses and wallets when entering this step
+    setTaskStatuses({
+      walletSetup: { status: 'pending', message: '' },
+      fundDistribution: { status: 'pending', message: '' },
+      snipePreparation: { status: 'pending', message: '' },
+      execution: { status: 'pending', message: '' },
+      verification: { status: 'pending', message: '' },
+    });
+
+    setSnipingWallets([]);
+
+    let mounted = true;
+
+    // This would be replaced by actual websocket connection
+    const simulateProgressUpdates = () => {
+      const tasks = [
+        'walletSetup',
+        'fundDistribution',
+        'snipePreparation',
+        'execution',
+        'verification',
+      ];
+
+      let currentTaskIndex = 0;
+
+      const interval = setInterval(() => {
+        if (!mounted) {
+          clearInterval(interval);
+          return;
+        }
+
+        if (currentTaskIndex >= tasks.length) {
+          clearInterval(interval);
+          return;
+        }
+
+        const currentTask = tasks[currentTaskIndex];
+
+        setTaskStatuses((prev) => ({
+          ...prev,
+          [currentTask]: {
+            status: 'completed',
+            message: `${currentTask.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())} completed successfully`,
+          },
+        }));
+
+        currentTaskIndex++;
+
+        // If this is the wallet setup task, also update the wallets display
+        if (currentTask === 'walletSetup') {
+          // Generate some mock wallet data
+          const mockWallets = Array(presetConfig?.numberOfWallets || 5)
+            .fill(0)
+            .map((_, i) => ({
+              _id: `wallet-${i}`,
+              publicKey: `0x${Math.random().toString(16).substr(2, 40)}`,
+              role: 'sniper',
+              bnbBalance: Math.random() * 2,
+              bnbToSpend: Math.random() * 0.5,
+              tokenAmount: 0,
+              sellPercentage: 0,
+              isSelectedForMutilSell: false,
+            }));
+
+          setSnipingWallets(mockWallets);
+        }
+
+        // If this is the execution task, update token amounts in wallets
+        if (currentTask === 'execution') {
+          setSnipingWallets((prev) =>
+            prev.map((wallet) => ({
+              ...wallet,
+              tokenAmount: Math.floor(Math.random() * 1000000),
+              tokenBalance: Math.floor(Math.random() * 1000000),
+            }))
+          );
+        }
+      }, 2000);
+
+      return () => {
+        clearInterval(interval);
+      };
+    };
+
+    simulateProgressUpdates();
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentStep, presetConfig]);
 
   // Render the dialog with a summary panel
   return (
