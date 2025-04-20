@@ -35,7 +35,7 @@ class AuthService {
   async getNonce(walletAddress: string): Promise<NonceResponse> {
     try {
       const response = await axios.get<ApiResponse<{ nonce: string }>>(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/nonce/${walletAddress}`
+        `${BACKEND_URL}/users/nonce/${walletAddress}`
       );
       return response.data.data;
     } catch (error) {
