@@ -640,12 +640,11 @@ export function BundleSnipingDialog({
             )}
           </div>
 
-          <div className="flex justify-end space-x-2">
-            <Button onClick={goToNextStep}>
-              Continue with {isAdvancedMode ? 'Advanced' : 'Preset'} Mode
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+          {renderNavigationFooter(
+            false,
+            false,
+            `Continue with ${isAdvancedMode ? 'Advanced' : 'Preset'} Mode`
+          )}
         </div>
       </CardContent>
     </Card>
@@ -713,16 +712,7 @@ export function BundleSnipingDialog({
             </ul>
           </div>
 
-          <div className="flex justify-center mt-4">
-            <Button
-              onClick={goToNextStep}
-              size="lg"
-              className="w-full md:w-auto"
-            >
-              Get Started
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+          {renderNavigationFooter(false, true, 'Get Started')}
         </div>
       </CardContent>
     </Card>
@@ -974,6 +964,7 @@ export function BundleSnipingDialog({
             </ol>
           </div>
         </div>
+        {renderNavigationFooter()}
       </CardContent>
     </Card>
   );
@@ -1449,6 +1440,7 @@ export function BundleSnipingDialog({
               </ul>
             </div>
           </div>
+          {renderNavigationFooter()}
         </CardContent>
       </Card>
     );
@@ -2092,6 +2084,7 @@ export function BundleSnipingDialog({
             </ul>
           </div>
         </div>
+        {renderNavigationFooter()}
       </CardContent>
     </Card>
   );
@@ -2581,6 +2574,7 @@ export function BundleSnipingDialog({
             </ul>
           </div>
         </div>
+        {renderNavigationFooter()}
       </CardContent>
     </Card>
   );
@@ -2840,6 +2834,7 @@ export function BundleSnipingDialog({
             </p>
           </div>
         </div>
+        {renderNavigationFooter()}
       </CardContent>
     </Card>
   );
@@ -3088,6 +3083,7 @@ export function BundleSnipingDialog({
             </ul>
           </div>
         </div>
+        {renderNavigationFooter()}
       </CardContent>
     </Card>
   );
@@ -3542,6 +3538,7 @@ export function BundleSnipingDialog({
             </div>
           </div>
         </div>
+        {renderNavigationFooter(false, false, 'Finish', true)}
       </CardContent>
     </Card>
   );
@@ -4563,6 +4560,7 @@ export function BundleSnipingDialog({
             </Button>
           </div>
         </div>
+        {renderNavigationFooter()}
       </CardContent>
     </Card>
   );
@@ -6044,14 +6042,6 @@ export function BundleSnipingDialog({
     }
   }, [project, address]);
 
-  // Ensure all string properties are handled safely
-  const _safeString = (value: string | undefined): string => value || '';
-
-  // Update components to use safeString for potentially undefined values
-  const _handleCopyToClipboard = (value?: string) => {
-    if (value) copyToClipboard(value);
-  };
-
   // Update wallets state when subWalletIds changes
   useEffect(() => {
     if (project?.addons?.SnipeBot?.subWalletIds) {
@@ -6168,6 +6158,44 @@ export function BundleSnipingDialog({
       setIsExecutingMultiBuy(false);
     }
   };
+
+  // Add this helper function to render consistent navigation buttons in each step
+  const renderNavigationFooter = (
+    disableNext: boolean = false,
+    disablePrevious: boolean = false,
+    nextLabel: string = 'Next Step',
+    showFinish: boolean = false
+  ) => (
+    <div className="flex justify-between space-x-2 mt-6 pt-4 border-t">
+      <Button
+        variant="outline"
+        onClick={goToPreviousStep}
+        disabled={disablePrevious || currentStep === WizardStep.INTRODUCTION}
+      >
+        <ChevronLeft className="mr-2 h-4 w-4" />
+        Previous
+      </Button>
+      <div className="flex space-x-2">
+        {showFinish ? (
+          <Button
+            onClick={onOpenChange ? () => onOpenChange(false) : undefined}
+            variant="default"
+          >
+            Finish
+            <CheckCircle2 className="ml-2 h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            onClick={goToNextStep}
+            disabled={disableNext || currentStep === WizardStep.POST_OPERATION}
+          >
+            {nextLabel}
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 
   // Render the dialog with a summary panel
   return (
