@@ -6251,7 +6251,20 @@ export function BundleSnipingDialog({
             <div>
               <p className="text-sm text-muted-foreground">Strategy</p>
               <p className="font-medium">
-                {presetConfig?.strategy || 'Not set'}
+                {presetConfig?.strategy
+                  ? (() => {
+                      switch (presetConfig.strategy) {
+                        case PresetStrategy.RAPID_SNIPE:
+                          return 'Rapid Snipe';
+                        case PresetStrategy.STAGGERED_SNIPE:
+                          return 'Staggered Snipe';
+                        case PresetStrategy.PASSIVE_EARLY_BUY:
+                          return 'Passive Early Buy';
+                        default:
+                          return presetConfig.strategy;
+                      }
+                    })()
+                  : 'Not set'}
               </p>
             </div>
             <div>
