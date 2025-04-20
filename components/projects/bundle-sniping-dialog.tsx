@@ -267,9 +267,8 @@ export function BundleSnipingDialog({
   const [taskStatuses, setTaskStatuses] = useState({
     walletSetup: { status: 'pending', message: '' },
     fundDistribution: { status: 'pending', message: '' },
-    snipePreparation: { status: 'pending', message: '' },
+    simulation: { status: 'pending', message: '' },
     execution: { status: 'pending', message: '' },
-    verification: { status: 'pending', message: '' },
   });
 
   // For storing wallet details that will be displayed in the table in preset execution step
@@ -6400,9 +6399,8 @@ export function BundleSnipingDialog({
     setTaskStatuses({
       walletSetup: { status: 'pending', message: '' },
       fundDistribution: { status: 'pending', message: '' },
-      snipePreparation: { status: 'pending', message: '' },
+      simulation: { status: 'pending', message: '' },
       execution: { status: 'pending', message: '' },
-      verification: { status: 'pending', message: '' },
     });
 
     setSnipingWallets([]);
@@ -6414,9 +6412,8 @@ export function BundleSnipingDialog({
       const tasks = [
         'walletSetup',
         'fundDistribution',
-        'snipePreparation',
+        'simulation',
         'execution',
-        'verification',
       ];
 
       let currentTaskIndex = 0;
