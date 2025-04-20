@@ -12,8 +12,10 @@ import { RootState } from '@/store/store';
 
 export function CreateProjectButton({
   buttonText = 'Create New Project',
+  variant = 'secondary',
 }: {
   buttonText?: string;
+  variant?: 'default' | 'secondary';
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   // Get auth state from Redux store
@@ -33,7 +35,7 @@ export function CreateProjectButton({
                 variant: 'destructive',
               })
         }
-        variant="default"
+        variant={variant}
       >
         <Plus className="h-4 w-4" /> {buttonText}
       </Button>

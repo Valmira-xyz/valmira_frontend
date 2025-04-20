@@ -49,6 +49,7 @@ export function DashboardSidebar() {
   const dispatch = useDispatch();
   const { isConnected } = useAccount();
   const [openProjects, setOpenProjects] = useState(true);
+  const [openYourProjects, setOpenYourProjects] = useState(true);
   const [openKnowledge, setOpenKnowledge] = useState(false);
   // const { theme, resolvedTheme } = useTheme();
   const { open, setOpen, isMobile } = useSidebar();
@@ -303,69 +304,74 @@ export function DashboardSidebar() {
 
             <CollapsibleContent>
               <div className="ml-4 border-l-[1px]">
-                {filteredAndSortedProjects &&
-                filteredAndSortedProjects.length > 0 ? (
-                  <>
-                    {filteredAndSortedProjects.map((project) => (
-                      <button
-                        key={project._id}
-                        onClick={() => onNavigateTo(`/projects/${project._id}`)}
-                        className="flex items-center justify-between w-full px-4 h-8 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="relative"
-                            title={`Status: ${project.status}`}
+                <button
+                  onClick={() => onNavigateTo('/public-projects')}
+                  className="flex items-center w-full px-4 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
+                >
+                  View all projects
+                </button>
+
+                {/* Your Projects submenu */}
+                <Collapsible
+                  open={openYourProjects}
+                  onOpenChange={setOpenYourProjects}
+                >
+                  <CollapsibleTrigger className="flex items-center justify-between w-full pl-4 pr-2 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md">
+                    <span>Your projects</span>
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 transition-transform',
+                        openYourProjects && 'transform rotate-180'
+                      )}
+                    />
+                  </CollapsibleTrigger>
+
+                  <CollapsibleContent>
+                    {filteredAndSortedProjects &&
+                    filteredAndSortedProjects.length > 0 ? (
+                      <>
+                        {filteredAndSortedProjects.map((project) => (
+                          <button
+                            key={project._id}
+                            onClick={() => onNavigateTo(`/projects/${project._id}`)}
+                            className="flex items-center justify-between w-full px-6 h-8 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                           >
-                            <Circle
-                              className={`h-3 w-3 ${
-                                project.status === 'active'
-                                  ? 'text-green-500 animate-pulse'
-                                  : 'text-gray-400'
-                              }`}
-                            />
-                          </span>
-                          <span>
-                            {project.name.length > 12
-                              ? project.name.slice(0, 12) + '...'
-                              : project.name}
-                          </span>
-                        </div>
-                        <Badge
-                          variant={getBadgeVariant(project.status)}
-                          className="font-medium text-[10px] px-1 rounded-full"
-                          size="default"
-                        >
-                          {project.status}
-                        </Badge>
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => onNavigateTo('/projects')}
-                      className="flex items-center w-full px-4 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
-                    >
-                      Your projects
-                    </button>
-                    <button
-                      onClick={() => onNavigateTo('/public-projects')}
-                      className="flex items-center w-full px-4 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
-                    >
-                      View all projects
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="px-4 py-2 text-sm h-8 text-muted-foreground flex items-center">
-                      {projects && projects.length === 0 && 'No projects found'}
-                    </div>
-                    <button
-                      onClick={() => onNavigateTo('/public-projects')}
-                      className="flex items-center w-full px-4 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
-                    >
-                      View all Projects...
-                    </button>
-                  </>
-                )}
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="relative"
+                                title={`Status: ${project.status}`}
+                              >
+                                <Circle
+                                  className={`h-3 w-3 ${
+                                    project.status === 'active'
+                                      ? 'text-green-500 animate-pulse'
+                                      : 'text-gray-400'
+                                  }`}
+                                />
+                              </span>
+                              <span className="text-xs">
+                                {project.name.length > 12
+                                  ? project.name.slice(0, 12) + '...'
+                                  : project.name}
+                              </span>
+                            </div>
+                            <Badge
+                              variant={getBadgeVariant(project.status)}
+                              className="font-medium text-[10px] px-1 rounded-full"
+                              size="default"
+                            >
+                              {project.status}
+                            </Badge>
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="px-6 py-2 text-sm h-8 text-muted-foreground flex items-center">
+                        {projects && projects.length === 0 && 'No projects found'}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             </CollapsibleContent>
           </Collapsible>

@@ -309,7 +309,7 @@ export function ProjectsList({
                 <Download className="sm:mr-2 h-4 w-4" /> Export
               </Button>
 
-              <CreateProjectButton buttonText="Create New" />
+              <CreateProjectButton buttonText="Create New" variant="default" />
             </div>
           </div>
         </div>
