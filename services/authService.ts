@@ -50,6 +50,7 @@ class AuthService {
     nonce: string
   ): Promise<VerifyResponse> {
     try {
+      console.log('Verifying signature request sent...');
       const response = await axios.post<ApiResponse<VerifyResponse>>(
         `${BACKEND_URL}/users/verify-signature`,
         {

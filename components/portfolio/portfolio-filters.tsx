@@ -50,7 +50,7 @@ export function PortfolioFilters({
   };
 
   return (
-    <Card className="w-full md:w-auto">
+    <Card className="w-full md:w-auto border-none">
       <CardContent className="p-0 md:p-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full">
           <div className="shrink-0 w-full md:w-auto">

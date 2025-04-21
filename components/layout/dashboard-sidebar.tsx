@@ -425,7 +425,7 @@ export function DashboardSidebar() {
 
           {/* Help & Support */}
           <SidebarMenuButton
-            onClick={() => onNavigateTo('/faqs')}
+            onClick={() => onNavigateTo('/ambassador')}
             className="flex items-center "
           >
             <HelpCircle className="h-4 w-4" />
