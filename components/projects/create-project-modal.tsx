@@ -477,7 +477,7 @@ export function CreateProjectModal({
           </DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 mt-2">
             <TabsTrigger value="deploy">Deploy New Token</TabsTrigger>
             <TabsTrigger value="import">Import Existing Token</TabsTrigger>
           </TabsList>
@@ -485,7 +485,7 @@ export function CreateProjectModal({
             <form onSubmit={handleDeployNewToken}>
               <div className={`grid grid-cols-2 gap-4 py-4`}>
                 <div className="col-span-2 flex flex-col gap-x-8 gap-4">
-                  <div className="flex gap-2 justify-between">
+                  <div className="flex flex-col sm:flex-row gap-2 justify-between">
                     <div className="space-y-2 w-full">
                       <Label htmlFor="newTokenName">Token Name</Label>
                       <Input
@@ -533,7 +533,7 @@ export function CreateProjectModal({
                       }
                     />
                   </div>
-                  <div className="flex gap-2 justify-between w-full">
+                  <div className="flex flex-col sm:flex-row gap-2 justify-between w-full">
                     <div className="space-y-2 w-1/2">
                       <Label htmlFor="newTokenBuyTax">Buy Tax (%)</Label>
                       <Input
@@ -575,36 +575,7 @@ export function CreateProjectModal({
                       />
                     </div>
                   </div>
-                  {/* <div className=" flex gap-2 justify-between">
-                    <div className="space-y-2 flex flex-col justify-start">
-                      <Label htmlFor="newTokenMaxHoldingRate">Max Holding (% of Total Supply)</Label>
-                      <Input
-                        id="newTokenMaxHoldingRate"
-                        type="number"
-                        value={newTokenMaxHoldingRate}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenMaxHoldingRate(e.target.value)}
-                        required
-                        min="0"
-                        max="5"
-                        step="0.1"
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                      />
-                    </div>
-                    <div className="space-y-2 flex flex-col justify-start">
-                      <Label htmlFor="newTokenMaxBuySellRate">Max Buy/Sell (% of Total Supply)</Label>
-                      <Input
-                        id="newTokenMaxBuySellRate"
-                        type="number"
-                        value={newTokenMaxBuySellRate}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTokenMaxBuySellRate(e.target.value)}
-                        required
-                        min="0"
-                        max="5"
-                        step="0.1"
-                        disabled={deploymentStatusText === "deploying" || deploymentStatusText === "success"}
-                      />
-                    </div>
-                  </div> */}
+    
                 </div>
                 <div className="col-span-2">
                   <Collapsible
@@ -631,8 +602,8 @@ export function CreateProjectModal({
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-4">
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-4">
-                        <div className="space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
+                        <div className="col-span-1 space-y-2">
                           <Label
                             htmlFor="website"
                             className="flex items-center gap-2"
@@ -653,7 +624,7 @@ export function CreateProjectModal({
                             }
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="col-span-1 space-y-2">
                           <Label
                             htmlFor="telegram"
                             className="flex items-center gap-2"
@@ -674,7 +645,7 @@ export function CreateProjectModal({
                             }
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="col-span-1 space-y-2">
                           <Label
                             htmlFor="discord"
                             className="flex items-center gap-2"
@@ -698,7 +669,7 @@ export function CreateProjectModal({
                             }
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="col-span-1 space-y-2">
                           <Label
                             htmlFor="twitter"
                             className="flex items-center gap-2"

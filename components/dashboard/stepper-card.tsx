@@ -75,7 +75,7 @@ export function StepperCard({
               </div>
 
               {step.items && step.items.length > 0 && (
-                <div className="flex items-center gap-6">
+                <div className="flex flex-col sm:flex-row items-start gap-6">
                   {step.items.map((item, itemIndex) => (
                     <div key={itemIndex} className="flex items-center gap-2">
                       <div className={dotStyles} />

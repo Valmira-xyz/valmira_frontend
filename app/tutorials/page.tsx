@@ -24,16 +24,17 @@ export default function TutorialsPage() {
       <PageHeader title="Tutorials & Resources" />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6 px-4 md:px-6">
-        <Card className="border">
+        <Card className="border flex flex-col justify-between">
           <CardHeader>
             <CardTitle>Getting Started</CardTitle>
             <CardDescription>
               Learn the basics of Valmira platform
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              <li>
+          <div className="flex flex-col justify-between">
+            <CardContent>
+              <ul className="space-y-2">
+                <li>
                 <Button variant="secondary" className="w-full">
                   <Link
                     href="/tutorials/projects"
@@ -64,58 +65,60 @@ export default function TutorialsPage() {
                 </Button>
               </li>
             </ul>
-          </CardContent>
-          <CardFooter>
-            <Button variant="default" asChild className="w-full">
-              <Link href="/tutorials/projects">
-                <BookOpen className="mr-2 h-4 w-4" />
-                View All Basics
-              </Link>
-            </Button>
-          </CardFooter>
+            </CardContent>
+            <CardFooter>
+              <Button variant="default" asChild className="w-full">
+                <Link href="/tutorials/projects">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  View All Basics
+                </Link>
+                </Button>
+            </CardFooter>
+          </div>
         </Card>
 
-        <Card className="border">
+        <Card className="border flex flex-col justify-between">
           <CardHeader>
             <CardTitle>Add-Ons & Bots</CardTitle>
             <CardDescription>
               Tutorials for different bot types and add-ons
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              <li>
-                <Button variant="secondary" className="w-full">
-                  <Link
-                    href="/tutorials/add-ons/bundle-snipe"
-                    className="w-full text-start hover:underline"
-                  >
-                    Liquidation Snipe Bot
-                  </Link>
-                </Button>
-              </li>
-              <li>
-                <Button variant="secondary" className="w-full">
-                  <Link
-                    href="/tutorials/add-ons/volume-bot"
-                    className="w-full text-start hover:underline"
-                  >
-                    Volume Bot
-                  </Link>
-                </Button>
-              </li>
-              <li>
-                <Button variant="secondary" className="w-full">
-                  <Link
-                    href="/tutorials/add-ons/holder-bot"
-                    className="w-full text-start hover:underline"
-                  >
-                    Holder Bot
-                  </Link>
-                </Button>
-              </li>
-            </ul>
-          </CardContent>
+          <div className="flex flex-col justify-between">
+            <CardContent>
+              <ul className="space-y-2">
+                <li>
+                  <Button variant="secondary" className="w-full">
+                    <Link
+                      href="/tutorials/add-ons/bundle-snipe"
+                      className="w-full text-start hover:underline"
+                    >
+                      Liquidation Snipe Bot
+                    </Link>
+                  </Button>
+                </li>
+                <li>
+                  <Button variant="secondary" className="w-full">
+                    <Link
+                      href="/tutorials/add-ons/volume-bot"
+                      className="w-full text-start hover:underline"
+                    >
+                      Volume Bot
+                    </Link>
+                  </Button>
+                </li>
+                <li>
+                  <Button variant="secondary" className="w-full">
+                    <Link
+                      href="/tutorials/add-ons/holder-bot"
+                      className="w-full text-start hover:underline"
+                    >
+                      Holder Bot
+                    </Link>
+                  </Button>
+                </li>
+              </ul>
+            </CardContent>
           <CardFooter>
             <Button variant="default" asChild className="w-full">
               <Link href="/tutorials/add-ons">
@@ -124,57 +127,61 @@ export default function TutorialsPage() {
               </Link>
             </Button>
           </CardFooter>
+          </div>
+
         </Card>
 
-        <Card className="border">
+        <Card className="border flex flex-col justify-between">
           <CardHeader>
             <CardTitle>Helpful Resources</CardTitle>
             <CardDescription>
               Additional resources and documentation
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              <li>
-                <Button variant="secondary" className="w-full">
-                  <Link
-                    href="/faqs"
-                    className="w-full text-start hover:underline"
-                  >
-                    Frequently Asked Questions
-                  </Link>
-                </Button>
-              </li>
-              <li>
-                <Button variant="secondary" className="w-full">
-                  <Link
-                    href="/tutorials/glossary"
-                    className="w-full text-start hover:underline"
-                  >
-                    Crypto Trading Glossary
-                  </Link>
-                </Button>
-              </li>
-              <li>
-                <Button variant="secondary" className="w-full">
-                  <Link
-                    href="/tutorials/best-practices"
-                    className="w-full text-start hover:underline"
-                  >
-                    Trading Best Practices
-                  </Link>
-                </Button>
-              </li>
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Button variant="default" asChild className="w-full">
-              <Link href="/faqs">
-                <HelpCircle className="mr-2 h-4 w-4" />
-                View FAQs
-              </Link>
-            </Button>
-          </CardFooter>
+          <div className="flex flex-col justify-between">
+            <CardContent>
+              <ul className="space-y-2">
+                <li>
+                  <Button variant="secondary" className="w-full">
+                    <Link
+                      href="/faqs"
+                      className="w-full text-start hover:underline"
+                    >
+                      Frequently Asked Questions
+                    </Link>
+                  </Button>
+                </li>
+                <li>
+                  <Button variant="secondary" className="w-full">
+                    <Link
+                      href="/tutorials/glossary"
+                      className="w-full text-start hover:underline"
+                    >
+                      Crypto Trading Glossary
+                    </Link>
+                  </Button>
+                </li>
+                <li>
+                  <Button variant="secondary" className="w-full">
+                    <Link
+                      href="/tutorials/best-practices"
+                      className="w-full text-start hover:underline"
+                    >
+                      Trading Best Practices
+                    </Link>
+                  </Button>
+                </li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button variant="default" asChild className="w-full">
+                <Link href="/faqs">
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  View FAQs
+                </Link>
+              </Button>
+            </CardFooter>
+          </div>
         </Card>
       </div>
     </div>
