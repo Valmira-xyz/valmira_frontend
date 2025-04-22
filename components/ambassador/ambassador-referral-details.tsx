@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
+import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
+import { DataTable, type TableTab } from '@/components/ui/data-table';
 
 interface AmbassadorReferralDetailsProps {
   dateRange?: DateRange;
@@ -27,6 +29,11 @@ interface ReferralData {
   earnings: string;
   status: 'Active' | 'Inactive';
 }
+
+const tabOptions: TableTab[] = [
+  { label: 'Direct Referrals (L1)', value: 'direct' },
+  { label: 'Indirect Referrals (L2)', value: 'indirect' }
+];
 
 export function AmbassadorReferralDetails({ dateRange }: AmbassadorReferralDetailsProps) {
   const { toast } = useToast();
@@ -134,98 +141,21 @@ export function AmbassadorReferralDetails({ dateRange }: AmbassadorReferralDetai
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <CardTitle>Your Referrals</CardTitle>
-              <CardDescription>Track all projects you've referred to Valmira</CardDescription>
-            </div>
-            <Tabs defaultValue="direct" className="w-fit">
-              <TabsList>
-                <TabsTrigger value="direct">Direct Referrals (L1)</TabsTrigger>
-                <TabsTrigger value="indirect">Indirect Referrals (L2)</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[30px]">
-                  <Checkbox />
-                </TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Date Joined</TableHead>
-                <TableHead>Daily fees</TableHead>
-                <TableHead>Monthly Fees</TableHead>
-                <TableHead>Your %</TableHead>
-                <TableHead>Your earnings</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[50px]">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {referralData.map((referral) => (
-                <TableRow key={referral.project}>
-                  <TableCell>
-                    <Checkbox />
-                  </TableCell>
-                  <TableCell className="font-medium">{referral.project}</TableCell>
-                  <TableCell>{referral.dateJoined}</TableCell>
-                  <TableCell>{referral.dailyFees}</TableCell>
-                  <TableCell>{referral.monthlyFees}</TableCell>
-                  <TableCell>{referral.percentage}</TableCell>
-                  <TableCell>{referral.earnings}</TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                      referral.status === 'Active' 
-                        ? 'bg-green-50 text-green-700' 
-                        : 'bg-red-50 text-red-700'
-                    }`}>
-                      {referral.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon">
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="flex items-center justify-between space-x-2 py-4">
-            <div className="flex-1 text-sm text-muted-foreground">
-              0 of {referralData.length} row(s) selected.
-            </div>
-            <div className="flex items-center space-x-6 lg:space-x-8">
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  <span className="sr-only">Previous page</span>
-                  Previous
-                </Button>
-                <div className="flex items-center justify-center text-sm font-medium">
-                  Page 1 of 3
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  <span className="sr-only">Next page</span>
-                  Next
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        data={mockAmbassadorEarningsBreakdownData}
+        tabOptions={tabOptions}
+        filterOption=""
+        showSearchInput={false}
+        showCheckbox={false}
+        showPagination={true} 
+        showDateRange={false}
+        showDateButtons={false}
+        showDownloadButton={false}
+        showTableHeaderInVertical={true}
+        title="Your Referrals"
+        description="Track all projects you've referred to Valmira"
+      />
+
     </div>
   );
 } 

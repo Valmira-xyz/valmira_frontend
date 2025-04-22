@@ -1,83 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { type DateRange } from 'react-day-picker';
-import { ArrowUpRight, ExternalLink, MoveUpRight, ArrowRightLeft, TrendingUp, ChartColumnIncreasing, Share, ScreenShare } from 'lucide-react';
-import { addDays, subDays, subWeeks, subMonths, subYears, format } from 'date-fns';
+import { TrendingUp, ChartColumnIncreasing, Share, ScreenShare } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PortfolioChart } from '@/components/portfolio/portfolio-chart';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
+import { DataChart } from '@/components/ui/data-chart';
 
-interface AmbassadorOverviewProps {
-  dateRange?: DateRange;
-}
-
-type TimeRange = '1D' | '1W' | '1M' | '1Y';
-
-// Generate mock data for different time ranges
-const generateMockData = (start: Date, end: Date) => {
-  const data = [];
-  let current = start;
-  while (current <= end) {
-    data.push({
-      name: format(current, 'MMM dd'),
-      profit: Math.floor(Math.random() * 3000) + 1000, // Random value between 1000 and 4000
-      volume: Math.floor(Math.random() * 100000) + 50000,
-      trades: Math.floor(Math.random() * 50) + 10,
-    });
-    current = addDays(current, 1);
-  }
-  return data;
-};
-
-export function AmbassadorOverview({ dateRange: initialDateRange }: AmbassadorOverviewProps) {
-  const [timeRange, setTimeRange] = useState<TimeRange>('1D');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(initialDateRange);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
-  // Calculate date range based on selected time range
-  const getDateRangeFromTimeRange = (range: TimeRange): DateRange => {
-    const end = new Date();
-    let start: Date;
-
-    switch (range) {
-      case '1D':
-        start = subDays(end, 1);
-        break;
-      case '1W':
-        start = subWeeks(end, 1);
-        break;
-      case '1M':
-        start = subMonths(end, 1);
-        break;
-      case '1Y':
-        start = subYears(end, 1);
-        break;
-      default:
-        start = subDays(end, 1);
-    }
-
-    return { from: start, to: end };
-  };
-
-  // Handle time range change
-  const handleTimeRangeChange = (value: string) => {
-    setTimeRange(value as TimeRange);
-    setDateRange(getDateRangeFromTimeRange(value as TimeRange));
-  };
-
-  // Format date range for display
-  const formatDateRange = () => {
-    const range = dateRange || getDateRangeFromTimeRange(timeRange);
-    if (!range.from || !range.to) return '';
-    return `${format(range.from, 'MMM dd, yyyy')} - ${format(range.to, 'MMM dd, yyyy')}`;
-  };
-
+export function AmbassadorOverview() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -137,60 +66,14 @@ export function AmbassadorOverview({ dateRange: initialDateRange }: AmbassadorOv
           </CardContent>
         </Card>
       </div>
-
-      {/* Earning over time chart */}
-      {/* <Card className="border-none">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div>
-            <CardTitle>Earning over time</CardTitle>
-            <p className="text-sm text-muted-foreground">Your daily earning from the ambassadors programs</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Tabs value={timeRange} onValueChange={handleTimeRangeChange} className="w-fit">
-              <TabsList>
-                <TabsTrigger value="1D">1D</TabsTrigger>
-                <TabsTrigger value="1W">1W</TabsTrigger>
-                <TabsTrigger value="1M">1M</TabsTrigger>
-                <TabsTrigger value="1Y">1Y</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            
-            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    'justify-start text-left font-normal',
-                    !dateRange && 'text-muted-foreground'
-                  )}
-                >
-                  {formatDateRange()}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={dateRange?.from}
-                  selected={dateRange}
-                  onSelect={(range) => {
-                    setDateRange(range);
-                    setIsCalendarOpen(false);
-                  }}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </CardHeader> */}
-        <CardContent className="p-0">
-          <PortfolioChart 
-            dateRange={dateRange}
-            metric="profit"
-            height={300}
-          />
-        </CardContent>
-      {/* </Card> */}
+   
+      <DataChart
+        title="Earning over time"
+        description="Your daily earning from the ambassador programs"
+        data={mockAmbassadorEarningsBreakdownData}
+        dataKey="numberOfBots"
+        color="hsl(var(--chart-1))"
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Commission structure */}

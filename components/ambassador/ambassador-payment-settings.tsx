@@ -12,47 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DataTable } from '@/components/ui/data-table';
+import { mockAmbassadorPaymentSettingsData } from '@/lib/mock-data';
 
 export function AmbassadorPaymentSettings() {
   const [paymentMethod, setPaymentMethod] = useState('stablecoins');
 
-  const recentPayments = [
-    {
-      date: '1/15/2024',
-      amount: '$123.22',
-      to: 'USDC',
-      status: 'Completed',
-      txHash: '102013_139021'
-    },
-    {
-      date: '1/15/2024',
-      amount: '$123.22',
-      to: 'USDC',
-      status: 'Completed',
-      txHash: '102013_139021'
-    },
-    {
-      date: '1/15/2024',
-      amount: '$123.22',
-      to: 'USDC',
-      status: 'Completed',
-      txHash: '102013_139021'
-    },
-    {
-      date: '1/15/2024',
-      amount: '$123.22',
-      to: 'USDC',
-      status: 'Completed',
-      txHash: '102013_139021'
-    },
-    {
-      date: '1/15/2024',
-      amount: '$123.22',
-      to: 'USDC',
-      status: 'Completed',
-      txHash: '102013_139021'
-    }
-  ];
 
   return (
     <div className="space-y-4">
@@ -166,7 +131,21 @@ export function AmbassadorPaymentSettings() {
         </Card>
       </div>
 
-      <Card className="w-full">
+      <DataTable
+        data={mockAmbassadorPaymentSettingsData}
+        filterOption="status"
+        showSearchInput={false}
+        showCheckbox={false}
+        showPagination={true}
+        showDateRange={true}
+        showDateButtons={true}
+        showDownloadButton={false}
+        showTableHeaderInVertical={false}
+        title="Recent Payments"
+        description="Record of all your ambassador payouts"
+      />
+
+      {/* <Card className="w-full">
         <CardHeader className="space-y-4">
           <div className="flex items-center justify-between">
             <CardTitle>Recent Payments</CardTitle>
@@ -223,7 +202,7 @@ export function AmbassadorPaymentSettings() {
             </Table>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       <Card className="w-full">
         <CardHeader>

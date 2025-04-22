@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker1';
 import { TabsList } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
