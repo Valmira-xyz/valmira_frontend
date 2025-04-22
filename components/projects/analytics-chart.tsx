@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker1';
 import { formatCurrency } from '@/lib/utils';
 
 type TimePeriod = '1D' | '1W' | '1M' | '1Y';

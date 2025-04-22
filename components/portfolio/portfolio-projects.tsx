@@ -220,7 +220,7 @@ export function PortfolioProjects({
     selectedRows.length === filteredProjects.length;
 
   return (
-    <Card>
+    <Card className="border-none">
       <CardHeader className="!p-0 my-6">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row items-start gap-2 md:items-center  justify-between">

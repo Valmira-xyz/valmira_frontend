@@ -21,11 +21,11 @@ export default function DashboardPage() {
       </PageHeader>
 
       <section className="p-6 space-y-10">
-        {!isAuthenticated && (
+        {/* {!isAuthenticated && ( */}
           <WalletConnectionCTA
             onConnect={(address) => console.log('Wallet connected:', address)}
           />
-        )}
+        {/* )} */}
 
         <div>
           <h2 className="text-xl font-semibold tracking-tight mb-2">

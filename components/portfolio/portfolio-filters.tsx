@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker1';
 import { TabsList } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
@@ -50,7 +50,7 @@ export function PortfolioFilters({
   };
 
   return (
-    <Card className="w-full md:w-auto">
+    <Card className="w-full md:w-auto border-none">
       <CardContent className="p-0 md:p-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full">
           <div className="shrink-0 w-full md:w-auto">

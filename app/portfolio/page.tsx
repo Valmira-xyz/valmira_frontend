@@ -14,6 +14,8 @@ import { PortfolioSummary } from '@/components/portfolio/portfolio-summary';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import { DataChart } from '@/components/ui/data-chart';
+import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
 
 export default function PortfolioPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -62,10 +64,15 @@ export default function PortfolioPage() {
           <TabsContent value="overview" className="space-y-4 md:space-y-6">
             <PortfolioSummary dateRange={dateRange} />
             <div className="w-full h-full">
-              <PortfolioChart
-                dateRange={dateRange}
-                metric="combined"
-                height={400}
+              <DataChart
+                title="Portfolio Performance"
+                description="Combined metrics across all projects"
+                data={mockAmbassadorEarningsBreakdownData}
+                dataKey="numberOfBots"
+                color="hsl(var(--chart-1))"
+                showDateRange={true}
+                showDateButtons={true} 
+                showChartTypeSelector={true}
               />
             </div>
             <PortfolioProjects dateRange={dateRange} />
@@ -73,10 +80,15 @@ export default function PortfolioPage() {
 
           <TabsContent value="profit" className="space-y-4">
             <div className="w-full h-full">
-              <PortfolioChart
-                dateRange={dateRange}
-                metric="profit"
-                height={400}
+              <DataChart
+                title="Profit Trend"
+                description="Daily profit across all projects"
+                data={mockAmbassadorEarningsBreakdownData}
+                dataKey="numberOfBots"
+                color="hsl(var(--chart-1))"
+                showDateRange={true}
+                showDateButtons={true} 
+                showChartTypeSelector={true}
               />
             </div>
             <PortfolioProjects dateRange={dateRange} sortBy="profit" />
@@ -84,10 +96,15 @@ export default function PortfolioPage() {
 
           <TabsContent value="volume" className="space-y-4">
             <div className="w-full h-full">
-              <PortfolioChart
-                dateRange={dateRange}
-                metric="volume"
-                height={400}
+              <DataChart
+                title="Trading Volume"
+                description="Daily trading volume across all projects"
+                data={mockAmbassadorEarningsBreakdownData}
+                dataKey="numberOfBots"
+                color="hsl(var(--chart-1))"
+                showDateRange={true}
+                showDateButtons={true} 
+                showChartTypeSelector={true}
               />
             </div>
             <PortfolioProjects dateRange={dateRange} sortBy="volume" />
@@ -95,10 +112,15 @@ export default function PortfolioPage() {
 
           <TabsContent value="activity" className="space-y-4">
             <div className="w-full h-full">
-              <PortfolioChart
-                dateRange={dateRange}
-                metric="trades"
-                height={400}
+              <DataChart
+                title="Trading Activity"
+                description="Numberof trades executed"
+                data={mockAmbassadorEarningsBreakdownData}
+                dataKey="numberOfBots"
+                color="hsl(var(--chart-1))"
+                showDateRange={true}
+                showDateButtons={true} 
+                showChartTypeSelector={true}
               />
             </div>
             <PortfolioProjects dateRange={dateRange} sortBy="activity" />

@@ -53,7 +53,7 @@ interface CreateProjectModalProps {
   onClose: () => void;
 }
 
-// type TokenDeploymentStatus = 'idle' | 'deploying' | 'success' | 'error';
+type TokenDeploymentStatus = 'idle' | 'deploying' | 'success' | 'error';
 // type TokenImportStatus = 'idle' | 'validating' | 'valid' | 'invalid';
 
 export function CreateProjectModal({
@@ -92,9 +92,11 @@ export function CreateProjectModal({
   const [twitter, setTwitter] = useState('');
 
   // State for deploying new token
-  // const [deploymentStatus, setDeploymentStatus] =
-  //   useState<TokenDeploymentStatus>('idle');
+  const [deploymentStatus, setDeploymentStatus] =
+    useState<TokenDeploymentStatus>('idle');
   const [deploymentError, setDeploymentError] = useState('');
+
+  console.log(`deploymentStatus: ${deploymentStatus}`);
 
   // State for importing existing token
   const [existingContractAddress, setExistingContractAddress] = useState('');

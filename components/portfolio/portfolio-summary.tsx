@@ -60,7 +60,7 @@ export function PortfolioSummary({ dateRange }: PortfolioSummaryProps) {
     <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
       {metrics.map((metric, i) => (
         <Card className="border" key={i}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4">
             <CardTitle className="text-sm font-bold">{metric.title}</CardTitle>
             <metric.icon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>

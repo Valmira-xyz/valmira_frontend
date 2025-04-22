@@ -21,7 +21,7 @@ import { BotFilter } from '@/components/projects/bot-filter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker1';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +47,9 @@ import type {
 import { projectService } from '@/services/projectService';
 import websocketService, { WebSocketEvents } from '@/services/websocketService';
 import { RootState } from '@/store/store';
+
+import { DataChart } from '@/components/ui/data-chart';
+import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
 
 type TimePeriod = '24h' | '7d' | '1m';
 
@@ -1241,7 +1244,30 @@ export const ProjectAnalytics = forwardRef<
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
-        <AnalyticsChart
+        <DataChart
+          title="Profit Trend"
+          description="Trading profit"
+          data={mockAmbassadorEarningsBreakdownData}
+          dataKey="numberOfBots"
+          color="hsl(var(--chart-1))"
+          showDateRange={true}
+          showDateButtons={true} 
+          showChartTypeSelector={false}
+          showHeaderInVertical={true}
+        />
+
+        <DataChart
+          title="Trading Volume Trend"
+          description="Trading volume"
+          data={mockAmbassadorEarningsBreakdownData}
+          dataKey="numberOfBots"
+          color="hsl(var(--chart-1))"
+          showDateRange={true}
+          showDateButtons={true} 
+          showChartTypeSelector={false}
+          showHeaderInVertical={true}
+        />
+        {/* <AnalyticsChart
           title="Profit Trend"
           description="Trading profit"
           type="profit"
@@ -1250,7 +1276,7 @@ export const ProjectAnalytics = forwardRef<
           title="Trading Volume Trend"
           description="Trading volume"
           type="volume"
-        />
+        /> */}
       </div>
 
       <Collapsible
