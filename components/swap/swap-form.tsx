@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ManageWallet } from './manage-wallet';
 import { SettingsDialog } from './settings-dialog';
 import { TokenInput } from './token-input';
-import { ArrowUpDown, Info } from 'lucide-react';
+import { ArrowUpDown, Info, Settings } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -98,7 +98,7 @@ export function SwapForm() {
                     <Info className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="w-[280px] p-3" align="start">
+                <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-2 mb-1">
                     <Info className="h-4 w-4" />
                     <span className="font-medium">Swap tool</span>
@@ -174,7 +174,7 @@ export function SwapForm() {
               className="w-full sm:w-auto"
               onClick={() => setSettingsOpen(true)}
             >
-              <Info className="h-4 w-4 mr-2" />
+              <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
           </div>

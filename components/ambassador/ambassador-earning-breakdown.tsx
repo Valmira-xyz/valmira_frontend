@@ -27,14 +27,13 @@ export function AmbassadorEarningBreakdown() {
 
       <DataTable
         data={mockAmbassadorEarningsBreakdownData}
-        tabOptions={tabOptions}
-        filterOption=""
-        showSearchInput={false}
-        showCheckbox={false}
+        filterOption="projectName"
+        showSearchInput={true}
+        showCheckbox={true}
         showPagination={true}
         showDateRange={true}
         showDateButtons={true}
-        showDownloadButton={false}
+        showDownloadButton={true}
         showTableHeaderInVertical={false}
         title="Detailed Fee Breakdown"
         description="How your commission is calculated from each project"

@@ -757,21 +757,8 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         <div>Loading...</div>
       ) : (
         <>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Add-Ons & Configuration</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={memoizedRefreshWalletBalances}
-              disabled={isRefreshingBalances}
-            >
-              <RefreshCw
-                className={`mr-2 h-4 w-4 ${isRefreshingBalances ? 'animate-spin' : ''}`}
-              />
-              {isRefreshingBalances ? 'Refreshing...' : 'Refresh Balances'}
-            </Button>
-          </div>
-          <div className="flex flex-col lg:flex-row gap-6 pb-4">
+          <h2 className="text-xl font-bold">Add-Ons & Configuration</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 pb-4">
             {addOns.map((addon) => (
               <Card key={addon.botType} className="w-full flex flex-col">
                 <CardHeader>

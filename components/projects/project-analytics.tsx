@@ -1243,7 +1243,7 @@ export const ProjectAnalytics = forwardRef<
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <DataChart
           title="Profit Trend"
           description="Trading profit"
@@ -1267,16 +1267,6 @@ export const ProjectAnalytics = forwardRef<
           showChartTypeSelector={false}
           showHeaderInVertical={true}
         />
-        {/* <AnalyticsChart
-          title="Profit Trend"
-          description="Trading profit"
-          type="profit"
-        />
-        <AnalyticsChart
-          title="Trading Volume Trend"
-          description="Trading volume"
-          type="volume"
-        /> */}
       </div>
 
       <Collapsible

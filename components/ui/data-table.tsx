@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRangePicker } from '@/components/date-range-picker';
 import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval } from 'date-fns';
 import { Input } from './input';
 
@@ -22,7 +22,6 @@ interface DataTableProps {
   data: Record<string, any>[];
   hideColumns?: string[];
   filterOption?: string;
-  tabOptions?: TableTab[];
   showCheckbox?: boolean;
   showSearchInput?: boolean;
   showPagination?: boolean;
@@ -37,7 +36,6 @@ interface DataTableProps {
   description?: string;
   onRowSelect?: (selectedRows: Record<string, any>[]) => void;
   onFilterChange?: (value: string) => void;
-  onTabChange?: (value: string) => void;
   onSearchChange?: (value: string) => void;
 }
 
@@ -45,7 +43,6 @@ export function DataTable({
   data,
   hideColumns = [],
   filterOption,
-  tabOptions = [],
   showCheckbox = true,
   showSearchInput = true,
   showPagination = true,
@@ -60,7 +57,6 @@ export function DataTable({
   description,
   onRowSelect,
   onFilterChange,
-  onTabChange,
   onSearchChange,
 }: DataTableProps) {
   const [page, setPage] = useState(1);
@@ -234,7 +230,7 @@ export function DataTable({
   const handleDownload = () => {
     // Convert data to CSV
     const headers = columns.map(col => col.title).join(',');
-    const rows = filteredData.map(row => 
+    const rows = selectedRows.map(row => 
       columns.map(col => {
         const value = row[col.key];
         // Handle values that might contain commas
@@ -260,25 +256,13 @@ export function DataTable({
 
   return (
     <Card className="overflow-hidden">
-      {showTableHeaderInVertical ? (
-      <>
+      <div className={showTableHeaderInVertical ? "" : "flex flex-col lg:flex-row gap-x-4 justify-between flex-wrap"}>
         <CardHeader>
           <CardTitle>{title}</CardTitle>
           <CardDescription >{description}</CardDescription>
         </CardHeader>
-        <div className={`flex flex-col flex-wrap gap-4 px-4 sm:px-6 pb-0 sm:flex-row items-center justify-start ${tabOptions.length > 0 || showSearchInput ? "lg:justify-between" : "lg:justify-end"}`}>
+        <div className={`flex flex-col flex-wrap gap-4 px-4 sm:px-6 pb-0 sm:flex-row justify-start ${showSearchInput ? "lg:justify-between" : "lg:justify-end"}`}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-start">
-            {tabOptions.length > 0 && (
-              <Tabs defaultValue={tabOptions[0].value} onValueChange={onTabChange}>
-                <TabsList className="flex flex-wrap !w-auto">
-                  {tabOptions.map((tab) => (
-                    <TabsTrigger key={tab.value} value={tab.value}>
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            )}
             {showSearchInput && (
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -292,7 +276,7 @@ export function DataTable({
             )}
           </div>
           
-          <div className="flex flex-col gap-4 md:flex-row sm:items-center justify-start">
+          <div className="flex flex-col gap-4 sm:flex-row md:items-center justify-start flex-wrap lg:flex-nowrap">
             <div className="flex flex-col sm:flex-row gap-4 justify-start w-full md:w-fit">
               {filterOption && filterOptions.length > 0 && (
                 <Select value={selectedFilter} onValueChange={handleFilterChange}>
@@ -314,7 +298,7 @@ export function DataTable({
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-start w-full">
+            <div className="flex flex-col sm:flex-row gap-4 justify-start w-full w-fit">
               {showDateButtons && (
                 <Tabs value={selectedDateButton} className="w-fit flex-wrap" onValueChange={handleDateButtonChange}>
                   <TabsList className="flex w-full grid-cols-4">
@@ -338,86 +322,7 @@ export function DataTable({
             </div>
           </div>
         </div>
-      </>) 
-      :
-      <div className="flex flex-col lg:flex-row gap-4 justify-between">
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription >{description}</CardDescription>
-        </CardHeader>
-        <div className={`flex flex-col flex-wrap gap-4 px-4 sm:px-6 pb-0 sm:flex-row items-center justify-start ${tabOptions.length > 0 || showSearchInput ? "lg:justify-between" : "lg:justify-end"}`}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-start">
-            {tabOptions.length > 0 && (
-              <Tabs defaultValue={tabOptions[0].value} onValueChange={onTabChange}>
-                <TabsList className="flex flex-wrap w-auto">
-                  {tabOptions.map((tab) => (
-                    <TabsTrigger key={tab.value} value={tab.value}>
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            )}
-            {showSearchInput && (
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search"
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            )}
-          </div>
-          
-          <div className="flex flex-col gap-4 md:flex-row sm:items-center justify-start">
-            <div className="flex flex-col sm:flex-row gap-4 justify-start w-full md:w-fit">
-              {filterOption && filterOptions.length > 0 && (
-                <Select value={selectedFilter} onValueChange={handleFilterChange}>
-                  <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder={`Filter by ${filterOption}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {filterOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {columns.filter(col => col.key === filterOption)[0].title}: {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-                )}
-
-              {showDateRange && (
-                <DateRangePicker date={dateRange} onDateChange={handleDateRangeChange} />
-              )}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-start w-full">
-              {showDateButtons && (
-                <Tabs value={selectedDateButton} className="w-fit flex-wrap" onValueChange={handleDateButtonChange}>
-                  <TabsList className="flex w-full grid-cols-4">
-                    <TabsTrigger value="1D">1D</TabsTrigger>
-                    <TabsTrigger value="1W">1W</TabsTrigger>
-                    <TabsTrigger value="1M">1M</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
-
-              {showDownloadButton && (
-                <Button
-                  variant="outline"
-                  size="default"
-                  onClick={handleDownload}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>}
+      </div>
     
       <CardContent>
         <div className="rounded-md border">
@@ -455,7 +360,7 @@ export function DataTable({
         </div>
 
         {showPagination && (
-          <div className="mt-4 sm:mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-4 sm:mt-6 gap-4 flex-wrap flex flex-row sm:items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 {selectedRows.length} of {filteredData.length} row(s) selected.

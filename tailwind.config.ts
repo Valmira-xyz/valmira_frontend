@@ -12,7 +12,8 @@ export default {
   ],
   theme: {
     screens: {
-      sm: '480px',
+      xs: '480px',
+      sm: '640px',
       md: '834px',
       lg: '1024px',
       xl: '1280px',
@@ -23,8 +24,6 @@ export default {
       padding: '2rem',
       screens: {
         '2xl': '1400px',
-        lg: '834px',
-        sm: '480px',
       },
     },
     extend: {

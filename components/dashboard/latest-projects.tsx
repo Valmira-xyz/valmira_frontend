@@ -89,16 +89,16 @@ export function LatestProjects() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-start md:justify-between items-start md:items-center gap-4">
         <h2 className="text-2xl font-bold">Your Latest Active Projects</h2>
         <Button asChild variant="outline">
           <Link href="/public-projects">View All Projects</Link>
         </Button>
       </div>
-      <div className="overflow-x-auto pb-4 -mx-6 px-6">
-        <div className="flex gap-6 min-w-max">
+      <div className="pb-4 -mx-6 px-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {activeProjects.map((project: ProjectWithAddons) => (
-            <div key={project._id} className="w-[320px] flex-shrink-0">
+            <div key={project._id} className="flex-shrink-0">
               <ProjectSummaryCard project={project} />
             </div>
           ))}
