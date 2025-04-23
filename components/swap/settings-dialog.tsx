@@ -46,7 +46,7 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="min-w-[400px]">
+      <DialogContent className="">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Swap Settings</DialogTitle>

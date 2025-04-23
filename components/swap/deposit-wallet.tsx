@@ -10,7 +10,7 @@ export function DepositWallet() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-medium">Deposit Wallet</h3>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="border h-8 w-8">
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>

@@ -16,7 +16,7 @@ import {
   YAxis,
 } from 'recharts';
 import { formatNumber } from '@/lib/utils';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRangePicker } from '@/components/date-range-picker';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval, format } from 'date-fns';
@@ -204,12 +204,12 @@ export function DataChart({
 
   return (
     <Card className={className}>
-      <CardHeader className={`${showHeaderInVertical ? "gap-4" : "flex flex-col md:flex-row items-start md:items-center justify-between pb-2"}`}>
-        <div className="mb-4 md:mb-0 flex flex-col gap-2">
+      <CardHeader className={`${showHeaderInVertical ? "gap-4" : "flex flex-col lg:flex-row flex-wrap items-start lg:items-center justify-between gap-4 pb-2"}`}>
+        <div className="flex flex-col gap-2">
           <CardTitle>{title}</CardTitle>
           {description && <CardDescription>{description}</CardDescription>}
         </div>
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
           {showDateRange && (
             <DateRangePicker
               date={dateRange}

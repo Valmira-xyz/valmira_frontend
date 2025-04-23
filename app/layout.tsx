@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 
 import { Providers } from '@/components/providers';
 import { ClientLayout } from '@/components/providers/client-layout';
+import { PageHeader } from '@/components/layout/page-header';
 
 import './globals.css';
 
@@ -26,7 +27,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers cookies={cookies}>
-          <ClientLayout>{children}</ClientLayout>
+          <div className="min-h-screen flex flex-col">
+            <PageHeader />
+            <main className="flex-1">
+              <ClientLayout>{children}</ClientLayout>
+            </main>
+          </div>
         </Providers>
       </body>
     </html>

@@ -2,7 +2,6 @@ import { BookOpen, FileText, HelpCircle } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { CardFooter } from '@/components/ui/card';
 import {
@@ -21,9 +20,7 @@ export const metadata: Metadata = {
 export default function TutorialsPage() {
   return (
     <div className="w-full">
-      <PageHeader title="Tutorials & Resources" />
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6 px-4 md:px-6">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 p-4 md:p-6">
         <Card className="border flex flex-col justify-between">
           <CardHeader>
             <CardTitle>Getting Started</CardTitle>

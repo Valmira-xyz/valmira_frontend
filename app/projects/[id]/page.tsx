@@ -136,7 +136,6 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="overflow-x-hidden w-full">
-      <PageHeader title={`Project ${project?.name}`} />
       <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         <ProjectHeader
           project={projectWithAddons}
