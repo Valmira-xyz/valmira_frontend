@@ -59,7 +59,7 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
 
   const metrics = project.metrics || {
     cumulativeProfit: 0,
-    volume24h: 0,
+    tradingVolume: 0,
     activeBots: 0,
     lastUpdate: project.updatedAt,
   };
@@ -148,7 +148,7 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               Cumulative Volume
             </p>
             <p className="text-xl font-bold">
-              ${formatNumber(metrics.volume24h ?? 0)}
+              ${formatNumber(metrics.tradingVolume)}
             </p>
             {/* <div className="h-10">
               <SparklineChart data={trends.volumeTrend.map(d => d.value)} color="hsl(var(--chart-3))" />

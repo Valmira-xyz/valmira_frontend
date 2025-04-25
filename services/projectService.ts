@@ -233,7 +233,7 @@ export interface BotPerformanceHistory {
 export interface ProjectStatistics {
   metrics: {
     cumulativeProfit: number;
-    volume24h: number;
+    tradingVolume: number;
     activeBots: number;
     liquidity: number;
     lastUpdate: Date;

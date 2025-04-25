@@ -448,7 +448,7 @@ const projectSlice = createSlice({
           state.projectStats = {
             metrics: {
               cumulativeProfit: 0,
-              volume24h: 0,
+              tradingVolume: 0,
               activeBots: 0,
               liquidity: 0,
               lastUpdate: new Date(),
@@ -492,7 +492,7 @@ const projectSlice = createSlice({
           state.projectStats = {
             metrics: {
               cumulativeProfit: 0,
-              volume24h: 0,
+              tradingVolume: 0,
               activeBots: 0,
               liquidity: 0,
               lastUpdate: new Date(),
@@ -583,7 +583,7 @@ const projectSlice = createSlice({
           state.projectStats = {
             metrics: {
               cumulativeProfit: 0,
-              volume24h: 0,
+              tradingVolume: 0,
               activeBots: 0,
               liquidity: 0,
               lastUpdate: new Date(),
@@ -619,7 +619,7 @@ const projectSlice = createSlice({
           state.projectStats = {
             metrics: {
               cumulativeProfit: 0,
-              volume24h: 0,
+              tradingVolume: 0,
               activeBots: 0,
               liquidity: 0,
               lastUpdate: new Date(),

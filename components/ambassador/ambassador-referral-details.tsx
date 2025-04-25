@@ -143,7 +143,14 @@ export function AmbassadorReferralDetails({ dateRange }: AmbassadorReferralDetai
 
       <DataTable
         data={mockAmbassadorEarningsBreakdownData}
-        tabOptions={tabOptions}
+        showColumns={[
+          { name: 'projectName', type: 'normal', displayName: 'Project' },
+          { name: 'dailyBotFee', type: 'price', displayName: 'Daily Fee' },
+          { name: 'numberOfBots', type: 'price'},
+          { name: 'percentage', type: 'percent', displayName: 'Percentage' },
+          { name: 'earnings', type: 'price'},
+          { name: 'date', type: 'time', displayName: 'Date' },
+        ]}
         filterOption=""
         showSearchInput={false}
         showCheckbox={false}

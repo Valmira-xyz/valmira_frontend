@@ -167,9 +167,9 @@ export function DashboardSidebar() {
                 data.metrics.cumulativeProfit ||
                 updatedProjects[projectIndex].metrics?.cumulativeProfit ||
                 0,
-              volume24h:
-                data.metrics.volume24h ||
-                updatedProjects[projectIndex].metrics?.volume24h ||
+              tradingVolume:
+                data.metrics.tradingVolume ||
+                updatedProjects[projectIndex].metrics?.tradingVolume ||
                 0,
               activeBots:
                 data.metrics.activeBots ||

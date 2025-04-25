@@ -26,7 +26,7 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
   // Define a type for the metrics object
   type ProjectMetrics = {
     cumulativeProfit: number;
-    volume24h: number;
+    tradingVolume: number;
     activeBots: number;
     [key: string]: any; // Allow other properties
   };
@@ -282,10 +282,10 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
       projectStats?.metrics?.cumulativeProfit ??
       project.metrics?.cumulativeProfit ??
       0,
-    volume24h:
-      localMetrics?.volume24h ??
-      projectStats?.metrics?.volume24h ??
-      project.metrics?.volume24h ??
+    tradingVolume:
+      localMetrics?.tradingVolume ??
+      projectStats?.metrics?.tradingVolume ??
+      project.metrics?.tradingVolume ??
       0,
     activeBots: localMetrics?.activeBots ?? calculateActiveBots(),
     liquidity: poolLiquidity,
@@ -318,7 +318,7 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
         </CardHeader>
         <CardContent>
           <div className="text-xl font-bold">
-            {formatCurrency(metrics.volume24h)}
+            {formatCurrency(metrics.tradingVolume)}
           </div>
           <p className="text-xs text-muted-foreground">
             Trading volume since inception

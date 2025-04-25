@@ -11,7 +11,8 @@ import { PortfolioSummary } from '@/components/portfolio/portfolio-summary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { DataChart } from '@/components/ui/data-chart';
-import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
+import { mockAmbassadorEarningsBreakdownData, mockPortfolioData, mockPortfolioProjects } from '@/lib/mock-data';
+import { DataTable } from '@/components/ui/data-table';
 
 export default function PortfolioPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -48,15 +49,39 @@ export default function PortfolioPage() {
             <DataChart
               title="Portfolio Performance"
               description="Combined metrics across all projects"
-              data={mockAmbassadorEarningsBreakdownData}
-              dataKey="numberOfBots"
+              data={mockPortfolioData}
+              xKey="date"
+              yKey="profit"
               color="hsl(var(--chart-1))"
               showDateRange={true}
               showDateButtons={true} 
               showChartTypeSelector={true}
             />
           </div>
-          <PortfolioProjects dateRange={dateRange} />
+          <DataTable
+            title="Project Performance"
+            description=""
+            data={mockPortfolioProjects}
+            showColumns={[
+              { name: 'name', type: 'normal', displayName: 'Project', sort: true },
+              { name: 'status', type: 'status', displayName: 'Status' },
+              { name: 'network', type: 'normal', displayName: 'Network' },
+              { name: 'profit', type: 'price', child : { name: 'profitChange', type: 'percent' }, sort: true },
+              { name: 'volume', type: 'price', child : { name: 'volumeChange', type: 'percent' } },
+              { name: 'trades', type: 'normal', child : { name: 'tradesChange', type: 'percent' } },
+              { name: 'profitTrend', type: 'graph', displayName: 'Trend' },
+              { name: 'id', type: 'link', displayName: 'Action' },
+            ]}
+            filterOption=""
+            showSearchInput={true}
+            showCheckbox={true}
+            showPagination={true}
+            showDateRange={true}
+            showDateButtons={true}
+            showDownloadButton={true}
+            showTableHeaderInVertical={true}
+          />
+          {/* <PortfolioProjects dateRange={dateRange} /> */}
         </TabsContent>
 
         <TabsContent value="profit" className="space-y-4">

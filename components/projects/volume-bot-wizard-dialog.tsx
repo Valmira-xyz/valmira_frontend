@@ -108,7 +108,7 @@ export function VolumeBotWizardDialog({
   // Volume Bot Settings
   const [minBNBAmount, setMinBNBAmount] = useState(0.0001);
   const [maxBNBAmount, setMaxBNBAmount] = useState(0.0002);
-  const [timeSpan, setTimeSpan] = useState(60); // in seconds
+  const [timeSpan, setTimeSpan] = useState(60000); // in milliseconds
   const [isLoading, setIsLoading] = useState(false);
   const [bnbBalance, setBnbBalance] = useState(0);
   const [errorState, setErrorState] = useState<
@@ -126,6 +126,8 @@ export function VolumeBotWizardDialog({
       const botDetails = await BotService.getBotById(
         project.addons.VolumeBot._id as string
       );
+
+      console.log(`bot detail => ${JSON.stringify(botDetails, null, 2)}`);
 
       // Set the saved configuration values if available
       if (botDetails) {
@@ -484,11 +486,11 @@ export function VolumeBotWizardDialog({
                     type="number"
                     value={minBNBAmount}
                     onChange={(e) =>
-                      setMinBNBAmount(parseFloat(e.target.value) || 0.0001)
+                      setMinBNBAmount(parseFloat(e.target.value))
                     }
                     min={0.0001}
                     max={1.0}
-                    step={0.0001}
+                    step={0.001}
                     className="w-24 h-8 px-2 rounded-md border border-input bg-background text-sm"
                     disabled={isLoading || isExecuting}
                   />
@@ -518,7 +520,7 @@ export function VolumeBotWizardDialog({
                     type="number"
                     value={maxBNBAmount}
                     onChange={(e) =>
-                      setMaxBNBAmount(parseFloat(e.target.value) || 0.0002)
+                      setMaxBNBAmount(parseFloat(e.target.value))
                     }
                     min={0.0002}
                     max={2.0}
@@ -547,14 +549,28 @@ export function VolumeBotWizardDialog({
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <Label>Time Span Between Transactions</Label>
-                <span className="text-sm font-medium">{timeSpan} seconds</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={timeSpan}
+                    onChange={(e) =>
+                      setTimeSpan(parseFloat(e.target.value))
+                    }
+                    min={0.1}
+                    max={600}
+                    step={0.1}
+                    className="w-24 h-8 px-2 rounded-md border border-input bg-background text-sm"
+                    disabled={isLoading || isExecuting}
+                  />
+                  <span className="text-sm font-medium">s</span>
+                </div>
               </div>
               <Slider
                 value={[timeSpan]}
                 onValueChange={(value) => setTimeSpan(value[0])}
-                min={10}
+                min={0.1}
                 max={600}
-                step={10}
+                step={1}
                 className="w-full"
                 disabled={isLoading || isExecuting}
               />
