@@ -11,12 +11,14 @@ import {
 } from '@/components/ui/popover';
 
 const tokens = [
-  { symbol: 'BNB', name: 'Binance Coin', icon: '/eth-logo.png' },
-  { symbol: 'BNT', name: 'Bancor', icon: '/eth-logo.png' },
-  { symbol: 'BNYT', name: 'Bancor Network', icon: '/eth-logo.png' },
-  { symbol: 'BPT', name: 'Blackpool Token', icon: '/eth-logo.png' },
-  { symbol: 'BTC', name: 'Bitcoin', icon: '/eth-logo.png' },
-  { symbol: 'BTCD', name: 'Bitcoin Diamond', icon: '/eth-logo.png' },
+  { symbol: 'BTC', name: 'Bitcoin', icon: '/blockchain-icons/btc.png' },
+  { symbol: 'ETH', name: 'Ethereum', icon: '/blockchain-icons/eth.png' },
+  { symbol: 'BNB', name: 'Binance', icon: '/blockchain-icons/bnb.png' },
+  { symbol: 'SOL', name: 'Solana', icon: '/blockchain-icons/sol.png' },
+  { symbol: 'TRON', name: 'Tron', icon: '/blockchain-icons/tron.png' },
+  { symbol: 'TON', name: 'Ton', icon: '/blockchain-icons/ton.png' },
+  { symbol: 'USDT', name: 'Tether', icon: '/blockchain-icons/usdt.png' },
+  { symbol: 'USDC', name: 'USD Coin', icon: '/blockchain-icons/usdc.png' },
 ];
 
 interface TokenSelectProps {
@@ -41,7 +43,7 @@ export function TokenSelect({ value, onChange }: TokenSelectProps) {
           className="w-[140px] flex items-center justify-between"
         >
           <div className="flex items-center gap-2">
-            <img src="/eth-logo.png" alt={value} className="w-5 h-5" />
+            <img src={tokens.find((token) => token.symbol === value)?.icon} alt={value} className="w-5 h-5" />
             <span>{value}</span>
           </div>
           <ChevronDown className="h-4 w-4" />

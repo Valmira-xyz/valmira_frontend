@@ -80,6 +80,8 @@ export function BuySellForm() {
                   ? `$${(parseFloat(fromAmount) * 1850).toFixed(2)}`
                   : undefined
               }
+              token={fromToken}
+              onTokenChange={setFromToken}
               network={fromNetwork}
               onNetworkChange={setFromNetwork}
               networks={cryptoNetworks}
@@ -103,7 +105,7 @@ export function BuySellForm() {
                 onClick={handleSwap}
               >
                 <ArrowUpDown className="h-4 w-4" />
-                <span>Change</span>
+                <span>{isBuying ? 'Switch to Sell' : 'Switch to Buy'}</span>
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
