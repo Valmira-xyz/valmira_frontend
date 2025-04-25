@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { type DateRange } from 'react-day-picker';
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, Search, Link as LinkIcon, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, Search, ArrowUpRight, ArrowDownRight, ExternalLink } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +34,16 @@ export interface Column {
   displayName?: string;
   sort?: boolean;
   child?: ColumnChild;
+  linkPrefix?: string;
+}
+
+interface TableColumn {
+  key: string;
+  title: string;
+  type: ColumnType;
+  child?: ColumnChild;
+  sort?: boolean;
+  linkPrefix?: string;
 }
 
 interface DataTableProps {
@@ -41,6 +51,7 @@ interface DataTableProps {
   hideColumns?: string[];
   showColumns?: Column[];
   filterOption?: string;
+  dateFieldName?: string;
   showCheckbox?: boolean;
   showSearchInput?: boolean;
   showPagination?: boolean;
@@ -63,6 +74,7 @@ export function DataTable({
   hideColumns = [],
   showColumns,
   filterOption,
+  dateFieldName,
   showCheckbox = true,
   showSearchInput = true,
   showPagination = true,
@@ -95,7 +107,7 @@ export function DataTable({
   }, [currentPageSize]);
 
   // Automatically determine columns from data or use showColumns if provided
-  const columns = useMemo(() => {
+  const columns = useMemo<TableColumn[]>(() => {
     if (showColumns && showColumns.length > 0) {
       return showColumns.map(column => ({
         key: column.name,
@@ -104,7 +116,8 @@ export function DataTable({
           .replace(/^./, str => str.toUpperCase()),
         type: column.type,
         child: column.child,
-        sort: column.sort ?? false
+        sort: column.sort ?? false,
+        linkPrefix: column.linkPrefix
       }));
     }
     
@@ -116,7 +129,9 @@ export function DataTable({
           title: key
             .replace(/([A-Z])/g, ' $1')
             .replace(/^./, str => str.toUpperCase()),
-          type: 'normal' as ColumnType
+          type: 'normal' as ColumnType,
+          sort: false,
+          linkPrefix: undefined
         }))
       : [];
   }, [data, hideColumns, showColumns]);
@@ -145,6 +160,7 @@ export function DataTable({
 
   // Find the date column name from showColumns
   const dateColumnName = useMemo(() => {
+    if (dateFieldName) return dateFieldName;
     if (!showColumns) return 'date';
     const dateColumn = showColumns.find(col => col.type === 'time');
     return dateColumn?.name || 'date';
@@ -326,7 +342,7 @@ export function DataTable({
   };
 
   // Format cell value based on column type
-  const formatCellValue = (value: any, column: { key: string; type: ColumnType; child?: ColumnChild }) => {
+  const formatCellValue = (value: any, column: { key: string; type: ColumnType; child?: ColumnChild; linkPrefix?: string }) => {
     if (value === undefined || value === null) return '';
 
     switch (column.type) {
@@ -374,14 +390,15 @@ export function DataTable({
         );
       
       case 'link':
+        const href = column.linkPrefix ? `${column.linkPrefix}${value}` : value;
         return (
           <a 
-            href={value} 
-            target="_blank" 
+            href={href}
+            target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline"
+            className="text-primary hover:underline inline-flex items-center gap-1"
           >
-            <LinkIcon className="h-4 w-4" />
+            <ExternalLink className="h-4 w-4" />
           </a>
         );
       
@@ -420,7 +437,7 @@ export function DataTable({
   };
 
   // Add sorting handler
-  const handleSort = (column: { key: string; sort?: boolean }) => {
+  const handleSort = (column: TableColumn) => {
     if (!column.sort) return;
 
     setSortConfig(current => {
