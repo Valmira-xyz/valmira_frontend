@@ -1,70 +1,103 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { TrendingUp, ChartColumnIncreasing, Share, ScreenShare } from 'lucide-react';
+import NumberFlow from '@number-flow/react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
 import { DataChart } from '@/components/ui/data-chart';
 
 export function AmbassadorOverview() {
+  const metrics = [
+    {
+      title: 'Lifetime Earning',
+      value: 2802.00,
+      icon: TrendingUp,
+      subtitle: 'Total earnings',
+      isCurrency: true,
+    },
+    {
+      title: "Today's Earnings",
+      value: 45.55,
+      icon: ChartColumnIncreasing,
+      subtitle: '+12% from yesterday',
+      subtitleColor: 'text-green-600',
+      isCurrency: true,
+    },
+    {
+      title: 'Direct Referral',
+      value: 3,
+      icon: Share,
+      subtitle: "Level 1 projects you've referred",
+      isCurrency: false,
+    },
+    {
+      title: 'Indirect Referral',
+      value: 3,
+      icon: ScreenShare,
+      subtitle: 'Level 2 projects from your network',
+      isCurrency: false,
+    }
+  ];
+
+  const quickStats = [
+    { label: 'Weekly Earnings', value: 1234, isCurrency: true },
+    { label: 'Monthly Earnings', value: 1234, isCurrency: true },
+    { label: 'Average Daily Earning', value: 1234, isCurrency: true },
+    { label: 'Most Profitable Referral', value: 'PEPE ($123)', isText: true },
+    { label: 'Ambassador Rank', value: 'Silver', isText: true },
+  ];
+
+  const [animatedMetrics, setAnimatedMetrics] = useState(metrics.map(m => ({ ...m, value: 0 })));
+  const [animatedStats, setAnimatedStats] = useState(quickStats.map(s => ({ ...s, value: s.isText ? s.value : 0 })));
+
+  useEffect(() => {
+    // Start with zero
+    setAnimatedMetrics(metrics.map(m => ({ ...m, value: 0 })));
+    setAnimatedStats(quickStats.map(s => ({ ...s, value: s.isText ? s.value : 0 })));
+    
+    // Animate to actual values after a short delay
+    const timer = setTimeout(() => {
+      setAnimatedMetrics(metrics);
+      setAnimatedStats(quickStats);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []); // Only run on mount
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Lifetime Earning */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Lifetime Earning</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-bold">$2,802.00</div>
-              <p className="text-xs text-muted-foreground">Total earnings</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Today's Earnings */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Today's Earnings</CardTitle>
-              <ChartColumnIncreasing className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-bold">$45.55</div>
-              <p className="text-xs text-green-600">+12% from yesterday</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Direct Referral */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Direct Referral</CardTitle>
-              <Share className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-bold">3</div>
-              <p className="text-xs text-muted-foreground">Level 1 projects you've referred</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Indirect Referral */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Indirect Referral</CardTitle>
-              <ScreenShare className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-bold">3</div>
-              <p className="text-xs text-muted-foreground">Level 2 projects from your network</p>
-            </div>
-          </CardContent>
-        </Card>
+        {animatedMetrics.map((metric, index) => (
+          <Card key={index}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+                <metric.icon className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-bold">
+                  <NumberFlow 
+                    value={metric.value}
+                    format={metric.isCurrency ? {
+                      style: 'currency',
+                      currency: 'USD',
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    } : {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0
+                    }}
+                  />
+                </div>
+                <p className={`text-xs ${metric.subtitleColor || 'text-muted-foreground'}`}>
+                  {metric.subtitle}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
    
       <DataChart
@@ -114,26 +147,29 @@ export function AmbassadorOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex justify-between py-2">
-                <span className="text-foreground">Weekly Earnings</span>
-                <span className="font-medium">$1234</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-foreground">Monthly Earnings</span>
-                <span className="font-medium">$1234</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-foreground">Average Daily Earning</span>
-                <span className="font-medium">$1234</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-foreground">Most Profitable Referral</span>
-                <span className="font-medium">PEPE ($123)</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-foreground">Ambassador Rank</span>
-                <span className="font-medium">Silver</span>
-              </div>
+              {animatedStats.map((stat, index) => (
+                <div key={index} className="flex justify-between py-2">
+                  <span className="text-foreground">{stat.label}</span>
+                  <span className="font-medium">
+                    {stat.isText ? (
+                      stat.value
+                    ) : (
+                      <NumberFlow 
+                        value={Number(stat.value)}
+                        format={stat.isCurrency ? {
+                          style: 'currency',
+                          currency: 'USD',
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        } : {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
+                        }}
+                      />
+                    )}
+                  </span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

@@ -1,6 +1,8 @@
 'use client';
 
 import type { DateRange } from 'react-day-picker';
+import { useState, useEffect } from 'react';
+import NumberFlow from '@number-flow/react';
 
 import { differenceInDays } from 'date-fns';
 import {
@@ -13,7 +15,6 @@ import {
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatNumber } from '@/lib/utils';
 
 interface PortfolioSummaryProps {
   dateRange: DateRange | undefined;
@@ -34,6 +35,7 @@ export function PortfolioSummary({ dateRange }: PortfolioSummaryProps) {
       change: 12.5,
       icon: TrendingUp,
       prefix: '$',
+      isCurrency: true,
     },
     {
       title: 'Trading Volume',
@@ -41,24 +43,41 @@ export function PortfolioSummary({ dateRange }: PortfolioSummaryProps) {
       change: 8.3,
       icon: BarChart2,
       prefix: '$',
+      isCurrency: true,
     },
     {
       title: 'Active Projects',
       value: 5,
       change: 0,
       icon: Wallet,
+      isCurrency: false,
     },
     {
       title: 'Total Trades',
       value: 1842,
       change: -3.2,
       icon: Activity,
+      isCurrency: false,
     },
   ];
 
+  const [animatedMetrics, setAnimatedMetrics] = useState(metrics.map(m => ({ ...m, value: 0 })));
+
+  useEffect(() => {
+    // Start with zero
+    setAnimatedMetrics(metrics.map(m => ({ ...m, value: 0 })));
+    
+    // Animate to actual values after a short delay
+    const timer = setTimeout(() => {
+      setAnimatedMetrics(metrics);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [dateRange]); // Re-run when dateRange changes
+
   return (
     <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-      {metrics.map((metric, i) => (
+      {animatedMetrics.map((metric, i) => (
         <Card className="border" key={i}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4">
             <CardTitle className="text-sm font-bold">{metric.title}</CardTitle>
@@ -66,8 +85,18 @@ export function PortfolioSummary({ dateRange }: PortfolioSummaryProps) {
           </CardHeader>
           <CardContent className="px-4">
             <div className="text-2xl font-bold">
-              {metric.prefix && metric.prefix}
-              {formatNumber(metric.value)}
+              <NumberFlow 
+                value={metric.value}
+                format={metric.isCurrency ? {
+                  style: 'currency',
+                  currency: 'USD',
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                } : {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                }}
+              />
             </div>
             <p className="text-xs text-muted-foreground">
               {metric.change !== 0 && (

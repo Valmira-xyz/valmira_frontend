@@ -58,7 +58,58 @@ export default function PortfolioPage() {
               showChartTypeSelector={true}
             />
           </div>
-          <DataTable
+          
+          {/* <PortfolioProjects dateRange={dateRange} /> */}
+        </TabsContent>
+
+        <TabsContent value="profit" className="space-y-4">
+          <div className="w-full h-full">
+            <DataChart
+              title="Profit Trend"
+              description="Daily profit across all projects"
+              data={mockAmbassadorEarningsBreakdownData}
+              dataKey="numberOfBots"
+              color="hsl(var(--chart-1))"
+              showDateRange={true}
+              showDateButtons={true} 
+              showChartTypeSelector={true}
+            />
+          </div>
+          {/* <PortfolioProjects dateRange={dateRange} sortBy="profit" /> */}
+        </TabsContent>
+
+        <TabsContent value="volume" className="space-y-4">
+          <div className="w-full h-full">
+            <DataChart
+              title="Trading Volume"
+              description="Daily trading volume across all projects"
+              data={mockAmbassadorEarningsBreakdownData}
+              dataKey="numberOfBots"
+              color="hsl(var(--chart-1))"
+              showDateRange={true}
+              showDateButtons={true} 
+              showChartTypeSelector={true}
+            />
+          </div>
+          {/* <PortfolioProjects dateRange={dateRange} sortBy="volume" /> */}
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-4">
+          <div className="w-full h-full">
+            <DataChart
+              title="Trading Activity"
+              description="Number of trades executed"
+              data={mockAmbassadorEarningsBreakdownData}
+              dataKey="numberOfBots"
+              color="hsl(var(--chart-1))"
+              showDateRange={true}
+              showDateButtons={true} 
+              showChartTypeSelector={true}
+            />
+          </div>
+          <PortfolioProjects dateRange={dateRange} sortBy="activity" />
+        </TabsContent>
+        <DataTable
             title="Project Performance"
             description=""
             data={mockPortfolioProjects}
@@ -81,56 +132,6 @@ export default function PortfolioPage() {
             showDownloadButton={true}
             showTableHeaderInVertical={true}
           />
-          {/* <PortfolioProjects dateRange={dateRange} /> */}
-        </TabsContent>
-
-        <TabsContent value="profit" className="space-y-4">
-          <div className="w-full h-full">
-            <DataChart
-              title="Profit Trend"
-              description="Daily profit across all projects"
-              data={mockAmbassadorEarningsBreakdownData}
-              dataKey="numberOfBots"
-              color="hsl(var(--chart-1))"
-              showDateRange={true}
-              showDateButtons={true} 
-              showChartTypeSelector={true}
-            />
-          </div>
-          <PortfolioProjects dateRange={dateRange} sortBy="profit" />
-        </TabsContent>
-
-        <TabsContent value="volume" className="space-y-4">
-          <div className="w-full h-full">
-            <DataChart
-              title="Trading Volume"
-              description="Daily trading volume across all projects"
-              data={mockAmbassadorEarningsBreakdownData}
-              dataKey="numberOfBots"
-              color="hsl(var(--chart-1))"
-              showDateRange={true}
-              showDateButtons={true} 
-              showChartTypeSelector={true}
-            />
-          </div>
-          <PortfolioProjects dateRange={dateRange} sortBy="volume" />
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-4">
-          <div className="w-full h-full">
-            <DataChart
-              title="Trading Activity"
-              description="Number of trades executed"
-              data={mockAmbassadorEarningsBreakdownData}
-              dataKey="numberOfBots"
-              color="hsl(var(--chart-1))"
-              showDateRange={true}
-              showDateButtons={true} 
-              showChartTypeSelector={true}
-            />
-          </div>
-          <PortfolioProjects dateRange={dateRange} sortBy="activity" />
-        </TabsContent>
       </Tabs>
     </div>
   );

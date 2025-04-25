@@ -1,9 +1,11 @@
 'use client';
 
 import type { MouseEvent } from 'react';
+import { useState, useEffect } from 'react';
 
 import { Clock, ExternalLink, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import NumberFlow from '@number-flow/react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -28,9 +30,11 @@ interface ProjectSummaryCardProps {
 
 export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
   const router = useRouter();
-  // const { projectStats } = useSelector(
-  //   (state: RootState) => state.projects
-  // );
+  const [animatedMetrics, setAnimatedMetrics] = useState({
+    cumulativeProfit: 0,
+    tradingVolume: 0,
+    activeBots: 0,
+  });
 
   // Format the last updated time if available
   const formattedLastUpdate = project.metrics?.lastUpdate
@@ -63,6 +67,26 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
     activeBots: 0,
     lastUpdate: project.updatedAt,
   };
+
+  useEffect(() => {
+    // Start with zero
+    setAnimatedMetrics({
+      cumulativeProfit: 0,
+      tradingVolume: 0,
+      activeBots: 0,
+    });
+    
+    // Animate to actual values after a short delay
+    const timer = setTimeout(() => {
+      setAnimatedMetrics({
+        cumulativeProfit: metrics.cumulativeProfit,
+        tradingVolume: metrics.tradingVolume,
+        activeBots: metrics.activeBots,
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [metrics]);
 
   // const trends = projectStats?.trends || {
   //   profitTrend: [],
@@ -137,7 +161,15 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               Cumulative Profit
             </p>
             <p className="text-xl font-bold text-primary">
-              ${formatNumber(metrics.cumulativeProfit)}
+              <NumberFlow 
+                value={animatedMetrics.cumulativeProfit} 
+                format={{ 
+                  style: 'currency', 
+                  currency: 'USD',
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }}
+              />
             </p>
             {/* <div className="h-10">
               <SparklineChart data={trends.profitTrend.map(d => d.value)} color="hsl(var(--chart-1))" />
@@ -148,7 +180,15 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               Cumulative Volume
             </p>
             <p className="text-xl font-bold">
-              ${formatNumber(metrics.tradingVolume)}
+              <NumberFlow 
+                value={animatedMetrics.tradingVolume} 
+                format={{ 
+                  style: 'currency', 
+                  currency: 'USD',
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }}
+              />
             </p>
             {/* <div className="h-10">
               <SparklineChart data={trends.volumeTrend.map(d => d.value)} color="hsl(var(--chart-3))" />
@@ -161,15 +201,13 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               Active Bots
             </p>
             <p className="text-xl font-bold">
-              {metrics.activeBots > 0
-                ? metrics.activeBots
-                : project?.addons
-                  ? Object.values(project.addons).reduce(
-                      (sum: number, addon: any) =>
-                        sum + (addon?.isEnabled ? 1 : 0),
-                      0
-                    )
-                  : 0}
+              <NumberFlow 
+                value={animatedMetrics.activeBots}
+                format={{
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                }}
+              />
             </p>
           </div>
         </div>
