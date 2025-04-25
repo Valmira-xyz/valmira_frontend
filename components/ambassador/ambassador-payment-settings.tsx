@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
+import NumberFlow from '@number-flow/react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,19 @@ import { mockAmbassadorPaymentSettingsData } from '@/lib/mock-data';
 
 export function AmbassadorPaymentSettings() {
   const [paymentMethod, setPaymentMethod] = useState('stablecoins');
-
+  const [animatedAmount, setAnimatedAmount] = useState(0);
+  
+  useEffect(() => {
+    // Start with zero
+    setAnimatedAmount(0);
+    
+    // Animate to actual value after a short delay
+    const timer = setTimeout(() => {
+      setAnimatedAmount(164.00);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []); // Only run on mount
 
   return (
     <div className="space-y-4">
@@ -106,7 +119,17 @@ export function AmbassadorPaymentSettings() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="rounded-lg bg-muted p-8 text-center">
-              <h3 className="text-3xl font-bold">$164.00</h3>
+              <h3 className="text-3xl font-bold">
+                <NumberFlow 
+                  value={animatedAmount}
+                  format={{
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  }}
+                />
+              </h3>
               <p className="text-sm text-muted-foreground mt-1">Available for withdrawal</p>
             </div>
 
@@ -119,14 +142,35 @@ export function AmbassadorPaymentSettings() {
               <div className="flex items-center gap-2">
                 <Info className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">Ambassador Rank</span>
-                <span className="text-sm font-medium">Jan 14, 2023 ($164.00)</span>
+                <span className="text-sm font-medium">
+                  {new Date().toLocaleDateString()} (
+                  <NumberFlow 
+                    value={animatedAmount}
+                    format={{
+                      style: 'currency',
+                      currency: 'USD',
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    }}
+                  />
+                  )
+                </span>
               </div>
               <p className="text-sm text-red-600">
                 Withdrawals are processed within 24 hours. Gas fees may apply depending on network conditions.
               </p>
             </div>
 
-            <Button className="w-full">Withdraw Now ($164.50)</Button>
+            <Button className="w-full">Withdraw Now (
+              <NumberFlow 
+                value={animatedAmount}
+                format={{
+                  style: 'currency',
+                  currency: 'USD',
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }}
+              />)</Button>
           </CardContent>
         </Card>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { type DateRange } from 'react-day-picker';
 import {
   Area,
@@ -25,7 +25,9 @@ export interface DataChartProps {
   title: string;
   description?: string;
   data: any[];
-  dataKey: string;
+  dataKey?: string;
+  xKey?: string;
+  yKey?: string;
   color?: string;
   height?: number;
   showDateRange?: boolean;
@@ -41,6 +43,8 @@ export function DataChart({
   description,
   data,
   dataKey,
+  xKey = 'date',
+  yKey,
   color = 'hsl(var(--primary))',
   height = 350,
   showDateRange = true,
@@ -50,22 +54,24 @@ export function DataChart({
   className,
   formatter = (value: number) => [formatNumber(value), 'Value'],
 }: DataChartProps) {
-  const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>('area');
-  const [selectedDateButton, setSelectedDateButton] = useState<string>('1D');
+  const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>('bar');
+  const [selectedDateButton, setSelectedDateButton] = useState<string>('1M');
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date();
     return {
-      from: subDays(now, 1),
+      from: subMonths(now, 1),
       to: now
     };
   });
 
-  // Filter and sort data based on date range
-  const filteredData = data
-    .filter((item) => {
-      if (!item.date) return true;
+  const actualYKey = yKey || dataKey || 'value';
+
+  // Filter data based on date range
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      if (!item[xKey]) return true;
       try {
-        const itemDate = parseISO(item.date);
+        const itemDate = parseISO(item[xKey]);
         const start = startOfDay(dateRange.from ?? subDays(new Date(), 1));
         const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(new Date());
         return isWithinInterval(itemDate, { start, end });
@@ -73,12 +79,44 @@ export function DataChart({
         console.error('Error parsing date:', error);
         return false;
       }
-    })
-    .sort((a, b) => {
-      const dateA = parseISO(a.date);
-      const dateB = parseISO(b.date);
-      return dateA.getTime() - dateB.getTime();
     });
+  }, [data, xKey, dateRange]);
+
+  // Group data by day (default behavior)
+  const groupedData = useMemo(() => {
+    // Create a map to store aggregated values by day
+    const dayMap = new Map<string, { [key: string]: any }>();
+
+    filteredData.forEach(item => {
+      try {
+        const date = parseISO(item[xKey]);
+        const dayKey = format(date, 'yyyy-MM-dd');
+        
+        if (!dayMap.has(dayKey)) {
+          // Initialize with the first item's data
+          dayMap.set(dayKey, {
+            [xKey]: dayKey,
+            [actualYKey]: 0
+          });
+        }
+        
+        // Add the value to the aggregated total
+        const currentValue = dayMap.get(dayKey)![actualYKey];
+        const itemValue = typeof item[actualYKey] === 'number' ? item[actualYKey] : 0;
+        dayMap.get(dayKey)![actualYKey] = currentValue + itemValue;
+      } catch (error) {
+        console.error('Error processing date for grouping:', error);
+      }
+    });
+
+    // Convert map to array and sort by date
+    return Array.from(dayMap.values())
+      .sort((a, b) => {
+        const dateA = parseISO(a[xKey]);
+        const dateB = parseISO(b[xKey]);
+        return dateA.getTime() - dateB.getTime();
+      });
+  }, [filteredData, xKey, actualYKey]);
 
   const handleDateButtonChange = (value: string) => {
     setSelectedDateButton(value);
@@ -130,7 +168,7 @@ export function DataChart({
 
   const renderChart = () => {
     const commonProps = {
-      data: filteredData,
+      data: groupedData,
       margin: { top: 10, right: 30, left: 0, bottom: 0 },
     };
 
@@ -140,7 +178,7 @@ export function DataChart({
           <LineChart {...commonProps}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
-              dataKey="date" 
+              dataKey={xKey} 
               tickFormatter={formatXAxis}
               tick={{ fontSize: 12 }}
             />
@@ -151,7 +189,7 @@ export function DataChart({
             />
             <Line
               type="monotone"
-              dataKey={dataKey}
+              dataKey={actualYKey}
               stroke={color}
               activeDot={{ r: 8 }}
             />
@@ -166,7 +204,7 @@ export function DataChart({
           <BarChart {...commonProps}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
-              dataKey="date" 
+              dataKey={xKey} 
               tickFormatter={formatXAxis}
               tick={{ fontSize: 12 }}
             />
@@ -175,7 +213,7 @@ export function DataChart({
               formatter={(value: number) => formatter(value)}
               labelFormatter={formatTooltipDate}
             />
-            <Bar dataKey={dataKey} fill={color} />
+            <Bar dataKey={actualYKey} fill={color} />
           </BarChart>
         </ResponsiveContainer>
       );
@@ -187,7 +225,7 @@ export function DataChart({
         <AreaChart {...commonProps}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
-            dataKey="date" 
+            dataKey={xKey} 
             tickFormatter={formatXAxis}
             tick={{ fontSize: 12 }}
           />
@@ -196,7 +234,7 @@ export function DataChart({
             formatter={(value: number) => formatter(value)}
             labelFormatter={formatTooltipDate}
           />
-          <Area type="monotone" dataKey={dataKey} fill={color} stroke={color} />
+          <Area type="monotone" dataKey={actualYKey} fill={color} stroke={color} />
         </AreaChart>
       </ResponsiveContainer>
     );

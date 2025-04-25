@@ -24,6 +24,7 @@ import {
 } from '@/store/slices/projectSlice';
 import type { RootState } from '@/store/store';
 import type { ProjectWithAddons } from '@/types';
+import { subWeeks } from 'date-fns';
 
 interface ProjectsListProps {
   limit?: number;
@@ -50,8 +51,8 @@ export function ProjectsList({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('All Bots');
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date(2022, 0, 20), // Jan 20, 2022
-    to: new Date(2022, 5, 9), // Jun 09, 2022
+    from: subWeeks(new Date(), 1), // one week ago
+    to: new Date(), // now
   });
 
   const isFirstRender = useRef(true);
@@ -195,7 +196,7 @@ export function ProjectsList({
           project.status || '',
           new Date(project.createdAt).toLocaleDateString(),
           project.metrics?.activeBots || 0,
-          project.metrics?.volume24h || 0,
+          project.metrics?.tradingVolume || 0,
           project.metrics?.cumulativeProfit || 0,
         ];
       });

@@ -90,7 +90,7 @@ export function SwapForm() {
                 onClick={handleSwap}
               >
                 <ArrowUpDown className="h-4 w-4" />
-                <span>Change</span>
+                <span>Switch</span>
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>

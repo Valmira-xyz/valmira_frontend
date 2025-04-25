@@ -41,7 +41,7 @@ export interface ProjectState {
 
 export interface ProjectMetrics {
   cumulativeProfit: number;
-  volume24h: number;
+  tradingVolume: number;
   activeBots: number;
   lastUpdate: Date;
   liquidity?: number;
@@ -208,7 +208,7 @@ export interface Project {
   userId: string;
   metrics?: {
     cumulativeProfit: number;
-    volume24h: number;
+    tradingVolume: number;
     activeBots: number;
     lastUpdate: string;
   };
@@ -347,7 +347,7 @@ export interface ProjectWithAddons {
   __v: number;
   metrics: {
     cumulativeProfit: number;
-    volume24h: number;
+    tradingVolume: number;
     activeBots: number;
     lastUpdate: string;
   };

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import NumberFlow from '@number-flow/react';
 
 import { Bot, ChartColumnIncreasing, Droplet, TrendingUp } from 'lucide-react';
 
@@ -19,6 +20,13 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
   const [poolLiquidity, setPoolLiquidity] = useState<number>(0);
   const [loadingLiquidity, setLoadingLiquidity] = useState<boolean>(false);
   const [localMetrics, setLocalMetrics] = useState<ProjectMetrics | null>(null);
+  const [animatedMetrics, setAnimatedMetrics] = useState({
+    cumulativeProfit: 0,
+    tradingVolume: 0,
+    activeBots: 0,
+    liquidity: 0
+  });
+  const hasInitialAnimation = useRef(false);
   const isFetchingBnbPrice = useRef(false);
   const hasInitialBnbPriceFetch = useRef(false);
   const isCalculatingLiquidity = useRef(false);
@@ -26,7 +34,7 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
   // Define a type for the metrics object
   type ProjectMetrics = {
     cumulativeProfit: number;
-    volume24h: number;
+    tradingVolume: number;
     activeBots: number;
     [key: string]: any; // Allow other properties
   };
@@ -69,55 +77,49 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
     return activeBots;
   };
 
-  // Memoize the metrics update handler to maintain reference stability
+  // Update the metrics handler to use animated transitions
   const handleMetricsUpdate = useCallback(
     (data: any) => {
-      console.log('📊 [ProjectMetrics] Received metrics update:', {
-        projectId: data.projectId,
-        expectedProjectId: project._id,
-        metrics: data.metrics,
-        timestamp: new Date().toISOString(),
-      });
-
       if (data.projectId === project._id && data.metrics) {
-        console.log('📊 [ProjectMetrics] Processing metrics update:', {
-          currentMetrics: localMetrics,
-          newMetrics: data.metrics,
-          timestamp: new Date().toISOString(),
-        });
-
-        // Simply replace the metrics with the new values from the backend
-        // since the backend already calculates the accumulated values
-        setLocalMetrics((prevMetrics: ProjectMetrics | null) => {
-          const updatedMetrics = { ...data.metrics };
-
-          // Use calculated active bots if not provided in the metrics
-          if (!updatedMetrics.activeBots) {
-            updatedMetrics.activeBots = calculateActiveBots();
-          }
-
-          console.log('📊 [ProjectMetrics] Updated metrics:', {
-            previousMetrics: prevMetrics,
-            updatedMetrics,
-            timestamp: new Date().toISOString(),
-          });
-
-          return updatedMetrics;
-        });
-      } else {
-        console.warn(`📊 [ProjectMetrics] Invalid metrics update:`, {
-          event: WebSocketEvents.PROJECT_METRICS_UPDATED,
-          hasProjectId: !!data.projectId,
-          hasMetrics: !!data.metrics,
-          expectedProjectId: project._id,
-          actualProjectId: data.projectId,
-          data,
-          timestamp: new Date().toISOString(),
-        });
+        const updatedMetrics = { ...data.metrics };
+        if (!updatedMetrics.activeBots) {
+          updatedMetrics.activeBots = calculateActiveBots();
+        }
+        setLocalMetrics(updatedMetrics);
       }
     },
-    [project._id, localMetrics, calculateActiveBots]
+    [project._id, calculateActiveBots]
   );
+
+  // Single effect to handle both initial animation and updates
+  useEffect(() => {
+    const currentMetrics = {
+      cumulativeProfit:
+        localMetrics?.cumulativeProfit ??
+        projectStats?.metrics?.cumulativeProfit ??
+        project.metrics?.cumulativeProfit ??
+        0,
+      tradingVolume:
+        localMetrics?.tradingVolume ??
+        projectStats?.metrics?.tradingVolume ??
+        project.metrics?.tradingVolume ??
+        0,
+      activeBots: localMetrics?.activeBots ?? calculateActiveBots(),
+      liquidity: poolLiquidity,
+    };
+
+    if (!hasInitialAnimation.current && !loading && !loadingLiquidity && !bnbPriceLoading) {
+      // Initial animation
+      const timer = setTimeout(() => {
+        setAnimatedMetrics(currentMetrics);
+        hasInitialAnimation.current = true;
+      }, 100);
+      return () => clearTimeout(timer);
+    } else if (hasInitialAnimation.current) {
+      // Regular updates
+      setAnimatedMetrics(currentMetrics);
+    }
+  }, [localMetrics, poolLiquidity, loading, loadingLiquidity, bnbPriceLoading]);
 
   // Connect to WebSocket and subscribe to project updates
   useEffect(() => {
@@ -275,22 +277,6 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
     );
   }
 
-  // Use local metrics from WebSocket if available, otherwise fall back to Redux or project data
-  const metrics = {
-    cumulativeProfit:
-      localMetrics?.cumulativeProfit ??
-      projectStats?.metrics?.cumulativeProfit ??
-      project.metrics?.cumulativeProfit ??
-      0,
-    volume24h:
-      localMetrics?.volume24h ??
-      projectStats?.metrics?.volume24h ??
-      project.metrics?.volume24h ??
-      0,
-    activeBots: localMetrics?.activeBots ?? calculateActiveBots(),
-    liquidity: poolLiquidity,
-  };
-
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
@@ -302,7 +288,15 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
         </CardHeader>
         <CardContent>
           <div className="text-xl font-bold">
-            {formatCurrency(metrics.cumulativeProfit)}
+            <NumberFlow 
+              value={animatedMetrics.cumulativeProfit}
+              format={{
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              }}
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             Total profit since inception
@@ -318,7 +312,15 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
         </CardHeader>
         <CardContent>
           <div className="text-xl font-bold">
-            {formatCurrency(metrics.volume24h)}
+            <NumberFlow 
+              value={animatedMetrics.tradingVolume}
+              format={{
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              }}
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             Trading volume since inception
@@ -332,7 +334,13 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
         </CardHeader>
         <CardContent>
           <div className="text-xl font-bold">
-            {formatNumber(metrics.activeBots)}
+            <NumberFlow 
+              value={animatedMetrics.activeBots}
+              format={{
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              }}
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             Currently active trading bots
@@ -346,7 +354,15 @@ export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
         </CardHeader>
         <CardContent>
           <div className="text-xl font-bold">
-            {formatCurrency(metrics.liquidity)}
+            <NumberFlow 
+              value={animatedMetrics.liquidity}
+              format={{
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              }}
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             Total available liquidity

@@ -16,7 +16,6 @@ import { format, isWithinInterval, subDays, subMonths } from 'date-fns';
 import { ChevronDown, Download } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
-import { AnalyticsChart } from '@/components/projects/analytics-chart';
 import { BotFilter } from '@/components/projects/bot-filter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +49,8 @@ import { RootState } from '@/store/store';
 
 import { DataChart } from '@/components/ui/data-chart';
 import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
+import { DataTable, type TableTab } from '@/components/ui/data-table';
+
 
 type TimePeriod = '24h' | '7d' | '1m';
 
@@ -1241,14 +1242,19 @@ export const ProjectAnalytics = forwardRef<
     );
   };
 
+  console.log(`\n =============== table 1 data ===============\n${JSON.stringify(filteredBotPerformanceData, null, 2)}`)
+  console.log(`\n =============== table 2 data ===============\n${JSON.stringify(filteredActivityLogData, null, 2)}`)
+
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-2">
         <DataChart
           title="Profit Trend"
           description="Trading profit"
-          data={mockAmbassadorEarningsBreakdownData}
-          dataKey="numberOfBots"
+          data={filteredBotPerformanceData}
+          yKey="profit"
+          xKey="date"
           color="hsl(var(--chart-1))"
           showDateRange={true}
           showDateButtons={true} 
@@ -1259,8 +1265,9 @@ export const ProjectAnalytics = forwardRef<
         <DataChart
           title="Trading Volume Trend"
           description="Trading volume"
-          data={mockAmbassadorEarningsBreakdownData}
-          dataKey="numberOfBots"
+          data={filteredActivityLogData}
+          yKey="volume"
+          xKey="timestamp"
           color="hsl(var(--chart-1))"
           showDateRange={true}
           showDateButtons={true} 
@@ -1269,7 +1276,49 @@ export const ProjectAnalytics = forwardRef<
         />
       </div>
 
-      <Collapsible
+      <DataTable
+        title="Bot Performance"
+        description=""
+        data={filteredBotPerformanceData}
+        showColumns={[
+          { name: 'botName', type: 'normal'},
+          { name: 'action', type: 'normal' },
+          { name: 'trades', type: 'normal'},
+          { name: 'profit', type: 'price', displayName: 'Profit Contribution' },
+          { name: 'date', type: 'time', displayName: 'Time' },
+        ]}
+        filterOption=""
+        showSearchInput={true}
+        showCheckbox={true}
+        showPagination={true}
+        showDateRange={true}
+        showDateButtons={true}
+        showDownloadButton={true}
+        showTableHeaderInVertical={true}
+      />
+
+      <DataTable
+        title="Recent Activity"
+        description=""
+        data={filteredActivityLogData}
+        showColumns={[
+          { name: 'botName', type: 'normal' },
+          { name: 'action', type: 'normal' },
+          { name: 'volume', type: 'price' },
+          { name: 'impact', type: 'percent' },
+          { name: 'timestamp', type: 'time' },
+        ]}
+        filterOption=""
+        showSearchInput={true}
+        showCheckbox={true}
+        showPagination={true}
+        showDateRange={true}
+        showDateButtons={true}
+        showDownloadButton={true}
+        showTableHeaderInVertical={true}
+      />
+
+      {/* <Collapsible
         open={isBotPerformanceExpanded}
         onOpenChange={setBotPerformanceExpanded}
         className="w-full"
@@ -1449,7 +1498,7 @@ export const ProjectAnalytics = forwardRef<
             )}
           </CardContent>
         </Card>
-      </Collapsible>
+      </Collapsible> */}
     </div>
   );
 });

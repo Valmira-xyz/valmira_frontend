@@ -11,6 +11,7 @@ import {
   DollarSign,
   TrendingUp,
 } from 'lucide-react';
+import NumberFlow from '@number-flow/react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatNumber } from '@/lib/utils';
@@ -25,6 +26,7 @@ export function DashboardMetrics() {
     (state: RootState) => state.projects
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [animatedMetrics, setAnimatedMetrics] = useState<typeof metrics>([]);
   const fetchInProgress = useRef(false);
   const hasInitialFetch = useRef(false);
 
@@ -95,10 +97,21 @@ export function DashboardMetrics() {
     },
   ];
 
+  useEffect(() => {
+    if (!loading && !isLoading) {
+      // Set initial values to 0
+      setAnimatedMetrics(metrics.map(metric => ({ ...metric, value: 0 })));
+      // Then update to actual values after a short delay
+      setTimeout(() => {
+        setAnimatedMetrics(metrics);
+      }, 100);
+    }
+  }, [loading, isLoading]);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {metrics.map((metric, index) => (
+        {(animatedMetrics.length ? animatedMetrics : metrics).map((metric, index) => (
           <Card
             key={index}
             className={`relative border overflow-hidden ${loading || isLoading ? 'opacity-60' : ''}`}
@@ -118,8 +131,25 @@ export function DashboardMetrics() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    {index !== 0 && index !== 3 ? '$' : ''}
-                    {formatNumber(metric.value)}
+                    {index !== 0 && index !== 3 ? (
+                      <NumberFlow 
+                        value={metric.value} 
+                        format={{ 
+                          style: 'currency', 
+                          currency: 'USD',
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        }}
+                      />
+                    ) : (
+                      <NumberFlow 
+                        value={metric.value}
+                        format={{
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
+                        }}
+                      />
+                    )}
                   </div>
                   {metric.trend && (
                     <div

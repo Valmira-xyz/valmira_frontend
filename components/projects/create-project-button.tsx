@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Plus } from 'lucide-react';
@@ -22,12 +22,17 @@ export function CreateProjectButton({
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { toast } = useToast();
 
+  const handleDialogToggle = useCallback(() => {
+    console.log('handleDialogToggle invoked => ', isDialogOpen);
+    setIsDialogOpen(!isDialogOpen);
+  }, [isDialogOpen]);
+
   return (
     <>
       <Button
         onClick={() =>
           isAuthenticated
-            ? setIsDialogOpen(true)
+            ? handleDialogToggle()
             : toast({
                 title: 'Invalid Wallet',
                 description:
@@ -41,7 +46,7 @@ export function CreateProjectButton({
       </Button>
       <CreateProjectModal
         isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        onClose={handleDialogToggle}
       />
     </>
   );

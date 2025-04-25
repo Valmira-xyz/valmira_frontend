@@ -6,14 +6,18 @@ import { useToast } from '@/components/ui/use-toast';
 interface AddressDisplayProps {
   address: string;
   label?: string;
+  displayLength?: number;
+  showEnd?: boolean;
 }
 
-export function AddressDisplay({ address, label }: AddressDisplayProps) {
+export function AddressDisplay({ address, label, displayLength = 6, showEnd = true }: AddressDisplayProps) {
   const { toast } = useToast();
 
   const formatAddress = (address: string) => {
     if (!address) return '';
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+    const start = address.substring(0, displayLength);
+    const end = showEnd ? address.substring(address.length - displayLength) : '';
+    return `${start}...${end}`;
   };
 
   const copyToClipboard = () => {

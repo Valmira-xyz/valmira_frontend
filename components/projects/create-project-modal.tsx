@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import { FaDiscord } from 'react-icons/fa';
 import { useDispatch } from 'react-redux';
 
@@ -96,7 +96,7 @@ export function CreateProjectModal({
     useState<TokenDeploymentStatus>('idle');
   const [deploymentError, setDeploymentError] = useState('');
 
-  console.log(`deploymentStatus: ${deploymentStatus}`);
+  // console.log(`deploymentStatus: ${deploymentStatus}`);
 
   // State for importing existing token
   const [existingContractAddress, setExistingContractAddress] = useState('');
@@ -410,7 +410,7 @@ export function CreateProjectModal({
     }
   };
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     // Reset deploy token form
     setNewTokenName('');
     setNewTokenSymbol('');
@@ -446,7 +446,7 @@ export function CreateProjectModal({
 
     // Reset token validation state
     initializeState();
-  };
+  }, [initializeState]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -468,8 +468,8 @@ export function CreateProjectModal({
       <DialogContent className="m-4 sm:max-w-[580px]">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
-          <DialogDescription>
-            Deploy a new token or import an existing one(
+          <DialogDescription className="!my-4">
+            Deploy a new token or import an existing one (
             <span className="font-semibold text-primary">
               Pancakeswap V2 token
             </span>
@@ -870,6 +870,8 @@ export function CreateProjectModal({
                     <AddressDisplay
                       address={analyzedToken.pairAddress}
                       label="Pair Address"
+                      displayLength={9}
+                      showEnd={false}
                     />
                   </div>
 
@@ -955,3 +957,5 @@ export function CreateProjectModal({
     </Dialog>
   );
 }
+
+export default memo(CreateProjectModal);
