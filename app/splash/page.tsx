@@ -48,8 +48,8 @@ export default function SplashPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+    <div className="flex items-center justify-center min-h-screen w-full bg-gray-100 dark:bg-gray-900">
+      <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-lg shadow-lg">
         <div className="flex justify-center">
           <Image
             src="/sidebar/logo.svg"
@@ -71,15 +71,11 @@ export default function SplashPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              className="w-full px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white"
               placeholder="Enter password"
               required
             />
-            {error && (
-              <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-                {error}
-              </p>
-            )}
+            {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
           </div>
 
           <div>
