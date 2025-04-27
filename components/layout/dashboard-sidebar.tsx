@@ -15,7 +15,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAccount } from 'wagmi';
 
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +46,7 @@ import { WalletDisplay } from '../wallet/wallet-display';
 
 export function DashboardSidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const dispatch = useDispatch();
   const { isConnected } = useAccount();
   const [openProjects, setOpenProjects] = useState(true);
@@ -236,6 +237,11 @@ export function DashboardSidebar() {
     }
   };
 
+  // Don't render sidebar on splash page
+  if (pathname === '/splash') {
+    return null;
+  }
+
   return (
     <Sidebar ref={sidebarRef} collapsible={isMobile ? 'offcanvas' : 'icon'}>
       <SidebarHeader className="px-2 py-4 relative w-full">
@@ -333,7 +339,9 @@ export function DashboardSidebar() {
                         {filteredAndSortedProjects.map((project) => (
                           <button
                             key={project._id}
-                            onClick={() => onNavigateTo(`/projects/${project._id}`)}
+                            onClick={() =>
+                              onNavigateTo(`/projects/${project._id}`)
+                            }
                             className="flex items-center justify-between w-full px-6 h-8 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                           >
                             <div className="flex items-center gap-2">
@@ -367,7 +375,9 @@ export function DashboardSidebar() {
                       </>
                     ) : (
                       <div className="px-6 py-2 text-sm h-8 text-muted-foreground flex items-center">
-                        {projects && projects.length === 0 && 'No projects found'}
+                        {projects &&
+                          projects.length === 0 &&
+                          'No projects found'}
                       </div>
                     )}
                   </CollapsibleContent>

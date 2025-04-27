@@ -9,6 +9,11 @@ import '../globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
+export const metadata = {
+  title: 'Valmira.xyz - Login',
+  description: 'Login to access Valmira dashboard',
+};
+
 export default function SplashLayout({
   children,
 }: {
@@ -18,9 +23,11 @@ export default function SplashLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`bg-gray-100 dark:bg-gray-900 ${inter.className}`}>
+      <body className={`${inter.className}`}>
         <Providers cookies={cookies}>
-          <main className="min-h-screen">{children}</main>
+          <div className="min-h-screen w-full bg-gray-100 dark:bg-gray-900">
+            {children}
+          </div>
         </Providers>
       </body>
     </html>

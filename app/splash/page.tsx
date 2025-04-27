@@ -13,6 +13,7 @@ import { RootState } from '@/store/store';
 export default function SplashPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const dispatch = useDispatch();
   const router = useRouter();
   const isTrialAuthenticated = useSelector(
@@ -29,6 +30,21 @@ export default function SplashPage() {
     if (isTrialAuthenticated) {
       router.push('/');
     }
+
+    // Check for dark mode
+    const darkModeMediaQuery = window.matchMedia(
+      '(prefers-color-scheme: dark)'
+    );
+    setIsDarkMode(darkModeMediaQuery.matches);
+
+    // Add listener for theme changes
+    const themeChangeHandler = (e: MediaQueryListEvent) =>
+      setIsDarkMode(e.matches);
+    darkModeMediaQuery.addEventListener('change', themeChangeHandler);
+
+    return () => {
+      darkModeMediaQuery.removeEventListener('change', themeChangeHandler);
+    };
   }, [isTrialAuthenticated, router, dispatch]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -52,7 +68,9 @@ export default function SplashPage() {
       <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-lg shadow-lg">
         <div className="flex justify-center">
           <Image
-            src="/sidebar/logo.svg"
+            src={
+              isDarkMode ? '/sidebar/gray_logo.png' : '/sidebar/black_logo.png'
+            }
             alt="Valmira Logo"
             width={200}
             height={80}

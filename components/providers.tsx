@@ -54,6 +54,12 @@ export function Providers({
     cookies
   );
 
+  // Check if this is the splash page using URL
+  const isClientSide = typeof window !== 'undefined';
+  const isSplashPage = isClientSide
+    ? window.location.pathname === '/splash'
+    : false;
+
   return (
     <Provider store={store}>
       <SessionProvider>
@@ -67,7 +73,7 @@ export function Providers({
                 <AuthProvider>
                   <SidebarProvider>
                     <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80 w-full">
-                      <DashboardSidebar />
+                      {!isSplashPage && <DashboardSidebar />}
                       <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out w-full overflow-x-hidden">
                         <main className="">{children}</main>
                       </div>

@@ -7,11 +7,9 @@ import { AlignJustify } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { ProjectSearch } from '@/components/projects/project-search';
 import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { cn } from '@/lib/utils';
 import Logo from '@/public/sidebar/logo.svg';
 
 const pageTitles: Record<string, string> = {
@@ -34,6 +32,11 @@ export function PageHeader({ children }: PageHeaderProps) {
   const pathname = usePathname();
   const pageTitle = pageTitles[pathname] || 'Project';
   const { openMobile, setOpenMobile, isMobile } = useSidebar();
+
+  // Don't render the header on the splash page
+  if (pathname === '/splash') {
+    return null;
+  }
 
   return (
     <>
