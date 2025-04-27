@@ -3,11 +3,13 @@
 import { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 
+import { usePathname } from 'next/navigation';
 import { bsc, bscTestnet } from 'viem/chains';
 import { type Config, cookieToInitialState, WagmiProvider } from 'wagmi';
 import { createAppKit } from '@reown/appkit/react';
 
 import { AuthProvider } from '@/components/AuthProvider';
+import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { DashboardSidebar } from '@/components/layout/dashboard-sidebar';
 import { QueryProvider } from '@/components/query-provider';
 import { SessionProvider } from '@/components/session-provider';
@@ -54,11 +56,9 @@ export function Providers({
     cookies
   );
 
-  // Check if this is the splash page using URL
-  const isClientSide = typeof window !== 'undefined';
-  const isSplashPage = isClientSide
-    ? window.location.pathname === '/splash'
-    : false;
+  // Check if this is the splash page using Next.js pathname hook
+  const pathname = usePathname();
+  const isSplashPage = pathname === '/splash';
 
   return (
     <Provider store={store}>
@@ -75,7 +75,7 @@ export function Providers({
                     <div className="flex min-h-screen bg-gradient-to-br from-background to-background/80 w-full">
                       {!isSplashPage && <DashboardSidebar />}
                       <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out w-full overflow-x-hidden">
-                        <main className="">{children}</main>
+                        <DashboardLayout>{children}</DashboardLayout>
                       </div>
                     </div>
                   </SidebarProvider>
