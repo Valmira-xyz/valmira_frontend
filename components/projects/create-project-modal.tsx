@@ -46,7 +46,7 @@ import { useTokenValidation } from '@/hooks/useTokenValidation';
 import { useEthersSigner } from '@/lib/ether-adapter';
 import { cn } from '@/lib/utils';
 import { TokenDeploymentService } from '@/services/deployTokenService';
-import { createProject } from '@/store/slices/projectSlice';
+import { createProject, fetchProjects } from '@/store/slices/projectSlice';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -389,6 +389,10 @@ export function CreateProjectModal({
           title: 'Success',
           description: 'Project created successfully',
         });
+
+        // Add a simple refresh mechanism
+        // Dispatch fetchProjects to update the sidebar immediately
+        dispatch(fetchProjects() as any);
 
         setIsCreatingProject(false);
         // Reset form and close modal
