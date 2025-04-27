@@ -13,7 +13,6 @@ import { RootState } from '@/store/store';
 export default function SplashPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const dispatch = useDispatch();
   const router = useRouter();
   const isTrialAuthenticated = useSelector(
@@ -30,21 +29,6 @@ export default function SplashPage() {
     if (isTrialAuthenticated) {
       router.push('/');
     }
-
-    // Check for dark mode
-    const darkModeMediaQuery = window.matchMedia(
-      '(prefers-color-scheme: dark)'
-    );
-    setIsDarkMode(darkModeMediaQuery.matches);
-
-    // Add listener for theme changes
-    const themeChangeHandler = (e: MediaQueryListEvent) =>
-      setIsDarkMode(e.matches);
-    darkModeMediaQuery.addEventListener('change', themeChangeHandler);
-
-    return () => {
-      darkModeMediaQuery.removeEventListener('change', themeChangeHandler);
-    };
   }, [isTrialAuthenticated, router, dispatch]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -64,16 +48,14 @@ export default function SplashPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full bg-gray-100 dark:bg-gray-900">
-      <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-lg shadow-lg">
+    <div className="flex items-center justify-center min-h-screen w-full bg-black">
+      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-lg border border-gray-200">
         <div className="flex justify-center">
           <Image
-            src={
-              isDarkMode ? '/sidebar/gray_logo.png' : '/sidebar/black_logo.png'
-            }
+            src={'/sidebar/logo.svg'}
             alt="Valmira Logo"
-            width={200}
-            height={80}
+            width={300}
+            height={120}
             priority
           />
         </div>
@@ -89,17 +71,17 @@ export default function SplashPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black"
               placeholder="Enter password"
               required
             />
-            {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
           </div>
 
           <div>
             <button
               type="submit"
-              className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="w-full px-4 py-2 text-white bg-black rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
               Enter
             </button>
