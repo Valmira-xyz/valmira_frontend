@@ -12,13 +12,13 @@ export function middleware(request: NextRequest) {
     path.startsWith('/favicon.ico') ||
     path.startsWith('/sidebar');
 
-  // Get the cookie for trial authentication
-  const isTrialAuthenticated = request.cookies.has('isTrialAuthenticated');
-
   // For splash page or static assets, allow access regardless of authentication
   if (isSplashPage || isStaticAsset) {
     return NextResponse.next();
   }
+
+  // Get the cookie for trial authentication
+  const isTrialAuthenticated = request.cookies.has('isTrialAuthenticated');
 
   // For all other routes, require authentication
   if (!isTrialAuthenticated) {

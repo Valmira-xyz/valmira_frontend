@@ -20,7 +20,7 @@ export default function SplashPage() {
   );
 
   useEffect(() => {
-    // Check if already authenticated via cookie
+    // Check if already authenticated via cookie (for the current session)
     const isAuthCookie = Cookies.get('isTrialAuthenticated');
     if (isAuthCookie === 'true' && !isTrialAuthenticated) {
       dispatch(setTrialAuthenticated(true));
@@ -38,8 +38,8 @@ export default function SplashPage() {
 
     if (password === correctPassword) {
       setError('');
-      // Set cookie to persist authentication
-      Cookies.set('isTrialAuthenticated', 'true', { expires: 7 }); // Expires in 7 days
+      // Set session cookie (no expiration date = session cookie)
+      Cookies.set('isTrialAuthenticated', 'true');
       dispatch(setTrialAuthenticated(true));
       router.push('/');
     } else {

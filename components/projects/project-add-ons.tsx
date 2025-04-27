@@ -4,17 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { AutoSellWizardDialog, WalletInfo } from './auto-sell-wizard-dialog';
-// import { SnipeWizardDialog } from './snipe-wizard-dialog';
-import { BundleSnipingDialog } from './bundle-sniping-dialog';
+import { SnipeWizardDialog } from './snipe-wizard-dialog';
+// import { BundleSnipingDialog } from './bundle-sniping-dialog';   // (hide on going to production)
 import { VolumeBotWizardDialog } from './volume-bot-wizard-dialog';
-import {
-  Copy,
-  Download,
-  ExternalLink,
-  HelpCircle,
-  RefreshCw,
-  Save,
-} from 'lucide-react';
+import { Copy, Download, ExternalLink, HelpCircle, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
@@ -242,7 +235,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const { toast } = useToast();
   const dispatch = useDispatch<AppDispatch>();
   const _botState = useSelector((state: RootState) => state.bots);
-  const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
+  const [_isRefreshingBalances, setIsRefreshingBalances] = useState(false);
   const initialBalancesFetched = useRef(false);
   // Get current user from auth state
   const { user } = useSelector((state: RootState) => state.auth);
@@ -1055,11 +1048,15 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
               </Card>
             ))}
           </div>
-
-          <BundleSnipingDialog
+          <SnipeWizardDialog
             open={isSimulateDialogOpen}
             onOpenChange={setIsSimulateDialogOpen}
           />
+          {/* <BundleSnipingDialog
+            open={isSimulateDialogOpen}
+            onOpenChange={setIsSimulateDialogOpen}
+          /> */}{' '}
+          {/* hide on going to production */}
           <AutoSellWizardDialog
             open={isAutoSellDialogOpen}
             onOpenChange={setIsAutoSellDialogOpen}
