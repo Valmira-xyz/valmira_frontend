@@ -67,6 +67,9 @@ interface DataTableProps {
   onRowSelect?: (selectedRows: Record<string, any>[]) => void;
   onFilterChange?: (value: string) => void;
   onSearchChange?: (value: string) => void;
+  isLoading?: boolean;
+  emptyStateMessage?: string;
+  emptyStateIcon?: React.ComponentType<{ className?: string }>;
 }
 
 export function DataTable({
@@ -90,6 +93,9 @@ export function DataTable({
   onRowSelect,
   onFilterChange,
   onSearchChange,
+  isLoading = false,
+  emptyStateMessage = "No data available",
+  emptyStateIcon,
 }: DataTableProps) {
   const [page, setPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState<Record<string, any>[]>([]);
@@ -455,216 +461,275 @@ export function DataTable({
   };
 
   return (
-    <Card className="overflow-hidden">
-      <div className={showTableHeaderInVertical ? "" : "flex flex-col lg:flex-row gap-x-4 justify-between flex-wrap"}>
+    <Card className={cn("w-full", className)}>
+      {(title || description) && (
         <CardHeader>
           {title && <CardTitle>{title}</CardTitle>}
-          {description && <CardDescription >{description}</CardDescription>}
+          {description && <CardDescription>{description}</CardDescription>}
         </CardHeader>
-        <div className={`flex flex-col flex-wrap gap-4 px-4 sm:px-6 pb-0 sm:flex-row justify-start ${showSearchInput ? "lg:justify-between" : "lg:justify-end"}`}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-start">
-            {showSearchInput && (
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search"
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            )}
-          </div>
-          
-          <div className="flex flex-col gap-4 sm:flex-row md:items-center justify-start flex-wrap lg:flex-nowrap">
-            <div className="flex flex-col sm:flex-row gap-4 justify-start w-full md:w-fit">
-              {filterOption && filterOptions.length > 0 && (
-                <Select value={selectedFilter} onValueChange={handleFilterChange}>
-                  <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder={`Filter by ${filterOption}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {filterOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {columns.filter(col => col.key === filterOption)[0].title}: {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-                )}
-
-              {showDateRange && (
-                <DateRangePicker date={dateRange} onDateChange={handleDateRangeChange} />
+      )}
+      <CardContent>
+        <div className="space-y-4">
+          {/* Controls section */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-start">
+              {showSearchInput && (
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
               )}
             </div>
+            
+            <div className="flex flex-col sm:flex-row md:items-center justify-start flex-wrap lg:flex-nowrap gap-2">
+              <div className="flex flex-col sm:flex-row gap-4 justify-start w-full md:w-fit">
+                {filterOption && filterOptions.length > 0 && (
+                  <Select value={selectedFilter} onValueChange={handleFilterChange}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder={`Filter by ${filterOption}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filterOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {columns.filter(col => col.key === filterOption)[0].title}: {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-start w-full w-fit">
-              {showDateButtons && (
-                <Tabs value={selectedDateButton} className="w-fit flex-wrap" onValueChange={handleDateButtonChange}>
-                  <TabsList className="flex w-full grid-cols-4">
-                    <TabsTrigger value="1D">1D</TabsTrigger>
-                    <TabsTrigger value="1W">1W</TabsTrigger>
-                    <TabsTrigger value="1M">1M</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
+                {showDateRange && (
+                  <DateRangePicker date={dateRange} onDateChange={handleDateRangeChange} />
+                )}
+              </div>
 
-              {showDownloadButton && (
+              <div className="flex flex-col sm:flex-row gap-4 justify-start w-full w-fit">
+                {showDateButtons && (
+                  <Tabs value={selectedDateButton} className="w-fit flex-wrap" onValueChange={handleDateButtonChange}>
+                    <TabsList className="flex w-full grid-cols-4">
+                      <TabsTrigger value="1D">1D</TabsTrigger>
+                      <TabsTrigger value="1W">1W</TabsTrigger>
+                      <TabsTrigger value="1M">1M</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                )}
+
+                {showDownloadButton && (
+                  <Button
+                    variant="outline"
+                    size="default"
+                    onClick={handleDownload}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Loading state */}
+          {isLoading ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    {showCheckbox && (
+                      <TableHead className="w-[30px]">
+                        <div className="h-4 w-4 rounded bg-muted animate-pulse"></div>
+                      </TableHead>
+                    )}
+                    {columns.map((column) => (
+                      <TableHead key={column.key}>
+                        <div className="h-4 w-24 rounded bg-muted animate-pulse"></div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      {showCheckbox && (
+                        <TableCell>
+                          <div className="h-4 w-4 rounded bg-muted animate-pulse"></div>
+                        </TableCell>
+                      )}
+                      {columns.map((column) => (
+                        <TableCell key={column.key}>
+                          <div className="h-4 w-full rounded bg-muted animate-pulse"></div>
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            /* Empty state or data display */
+            filteredData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                {emptyStateIcon || (
+                  <div className="h-12 w-12 text-muted-foreground">
+                    <Search className="h-full w-full" />
+                  </div>
+                )}
+                <p className="text-muted-foreground text-center">
+                  {dateRange?.from || selectedDateButton !== 'all' 
+                    ? "No data available for the selected date range" 
+                    : emptyStateMessage}
+                </p>
+              </div>
+            ) : (
+              /* Table content */
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      {showCheckbox && (
+                        <TableHead className="w-[30px]">
+                          <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
+                        </TableHead>
+                      )}
+                      {columns.map((column) => (
+                        <TableHead 
+                          key={column.key}
+                          className={cn(
+                            column.sort && "cursor-pointer hover:bg-muted",
+                            "transition-colors"
+                          )}
+                          onClick={() => handleSort(column)}
+                        >
+                          <div className="flex items-center gap-2">
+                            {column.title}
+                            {column.sort && (
+                              <div className="flex flex-col">
+                                <ChevronUp 
+                                  className={cn(
+                                    "h-3 w-3 -mb-1",
+                                    sortConfig?.key === column.key && sortConfig.direction === 'asc' 
+                                      ? "text-foreground" 
+                                      : "text-muted-foreground"
+                                  )}
+                                />
+                                <ChevronDown 
+                                  className={cn(
+                                    "h-3 w-3",
+                                    sortConfig?.key === column.key && sortConfig.direction === 'desc' 
+                                      ? "text-foreground" 
+                                      : "text-muted-foreground"
+                                  )}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentData.map((row, index) => (
+                      <TableRow key={index}>
+                        {showCheckbox && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRows.includes(row)}
+                              onCheckedChange={() => handleSelectRow(row)}
+                            />
+                          </TableCell>
+                        )}
+                        {columns.map((column) => (
+                          <TableCell key={column.key}>
+                            {renderCell(row, column)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+          )}
+
+          {/* Pagination section */}
+          {showPagination && !isLoading && filteredData.length > 0 && (
+            <div className="flex items-center justify-between space-x-2 py-4">
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-muted-foreground">
+                  {selectedRows.length} of {filteredData.length} row(s) selected.
+                </div>
+                {showPageSizeSelect && (
+                  <Select
+                    value={currentPageSize.toString()}
+                    onValueChange={(value) => setCurrentPageSize(Number(value))}
+                  >
+                    <SelectTrigger className="w-[80px] h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[5, 10, 25, 50].map((size) => (
+                        <SelectItem key={size} value={size.toString()}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
-                  size="default"
-                  onClick={handleDownload}
+                  size="sm"
+                  className="h-10"
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page === 1}
                 >
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="sr-only">Previous page</span>
                 </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    
-      <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                {showCheckbox && (
-                  <TableHead className="w-[30px]">
-                    <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
-                  </TableHead>
-                )}
-                {columns.map((column) => (
-                  <TableHead 
-                    key={column.key}
-                    className={cn(
-                      column.sort && "cursor-pointer hover:bg-muted",
-                      "transition-colors"
-                    )}
-                    onClick={() => handleSort(column)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {column.title}
-                      {column.sort && (
-                        <div className="flex flex-col">
-                          <ChevronUp 
-                            className={cn(
-                              "h-3 w-3 -mb-1",
-                              sortConfig?.key === column.key && sortConfig.direction === 'asc' 
-                                ? "text-foreground" 
-                                : "text-muted-foreground"
-                            )}
-                          />
-                          <ChevronDown 
-                            className={cn(
-                              "h-3 w-3",
-                              sortConfig?.key === column.key && sortConfig.direction === 'desc' 
-                                ? "text-foreground" 
-                                : "text-muted-foreground"
-                            )}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentData.map((row, index) => (
-                <TableRow key={index}>
-                  {showCheckbox && (
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedRows.includes(row)}
-                        onCheckedChange={() => handleSelectRow(row)}
-                      />
-                    </TableCell>
-                  )}
-                  {columns.map((column) => (
-                    <TableCell key={column.key}>
-                      {renderCell(row, column)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-
-        {showPagination && (
-          <div className="mt-4 sm:mt-6 gap-4 flex-wrap flex flex-row sm:items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-muted-foreground">
-                {selectedRows.length} of {filteredData.length} row(s) selected.
-              </div>
-              {showPageSizeSelect && (
-                <Select
-                  value={currentPageSize.toString()}
-                  onValueChange={(value) => setCurrentPageSize(Number(value))}
-                >
-                  <SelectTrigger className="w-[80px] h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[5, 10, 25, 50].map((size) => (
-                      <SelectItem key={size} value={size.toString()}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10"
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only">Previous page</span>
-              </Button>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-medium">Page</span>
-                <Input
-                  type="number"
-                  min={1}
-                  max={totalPages}
-                  value={page}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    if (value >= 1 && value <= totalPages) {
-                      setPage(value);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const value = parseInt(e.currentTarget.value);
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-medium">Page</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={page}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
                       if (value >= 1 && value <= totalPages) {
                         setPage(value);
                       }
-                    }
-                  }}
-                  className="w-16 h-10 text-start"
-                />
-                <span className="text-sm text-muted-foreground">of {totalPages}</span>
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const value = parseInt(e.currentTarget.value);
+                        if (value >= 1 && value <= totalPages) {
+                          setPage(value);
+                        }
+                      }
+                    }}
+                    className="w-16 h-10 text-start"
+                  />
+                  <span className="text-sm text-muted-foreground">of {totalPages}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10"
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                  <span className="sr-only">Next page</span>
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10"
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-                <span className="sr-only">Next page</span>
-              </Button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );
