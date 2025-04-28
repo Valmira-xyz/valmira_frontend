@@ -20,6 +20,8 @@ import { DateRangePicker } from '@/components/date-range-picker';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval, format } from 'date-fns';
+import { BarChart3, PieChart } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface DataChartProps {
   title: string;
@@ -36,6 +38,9 @@ export interface DataChartProps {
   showHeaderInVertical?: boolean;
   className?: string;
   formatter?: (value: number) => [string, string];
+  isLoading?: boolean;
+  emptyStateMessage?: string;
+  emptyStateIcon?: React.ReactNode;
 }
 
 export function DataChart({
@@ -53,6 +58,9 @@ export function DataChart({
   showHeaderInVertical = false,
   className,
   formatter = (value: number) => [formatNumber(value), 'Value'],
+  isLoading = false,
+  emptyStateMessage = "No data available",
+  emptyStateIcon,
 }: DataChartProps) {
   const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>('bar');
   const [selectedDateButton, setSelectedDateButton] = useState<string>('1M');
@@ -240,9 +248,50 @@ export function DataChart({
     );
   };
 
+  // Render loading skeleton
+  const renderLoadingSkeleton = () => {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
+          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
+          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
+          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
+          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
+          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render empty state
+  const renderEmptyState = () => {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center py-12 space-y-4">
+        {emptyStateIcon || (
+          <div className="h-12 w-12 text-muted-foreground">
+            {chartType === 'line' ? (
+              <LineChart className="h-full w-full" />
+            ) : chartType === 'bar' ? (
+              <BarChart3 className="h-full w-full" />
+            ) : (
+              <PieChart className="h-full w-full" />
+            )}
+          </div>
+        )}
+        <p className="text-muted-foreground text-center">
+          {dateRange?.from || selectedDateButton !== '1M' 
+            ? "No data available for the selected date range" 
+            : emptyStateMessage}
+        </p>
+      </div>
+    );
+  };
+
   return (
-    <Card className={className}>
-      <CardHeader className={`${showHeaderInVertical ? "gap-4" : "flex flex-col lg:flex-row flex-wrap items-start lg:items-center justify-between gap-4 pb-2"}`}>
+    <Card className={cn("w-full", className)}>
+      <CardHeader className={cn(
+        showHeaderInVertical ? "gap-4" : "flex flex-col lg:flex-row flex-wrap items-start lg:items-center justify-between gap-4 pb-2"
+      )}>
         <div className="flex flex-col gap-2">
           <CardTitle>{title}</CardTitle>
           {description && <CardDescription>{description}</CardDescription>}
@@ -284,7 +333,17 @@ export function DataChart({
       </CardHeader>
       
       <CardContent className="p-4">
-        <div style={{ height }}>{renderChart()}</div>
+        <div style={{ height }}>
+          {isLoading ? (
+            renderLoadingSkeleton()
+          ) : (
+            groupedData.length === 0 ? (
+              renderEmptyState()
+            ) : (
+              renderChart()
+            )
+          )}
+        </div>
       </CardContent>
     </Card>
   );

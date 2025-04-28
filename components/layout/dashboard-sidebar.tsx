@@ -358,8 +358,8 @@ export function DashboardSidebar() {
                                 />
                               </span>
                               <span className="text-xs">
-                                {project.name.length > 12
-                                  ? project.name.slice(0, 12) + '...'
+                                {project.name.length > 10
+                                  ? project.name.slice(0, 8) + '...'
                                   : project.name}
                               </span>
                             </div>
