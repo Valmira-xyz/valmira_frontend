@@ -1,27 +1,35 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
+import Cookies from 'js-cookie';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
-// import { setTrialAuthenticated } from '@/store/slices/splashAuthSlice';
+import { setTrialAuthenticated } from '@/store/slices/splashAuthSlice';
 import { RootState } from '@/store/store';
 
 export default function SplashPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const dispatch = useDispatch();
   const router = useRouter();
   const isTrialAuthenticated = useSelector(
     (state: RootState) => state.splashAuth.isTrialAuthenticated
   );
 
   useEffect(() => {
+    // Check if already authenticated via cookie (for the current session)
+    const isAuthCookie = Cookies.get('isTrialAuthenticated');
+    if (isAuthCookie === 'true' && !isTrialAuthenticated) {
+      dispatch(setTrialAuthenticated(true));
+    }
+
     if (isTrialAuthenticated) {
       router.push('/');
     }
-  }, [isTrialAuthenticated, router]);
+  }, [isTrialAuthenticated, router, dispatch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +38,9 @@ export default function SplashPage() {
 
     if (password === correctPassword) {
       setError('');
-      // dispatch(setTrialAuthenticated(true));
+      // Set session cookie (no expiration date = session cookie)
+      Cookies.set('isTrialAuthenticated', 'true');
+      dispatch(setTrialAuthenticated(true));
       router.push('/');
     } else {
       setError('Incorrect password');
