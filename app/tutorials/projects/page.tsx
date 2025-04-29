@@ -1,11 +1,15 @@
 'use client';
 
-import { PageHeader } from '@/components/layout/page-header';
+import { motion } from 'framer-motion';
 
 export default function ProjectsTutorialPage() {
   return (
-    <div className="mx-auto">
-      <PageHeader title="Projects Tutorial" />
+    <motion.div
+      className="mx-auto"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
 
       <div className="prose dark:prose-invert max-w-none px-4 md:px-6 mt-6">
         <h2>Creating and Managing Projects</h2>
@@ -22,6 +26,6 @@ export default function ProjectsTutorialPage() {
           </p>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

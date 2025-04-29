@@ -25,6 +25,7 @@ import {
 import type { RootState } from '@/store/store';
 import type { ProjectWithAddons } from '@/types';
 import { subWeeks } from 'date-fns';
+import { motion } from 'framer-motion';
 
 interface ProjectsListProps {
   limit?: number;
@@ -259,7 +260,12 @@ export function ProjectsList({
   }, [loading, displayedProjects?.length, pageSize]);
 
   return (
-    <div className="my-6 space-y-6">
+    <motion.div
+      className="my-6 space-y-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="flex flex-col space-y-4">
         {/* Search & Filters */}
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 md:p-6">
@@ -355,6 +361,6 @@ export function ProjectsList({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

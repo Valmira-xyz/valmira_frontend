@@ -10,6 +10,7 @@ import { AmbassadorReferralDetails } from '@/components/ambassador/ambassador-re
 import { AmbassadorEarningBreakdown } from '@/components/ambassador/ambassador-earning-breakdown';
 import { AmbassadorPaymentSettings } from '@/components/ambassador/ambassador-payment-settings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion } from 'framer-motion';
 
 export default function AmbassadorPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -19,39 +20,42 @@ export default function AmbassadorPage() {
   const [activeTab, setActiveTab] = useState('overview');
 
   return (
-    <div className="">
-      <div className="p-4 md:p-6">
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-4 md:space-y-6"
-        >
-          <div className="flex flex-col md:flex-row gap-1 sm:gap-4 items-center justify-between">
-            <TabsList className="w-full md:w-auto">
-              <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="overview">Overview</TabsTrigger>
-              <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="referral-details">Referral Details</TabsTrigger>
-              <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="earning-breakdown">Earning Breakdown</TabsTrigger>
-              <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="payment-settings">Payment Settings</TabsTrigger>
-            </TabsList>
-          </div>
+    <motion.div
+      className="p-4 md:p-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4 md:space-y-6"
+      >
+        <div className="flex flex-col md:flex-row gap-1 sm:gap-4 items-center justify-between">
+          <TabsList className="w-full md:w-auto">
+            <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="overview">Overview</TabsTrigger>
+            <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="referral-details">Referral Details</TabsTrigger>
+            <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="earning-breakdown">Earning Breakdown</TabsTrigger>
+            <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="payment-settings">Payment Settings</TabsTrigger>
+          </TabsList>
+        </div>
 
-          <TabsContent value="overview" className="space-y-4 md:space-y-6">
-            <AmbassadorOverview />
-          </TabsContent>
+        <TabsContent value="overview" className="space-y-4 md:space-y-6">
+          <AmbassadorOverview />
+        </TabsContent>
 
-          <TabsContent value="referral-details" className="space-y-4">
-            <AmbassadorReferralDetails dateRange={dateRange} />
-          </TabsContent>
+        <TabsContent value="referral-details" className="space-y-4">
+          <AmbassadorReferralDetails dateRange={dateRange} />
+        </TabsContent>
 
-          <TabsContent value="earning-breakdown" className="space-y-4">
-            <AmbassadorEarningBreakdown dateRange={dateRange} />
-          </TabsContent>
+        <TabsContent value="earning-breakdown" className="space-y-4">
+          <AmbassadorEarningBreakdown dateRange={dateRange} />
+        </TabsContent>
 
-          <TabsContent value="payment-settings" className="space-y-4">
-            <AmbassadorPaymentSettings />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+        <TabsContent value="payment-settings" className="space-y-4">
+          <AmbassadorPaymentSettings />
+        </TabsContent>
+      </Tabs>
+    </motion.div>
   );
 } 

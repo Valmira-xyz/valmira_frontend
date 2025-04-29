@@ -6,16 +6,20 @@ import Link from 'next/link';
 
 import { DashboardMetrics } from '@/components/dashboard/dashboard-metrics';
 import { LatestProjects } from '@/components/dashboard/latest-projects';
-import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { WalletConnectionCTA } from '@/components/wallet/wallet-connection-cta';
 import { RootState } from '@/store/store';
+import { motion } from 'framer-motion';
 
 export default function DashboardPage() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   return (
-    <div className="">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <section className="p-6 space-y-10">
         {/* {!isAuthenticated && ( */}
           <WalletConnectionCTA
@@ -50,6 +54,6 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
-    </div>
+    </motion.div>
   );
 }

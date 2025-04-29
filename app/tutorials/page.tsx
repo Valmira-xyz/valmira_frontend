@@ -1,5 +1,6 @@
+'use client';
+
 import { BookOpen, FileText, HelpCircle } from 'lucide-react';
-import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -11,15 +12,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-
-export const metadata: Metadata = {
-  title: 'Tutorials | Valmira',
-  description: 'Learn how to use Valmira platform and its features',
-};
+import { motion } from 'framer-motion';
 
 export default function TutorialsPage() {
   return (
-    <div className="w-full">
+    <motion.div
+      className="w-full"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 p-4 md:p-6">
         <Card className="border flex flex-col justify-between">
           <CardHeader>
@@ -181,6 +183,6 @@ export default function TutorialsPage() {
           </div>
         </Card>
       </div>
-    </div>
+    </motion.div>
   );
 }

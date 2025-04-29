@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
 import { DataTable, type TableTab } from '@/components/ui/data-table';
+import { motion } from 'framer-motion';
 
 interface AmbassadorReferralDetailsProps {
   dateRange?: DateRange;
@@ -95,7 +96,12 @@ export function AmbassadorReferralDetails({ dateRange }: AmbassadorReferralDetai
   ];
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <motion.div
+      className="space-y-4 md:space-y-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <Card>
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <CardTitle>
@@ -163,6 +169,6 @@ export function AmbassadorReferralDetails({ dateRange }: AmbassadorReferralDetai
         description="Track all projects you've referred to Valmira"
       />
 
-    </div>
+    </motion.div>
   );
 } 

@@ -3,11 +3,16 @@
 import { DataTable, type TableTab } from '@/components/ui/data-table';
 import { DataChart } from '@/components/ui/data-chart';
 import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
-
+import { motion } from 'framer-motion';
 
 export function AmbassadorEarningBreakdown() {
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <DataChart
         title="Daily Earnings Breakdown"
         description="Your earnings split by fee type"
@@ -20,7 +25,7 @@ export function AmbassadorEarningBreakdown() {
         showHeaderInVertical={false}
       />
 
-<DataTable
+      <DataTable
         data={mockAmbassadorEarningsBreakdownData}
         showColumns={[
           { name: 'projectName', type: 'normal', displayName: 'Project' },
@@ -41,6 +46,6 @@ export function AmbassadorEarningBreakdown() {
         title="Your Referrals"
         description="Track all projects you've referred to Valmira"
       />
-    </div>
+    </motion.div>
   );
 } 

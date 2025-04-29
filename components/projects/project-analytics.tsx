@@ -48,7 +48,6 @@ import websocketService, { WebSocketEvents } from '@/services/websocketService';
 import { RootState } from '@/store/store';
 
 import { DataChart } from '@/components/ui/data-chart';
-import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
 import { DataTable, type TableTab } from '@/components/ui/data-table';
 
 
@@ -1256,6 +1255,7 @@ export const ProjectAnalytics = forwardRef<
           yKey="profit"
           xKey="date"
           color="hsl(var(--chart-1))"
+          isLoading={isLoadingBotPerformance}
           showDateRange={true}
           showDateButtons={true} 
           showChartTypeSelector={false}
@@ -1269,6 +1269,7 @@ export const ProjectAnalytics = forwardRef<
           yKey="volume"
           xKey="timestamp"
           color="hsl(var(--chart-1))"
+          isLoading={isLoadingActivity}
           showDateRange={true}
           showDateButtons={true} 
           showChartTypeSelector={false}
@@ -1288,6 +1289,7 @@ export const ProjectAnalytics = forwardRef<
           { name: 'date', type: 'time', displayName: 'Time' },
         ]}
         filterOption=""
+        isLoading={isLoadingBotPerformance}
         showSearchInput={true}
         showCheckbox={true}
         showPagination={true}
@@ -1309,6 +1311,7 @@ export const ProjectAnalytics = forwardRef<
           { name: 'timestamp', type: 'time' },
         ]}
         filterOption=""
+        isLoading={isLoadingActivity}
         showSearchInput={true}
         showCheckbox={true}
         showPagination={true}

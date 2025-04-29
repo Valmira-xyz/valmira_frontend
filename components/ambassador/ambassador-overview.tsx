@@ -7,7 +7,7 @@ import NumberFlow from '@number-flow/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
 import { DataChart } from '@/components/ui/data-chart';
-
+import { motion } from 'framer-motion';
 export function AmbassadorOverview() {
   const metrics = [
     {
@@ -67,7 +67,12 @@ export function AmbassadorOverview() {
   }, []); // Only run on mount
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <motion.div
+      className="space-y-4 md:space-y-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {animatedMetrics.map((metric, index) => (
           <Card key={index}>
@@ -174,6 +179,6 @@ export function AmbassadorOverview() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </motion.div>
   );
 } 

@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
+// import type { Metadata } from 'next';
+'use client';
 
-import { PageHeader } from '@/components/layout/page-header';
 import {
   Accordion,
   AccordionContent,
@@ -14,15 +14,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-
-export const metadata: Metadata = {
-  title: 'FAQs | Valmira',
-  description: 'Frequently asked questions about Valmira platform and services',
-};
+import { motion } from 'framer-motion';
+// export const metadata: Metadata = {
+//   title: 'FAQs | Valmira',
+//   description: 'Frequently asked questions about Valmira platform and services',
+// };
 
 export default function FAQsPage() {
   return (
-    <div className="grid gap-6 p-4 md:p-6">
+    <motion.div
+      className="grid gap-6 p-4 md:p-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <Card className="border">
         <CardHeader>
           <CardTitle>General Questions</CardTitle>
@@ -178,6 +183,6 @@ export default function FAQsPage() {
           </Accordion>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }
