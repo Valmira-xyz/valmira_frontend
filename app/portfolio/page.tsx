@@ -148,7 +148,6 @@ export default function PortfolioPage() {
               { name: 'id', type: 'link', displayName: 'Action', linkPrefix: 'projects/' },
             ]}
             dateFieldName="lastUpdated"
-            filterOption=""
             showSearchInput={true}
             showCheckbox={true}
             showPagination={true}

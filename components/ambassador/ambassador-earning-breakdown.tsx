@@ -35,7 +35,6 @@ export function AmbassadorEarningBreakdown() {
           { name: 'earnings', type: 'price'},
           { name: 'date', type: 'time', displayName: 'Date' },
         ]}
-        filterOption="projectName"
         showSearchInput={true}
         showCheckbox={true}
         showPagination={true} 

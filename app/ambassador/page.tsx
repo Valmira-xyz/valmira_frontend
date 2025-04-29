@@ -32,7 +32,7 @@ export default function AmbassadorPage() {
         className="space-y-4 md:space-y-6"
       >
         <div className="flex flex-col md:flex-row gap-1 sm:gap-4 items-center justify-between">
-          <TabsList className="w-full md:w-auto">
+          <TabsList className="w-full md:w-auto overflow-x-auto">
             <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="overview">Overview</TabsTrigger>
             <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="referral-details">Referral Details</TabsTrigger>
             <TabsTrigger className='text-[12px] md:text-sm px-2 sm:px-3' value="earning-breakdown">Earning Breakdown</TabsTrigger>

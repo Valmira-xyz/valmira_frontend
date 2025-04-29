@@ -233,6 +233,8 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
   const [isSimulateDialogOpen, setIsSimulateDialogOpen] = useState(false);
   const [isAutoSellDialogOpen, setIsAutoSellDialogOpen] = useState(false);
   const [isVolumeDialogOpen, setIsVolumeDialogOpen] = useState(false);
+  // Create a state object to track dialog open states for each addon
+  const [dialogStates, setDialogStates] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const dispatch = useDispatch<AppDispatch>();
   const _botState = useSelector((state: RootState) => state.bots);
@@ -731,6 +733,14 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
     }));
   };
 
+  // Function to toggle dialog state for a specific addon
+  const toggleDialog = (addonType: string, isOpen: boolean) => {
+    setDialogStates(prev => ({
+      ...prev,
+      [addonType]: isOpen
+    }));
+  };
+
   if (!project) {
     return (
       <Card className="col-span-1">
@@ -754,8 +764,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
           <h2 className="text-xl font-bold">Add-Ons & Configuration</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 pb-4">
             {addOns.map((addon) => {
-              const [isBnbDepositDialogOpen, setIsBnbDepositDialogOpen] =
-                useState(false);
+              // Use the dialog state from the dialogStates object
+              const isBnbDepositDialogOpen = dialogStates[addon.botType] || false;
+              
               return (
                 <Card key={addon.botType} className="w-full flex flex-col">
                   <CardHeader>
@@ -926,14 +937,14 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                             variant="outline"
                             size="sm"
                             className="ml-auto"
-                            onClick={() => setIsBnbDepositDialogOpen(true)}
+                            onClick={() => toggleDialog(addon.botType, true)}
                           >
                             Deposit
                           </Button>
                         </div>
                         <BnbDepositDialog
                           open={isBnbDepositDialogOpen}
-                          onOpenChange={setIsBnbDepositDialogOpen}
+                          onOpenChange={(open) => toggleDialog(addon.botType, open)}
                           depositWalletAddress={addon.depositWallet}
                         />
                       </div>

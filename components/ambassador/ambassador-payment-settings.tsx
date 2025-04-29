@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Info } from 'lucide-react';
 import NumberFlow from '@number-flow/react';
 
@@ -30,6 +30,12 @@ export function AmbassadorPaymentSettings() {
     
     return () => clearTimeout(timer);
   }, []); // Only run on mount
+
+  const filterOption = useMemo(() => (
+    { 
+      key: { label: "Status", value: "status"}, 
+      options: ["All", "Completed", "Pending", "Failed"] 
+    }), []);
 
   return (
     <motion.div
@@ -181,7 +187,7 @@ export function AmbassadorPaymentSettings() {
 
       <DataTable
         data={mockAmbassadorPaymentSettingsData}
-        filterOption="status"
+        filterOption={ filterOption }
         showSearchInput={false}
         showCheckbox={false}
         showPagination={true}
@@ -192,65 +198,6 @@ export function AmbassadorPaymentSettings() {
         title="Recent Payments"
         description="Record of all your ambassador payouts"
       />
-
-      {/* <Card className="w-full">
-        <CardHeader className="space-y-4">
-          <div className="flex items-center justify-between">
-            <CardTitle>Recent Payments</CardTitle>
-            <div className="flex items-center gap-2">
-              <Select defaultValue="completed">
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="Filter status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-              <Tabs defaultValue="1D" className="w-fit">
-                <TabsList>
-                  <TabsTrigger value="1D">1D</TabsTrigger>
-                  <TabsTrigger value="1W">1W</TabsTrigger>
-                  <TabsTrigger value="1M">1M</TabsTrigger>
-                  <TabsTrigger value="1Y">1Y</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">Record of all your ambassador payouts</p>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>To</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>TX Hash</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentPayments.map((payment, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{payment.date}</TableCell>
-                    <TableCell>{payment.amount}</TableCell>
-                    <TableCell>{payment.to}</TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
-                        {payment.status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-blue-600">{payment.txHash}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card> */}
 
       <Card className="w-full">
         <CardHeader>
