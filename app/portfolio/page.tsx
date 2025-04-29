@@ -2,17 +2,15 @@
 
 import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
-
 import { subDays } from 'date-fns';
 
-import { PortfolioFilters } from '@/components/portfolio/portfolio-filters';
-import { PortfolioProjects } from '@/components/portfolio/portfolio-projects';
 import { PortfolioSummary } from '@/components/portfolio/portfolio-summary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { DataChart } from '@/components/ui/data-chart';
 import { mockAmbassadorEarningsBreakdownData, mockPortfolioData, mockPortfolioProjects } from '@/lib/mock-data';
 import { DataTable } from '@/components/ui/data-table';
+import { motion } from 'framer-motion';
 
 export default function PortfolioPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -23,7 +21,12 @@ export default function PortfolioPage() {
   const { toast } = useToast();
 
   return (
-    <div className="p-4 md:p-6">
+    <motion.div
+      className="p-4 md:p-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
@@ -43,27 +46,38 @@ export default function PortfolioPage() {
           /> */}
         </div>
 
-        <TabsContent value="overview" className="space-y-4 md:space-y-6">
-          <PortfolioSummary dateRange={dateRange} />
-          <div className="w-full h-full">
-            <DataChart
-              title="Portfolio Performance"
-              description="Combined metrics across all projects"
-              data={mockPortfolioData}
-              xKey="date"
-              yKey="profit"
-              color="hsl(var(--chart-1))"
-              showDateRange={true}
-              showDateButtons={true} 
-              showChartTypeSelector={true}
-            />
-          </div>
-          
+        <TabsContent value="overview">
+          <motion.div
+            className="space-y-4 md:space-y-6"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <PortfolioSummary dateRange={dateRange} />
+            <div className="w-full h-full">
+              <DataChart
+                title="Portfolio Performance"
+                description="Combined metrics across all projects"
+                data={mockPortfolioData}
+                xKey="date"
+                yKey="profit"
+                color="hsl(var(--chart-1))"
+                showDateRange={true}
+                showDateButtons={true} 
+                showChartTypeSelector={true}
+              />
+            </div>
+          </motion.div>
           {/* <PortfolioProjects dateRange={dateRange} /> */}
         </TabsContent>
 
         <TabsContent value="profit" className="space-y-4">
-          <div className="w-full h-full">
+          <motion.div
+            className="w-full h-full"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             <DataChart
               title="Profit Trend"
               description="Daily profit across all projects"
@@ -74,12 +88,17 @@ export default function PortfolioPage() {
               showDateButtons={true} 
               showChartTypeSelector={true}
             />
-          </div>
+          </motion.div>
           {/* <PortfolioProjects dateRange={dateRange} sortBy="profit" /> */}
         </TabsContent>
 
         <TabsContent value="volume" className="space-y-4">
-          <div className="w-full h-full">
+          <motion.div
+            className="w-full h-full"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             <DataChart
               title="Trading Volume"
               description="Daily trading volume across all projects"
@@ -90,12 +109,17 @@ export default function PortfolioPage() {
               showDateButtons={true} 
               showChartTypeSelector={true}
             />
-          </div>
+          </motion.div>
           {/* <PortfolioProjects dateRange={dateRange} sortBy="volume" /> */}
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-4">
-          <div className="w-full h-full">
+          <motion.div
+            className="w-full h-full"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             <DataChart
               title="Trading Activity"
               description="Number of trades executed"
@@ -106,7 +130,7 @@ export default function PortfolioPage() {
               showDateButtons={true} 
               showChartTypeSelector={true}
             />
-          </div>
+          </motion.div>
           {/* <PortfolioProjects dateRange={dateRange} sortBy="activity" /> */}
         </TabsContent>
         <DataTable
@@ -134,6 +158,6 @@ export default function PortfolioPage() {
             showTableHeaderInVertical={true}
           />
       </Tabs>
-    </div>
+    </motion.div>
   );
 }

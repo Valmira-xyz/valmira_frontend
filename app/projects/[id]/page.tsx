@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'next/navigation';
 import { usePathname, useRouter } from 'next/navigation';
 
-import { PageHeader } from '@/components/layout/page-header';
 import { ProjectAddOns } from '@/components/projects/project-add-ons';
 import {
   ProjectAnalytics,
@@ -22,6 +21,7 @@ import {
 } from '@/store/slices/projectSlice';
 import type { RootState } from '@/store/store';
 import { BotPerformance, ProjectWithAddons } from '@/types';
+import { motion } from 'framer-motion';
 
 // Add helper function to transform bot performance data
 const transformBotPerformance = (data: any[]): BotPerformance[] => {
@@ -56,6 +56,8 @@ export default function ProjectDetailPage() {
     loading: isLoading,
     error,
     projectStats,
+    bnbPrice,
+    bnbPriceLoading,
   } = useSelector((state: RootState) => state.projects);
   const project = projects.find(
     (project) => project._id?.toString() === projectId
@@ -135,7 +137,12 @@ export default function ProjectDetailPage() {
   };
 
   return (
-    <div className="overflow-x-hidden w-full">
+    <motion.div
+      className="overflow-x-hidden w-full"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         <ProjectHeader
           project={projectWithAddons}
@@ -143,11 +150,19 @@ export default function ProjectDetailPage() {
           projectId={projectId}
           onRefresh={handleRefresh}
         />
-        {projectWithAddons && <ProjectMetrics project={projectWithAddons} />}
+        {projectWithAddons && (
+          <ProjectMetrics
+            project={projectWithAddons}
+            projectStats={projectStats}
+            loading={isLoading}
+            bnbPrice={bnbPrice}
+            bnbPriceLoading={bnbPriceLoading}
+          />
+        )}
         <ProjectAnalytics project={project} ref={analyticsRef} />
         <ProjectAddOns project={projectWithAddons} />
         {projectWithAddons && <ProjectDangerZone project={projectWithAddons} />}
       </div>
-    </div>
+    </motion.div>
   );
 }

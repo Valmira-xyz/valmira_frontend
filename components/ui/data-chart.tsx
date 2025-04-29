@@ -22,7 +22,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval, format } from 'date-fns';
 import { BarChart3, PieChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
+import { Skeleton } from '@/components/ui/skeleton';
+import { motion } from 'framer-motion';
 export interface DataChartProps {
   title: string;
   description?: string;
@@ -175,6 +176,7 @@ export function DataChart({
   };
 
   const renderChart = () => {
+    console.log(`rendering real chart`);
     const commonProps = {
       data: groupedData,
       margin: { top: 10, right: 30, left: 0, bottom: 0 },
@@ -250,24 +252,71 @@ export function DataChart({
 
   // Render loading skeleton
   const renderLoadingSkeleton = () => {
+    console.log(`rendering loading skeleton`);
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
-          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
-          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
-          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
-          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
-          <div className="w-full h-4 bg-muted rounded animate-pulse"></div>
+      <div className="w-full h-full flex flex-col relative">
+        {/* Centered loading indicator */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+          <div className="animate-spin h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full" />
+          <span className="text-sm font-medium text-muted-foreground">Loading data...</span>
         </div>
+
+        {/* Chart skeleton with shimmer effect */}
+        <div className="w-full h-[80%] flex items-end justify-between opacity-50">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center">
+              <div className="w-full relative overflow-hidden rounded-t">
+                <div 
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer"
+                  style={{ 
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 1.5s infinite'
+                  }}
+                />
+                <Skeleton 
+                  className="w-full" 
+                  style={{ 
+                    height: `${Math.random() * 60 + 20}%`,
+                    backgroundColor: 'hsl(var(--muted))',
+                    opacity: 0.8
+                  }} 
+                />
+              </div>
+              <Skeleton className="h-3 w-10 mt-2" />
+            </div>
+          ))}
+        </div>
+        
+        {/* Y-axis labels skeleton */}
+        <div className="w-full h-[20%] flex items-center justify-between mt-4 opacity-50">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+
+        {/* Add keyframe animation for shimmer effect */}
+        <style jsx>{`
+          @keyframes shimmer {
+            0% {
+              background-position: 200% 0;
+            }
+            100% {
+              background-position: -200% 0;
+            }
+          }
+        `}</style>
       </div>
     );
   };
 
   // Render empty state
   const renderEmptyState = () => {
+    console.log(`rendering empty state`);
     return (
       <div className="w-full h-full flex flex-col items-center justify-center py-12 space-y-4">
-        {emptyStateIcon || (
+        {emptyStateIcon ? (
+          emptyStateIcon
+        ) : (
           <div className="h-12 w-12 text-muted-foreground">
             {chartType === 'line' ? (
               <LineChart className="h-full w-full" />
@@ -288,63 +337,70 @@ export function DataChart({
   };
 
   return (
-    <Card className={cn("w-full", className)}>
-      <CardHeader className={cn(
-        showHeaderInVertical ? "gap-4" : "flex flex-col lg:flex-row flex-wrap items-start lg:items-center justify-between gap-4 pb-2"
-      )}>
-        <div className="flex flex-col gap-2">
-          <CardTitle>{title}</CardTitle>
-          {description && <CardDescription>{description}</CardDescription>}
-        </div>
-        <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
-          {showDateRange && (
-            <DateRangePicker
-              date={dateRange}
-              onDateChange={handleDateRangeChange}
-            />
-          )}
-          {showDateButtons && (
-            <Tabs
-              value={selectedDateButton}
-              onValueChange={handleDateButtonChange}
-              className="w-fit"
-            >
-              <TabsList className="grid w-[135px] grid-cols-3">
-                <TabsTrigger value="1D">1D</TabsTrigger>
-                <TabsTrigger value="1W">1W</TabsTrigger>
-                <TabsTrigger value="1M">1M</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
-          {showChartTypeSelector && (
-            <Tabs
-              value={chartType}
-              onValueChange={(v) => setChartType(v as 'line' | 'bar' | 'area')}
-              className="w-fit"
-            >
-              <TabsList className="grid w-[150px] grid-cols-3">
-                <TabsTrigger value="line">Line</TabsTrigger>
-                <TabsTrigger value="bar">Bar</TabsTrigger>
-                <TabsTrigger value="area">Area</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-4">
-        <div style={{ height }}>
-          {isLoading ? (
-            renderLoadingSkeleton()
-          ) : (
-            groupedData.length === 0 ? (
-              renderEmptyState()
+    <motion.div
+      className={cn("w-full", className)}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Card className={cn("w-full", className)}>
+        <CardHeader className={cn(
+          showHeaderInVertical ? "gap-4" : "flex flex-col lg:flex-row flex-wrap items-start lg:items-center justify-between gap-4 pb-2"
+        )}>
+          <div className="flex flex-col gap-2">
+            <CardTitle>{title}</CardTitle>
+            {description && <CardDescription>{description}</CardDescription>}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+            {showDateRange && (
+              <DateRangePicker
+                date={dateRange}
+                onDateChange={handleDateRangeChange}
+              />
+            )}
+            {showDateButtons && (
+              <Tabs
+                value={selectedDateButton}
+                onValueChange={handleDateButtonChange}
+                className="w-fit"
+              >
+                <TabsList className="grid w-[135px] grid-cols-3">
+                  <TabsTrigger value="1D">1D</TabsTrigger>
+                  <TabsTrigger value="1W">1W</TabsTrigger>
+                  <TabsTrigger value="1M">1M</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+            {showChartTypeSelector && (
+              <Tabs
+                value={chartType}
+                onValueChange={(v) => setChartType(v as 'line' | 'bar' | 'area')}
+                className="w-fit"
+              >
+                <TabsList className="grid w-[150px] grid-cols-3">
+                  <TabsTrigger value="line">Line</TabsTrigger>
+                  <TabsTrigger value="bar">Bar</TabsTrigger>
+                  <TabsTrigger value="area">Area</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+          </div>
+        </CardHeader>
+        
+        <CardContent className="p-4">
+          <div style={{ height }}>
+            {isLoading ? (
+              renderLoadingSkeleton()
             ) : (
-              renderChart()
-            )
-          )}
-        </div>
-      </CardContent>
-    </Card>
+              groupedData.length === 0 ? (
+                renderEmptyState()
+              ) : (
+                renderChart()
+              )
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 } 

@@ -286,6 +286,7 @@ export interface TimeSeriesDataPoint {
 
 export const projectService = {
   getProjects: async (): Promise<Project[]> => {
+    console.log('==== getProjects service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects`);
       return await retryWithBackoff(async () => {
@@ -305,6 +306,7 @@ export const projectService = {
     pageIndex: number = 0,
     maxPageCount: number = 10
   ): Promise<Project[]> => {
+    console.log('==== getPublicProjects service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/projects/public?pageIndex=${pageIndex}&maxPageCount=${maxPageCount}`
@@ -322,6 +324,7 @@ export const projectService = {
   },
 
   getProject: async (projectId: string): Promise<Project> => {
+    console.log('==== getProject service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects/${projectId}`);
       return await retryWithBackoff(async () => {
@@ -337,6 +340,7 @@ export const projectService = {
   },
 
   createProject: async (projectData: Partial<Project>): Promise<Project> => {
+    console.log('==== createProject service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects`);
       return await retryWithBackoff(async () => {
@@ -357,6 +361,7 @@ export const projectService = {
     projectId: string,
     status: 'active' | 'inactive'
   ): Promise<Project> => {
+    console.log('==== updateProjectStatus service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects/${projectId}/status`);
       return await retryWithBackoff(async () => {
@@ -374,6 +379,7 @@ export const projectService = {
   },
 
   deleteProject: async (projectId: string): Promise<void> => {
+    console.log('==== deleteProject service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects/${projectId}`);
       await retryWithBackoff(async () => {
@@ -389,6 +395,7 @@ export const projectService = {
   },
 
   getVolumeData: async (projectId: string): Promise<any> => {
+    console.log('==== getVolumeData service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects/${projectId}/volume`);
       return await retryWithBackoff(async () => {
@@ -408,6 +415,7 @@ export const projectService = {
     projectId: string,
     timeRange: { start: Date; end: Date }
   ): Promise<ActivityLog[]> => {
+    console.log('==== getRecentActivity service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/project-stats/${projectId}/activity`
@@ -435,6 +443,7 @@ export const projectService = {
     startDate: Date,
     endDate: Date
   ): Promise<ApiResponse<BotPerformanceHistory[]>> => {
+    console.log('==== getBotPerformanceHistory service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/project-stats/${projectId}/bot-performance`
@@ -461,6 +470,7 @@ export const projectService = {
     projectId: string,
     timeRange?: { start: Date; end: Date }
   ): Promise<ProjectStatistics> => {
+    console.log('==== getProjectStats service called ====');
     try {
       // First, get the basic stats
       const queryParams = timeRange
@@ -487,6 +497,7 @@ export const projectService = {
     projectId: string,
     timeRange: { start: Date; end: Date }
   ): Promise<TimeSeriesDataPoint[]> => {
+    console.log('==== getProfitTrending service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/project-stats/${projectId}/profit-trending`
@@ -513,6 +524,7 @@ export const projectService = {
     projectId: string,
     timeRange: { start: Date; end: Date }
   ): Promise<TimeSeriesDataPoint[]> => {
+    console.log('==== getVolumeTrending service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/project-stats/${projectId}/volume-trending`
@@ -544,6 +556,7 @@ export const projectService = {
     projectId: string,
     activity: ActivityLog
   ): Promise<void> => {
+    console.log('==== addActivityLog service called ====');
     try {
       await axios.post(
         `${BACKEND_URL}/project-stats/${projectId}/activity`,
@@ -563,7 +576,8 @@ export const projectService = {
     projectId: string,
     tokenAmount: number,
     bnbAmount: number
-  ): Promise<void> => {
+    ): Promise<void> => {
+    console.log('==== logLPAddition service called ====');
     const bnbPrice = await projectService.fetchBnbPrice();
     return projectService.addActivityLog(projectId, {
       timestamp: new Date(),
@@ -584,6 +598,7 @@ export const projectService = {
     tokenAmount: number,
     bnbAmount: number
   ): Promise<void> => {
+    console.log('==== logLPRemoval service called ====');
     const bnbPrice = await projectService.fetchBnbPrice();
     return projectService.addActivityLog(projectId, {
       timestamp: new Date(),
@@ -601,6 +616,7 @@ export const projectService = {
    * @returns GlobalMetrics object with platform-wide metrics
    */
   getGlobalMetrics: async (): Promise<GlobalMetrics> => {
+    console.log('==== getGlobalMetrics service called ====');
     try {
       return await retryWithBackoff(
         async () => {
@@ -619,6 +635,7 @@ export const projectService = {
   },
 
   fetchBnbPrice: async (): Promise<number> => {
+    console.log('==== fetchBnbPrice service called ====');
     try {
       return await retryWithBackoff(
         async () => {
@@ -653,6 +670,7 @@ export const projectService = {
   migrateSnipingWallets: async (
     projectId: string
   ): Promise<MigrationResponse> => {
+    console.log('==== migrateSnipingWallets service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/projects/${projectId}/migrate-sniping-wallets`

@@ -11,10 +11,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataTable } from '@/components/ui/data-table';
 import { mockAmbassadorPaymentSettingsData } from '@/lib/mock-data';
+import { motion } from 'framer-motion';
 
 export function AmbassadorPaymentSettings() {
   const [paymentMethod, setPaymentMethod] = useState('stablecoins');
@@ -33,7 +32,12 @@ export function AmbassadorPaymentSettings() {
   }, []); // Only run on mount
 
   return (
-    <div className="space-y-4">
+    <motion.div
+      className="space-y-4"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="w-full">
           <CardHeader>
@@ -291,6 +295,6 @@ export function AmbassadorPaymentSettings() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 } 

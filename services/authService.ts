@@ -52,8 +52,8 @@ class AuthService {
     verificationToken: string,
     nonce: string
   ): Promise<VerifyResponse> {
+    console.log('==== verifySignature service called ====');
     try {
-      console.log('Verifying signature request sent...');
       const response = await axios.post<ApiResponse<VerifyResponse>>(
         `${BACKEND_URL}/users/verify-signature`,
         {
@@ -90,6 +90,7 @@ class AuthService {
   }
 
   async register(walletAddress: string, name?: string): Promise<User> {
+    console.log('==== register service called ====');
     try {
       const response = await axios.post<ApiResponse<{ user: User }>>(
         `${BACKEND_URL}/users/register`,
@@ -109,6 +110,7 @@ class AuthService {
   }
 
   async getProfile(): Promise<User> {
+    console.log('==== getProfile service called ====');
     try {
       const response = await axios.get<ApiResponse<{ user: User }>>(
         `${BACKEND_URL}/users/profile`,
@@ -125,6 +127,7 @@ class AuthService {
   }
 
   async updateProfile(data: Partial<User>): Promise<User> {
+    console.log('==== updateProfile service called ====');
     try {
       const response = await axios.put<ApiResponse<{ user: User }>>(
         `${BACKEND_URL}/users/profile`,
@@ -142,10 +145,12 @@ class AuthService {
   }
 
   logout() {
+    console.log('==== logout service called ====');
     this.clearToken();
   }
 
   isAuthenticated(): boolean {
+    console.log('==== isAuthenticated service called ====');
     return !!this.token;
   }
 }

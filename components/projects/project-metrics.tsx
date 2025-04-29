@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import NumberFlow from '@number-flow/react';
 
 import { Bot, ChartColumnIncreasing, Droplet, TrendingUp } from 'lucide-react';
@@ -9,14 +9,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getPoolInfo } from '@/services/web3Utils';
 import websocketService, { WebSocketEvents } from '@/services/websocketService';
 import { fetchBnbPrice } from '@/store/slices/projectSlice';
-import { AppDispatch, RootState } from '@/store/store';
+import { AppDispatch } from '@/store/store';
 import { ProjectWithAddons } from '@/types';
 
-export function ProjectMetrics({ project }: { project: ProjectWithAddons }) {
+interface ProjectMetricsProps {
+  project: ProjectWithAddons;
+  projectStats: any;
+  loading: boolean;
+  bnbPrice: number | null;
+  bnbPriceLoading: boolean;
+}
+
+export function ProjectMetrics({ 
+  project, 
+  projectStats, 
+  loading, 
+  bnbPrice, 
+  bnbPriceLoading 
+}: ProjectMetricsProps) {
   const dispatch = useDispatch<AppDispatch>();
-  const { projectStats, loading, bnbPrice, bnbPriceLoading } = useSelector(
-    (state: RootState) => state.projects
-  );
   const [poolLiquidity, setPoolLiquidity] = useState<number>(0);
   const [loadingLiquidity, setLoadingLiquidity] = useState<boolean>(false);
   const [localMetrics, setLocalMetrics] = useState<ProjectMetrics | null>(null);

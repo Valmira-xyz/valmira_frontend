@@ -1,14 +1,19 @@
 'use client';
 
-import { PageHeader } from '@/components/layout/page-header';
 import { BuySellForm } from '@/components/swap/buysell-form';
 import { DepositWallet } from '@/components/swap/deposit-wallet';
 import { SwapForm } from '@/components/swap/swap-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion } from 'framer-motion'; 
 
 export default function SwapPage() {
   return (
-    <div className="p-4 md:p-6 space-y-10">
+    <motion.div
+      className="p-4 md:p-6 space-y-10"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-bold">Cross-chain Swapping</h1>
         <p className="text-sm text-muted-foreground">
@@ -34,12 +39,25 @@ export default function SwapPage() {
             </TabsTrigger>
           </TabsList>
 
+          
           <TabsContent value="swap" className="mt-6">
-            <SwapForm />
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <SwapForm />
+            </motion.div>
           </TabsContent>
 
           <TabsContent value="buy-sell" className="mt-6">
-            <BuySellForm />
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <BuySellForm />
+            </motion.div>
           </TabsContent>
         </Tabs>
 
@@ -47,6 +65,6 @@ export default function SwapPage() {
           <DepositWallet />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

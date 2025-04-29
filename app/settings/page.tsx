@@ -13,7 +13,6 @@ import {
 import { useTheme } from 'next-themes';
 import { useAccount, useDisconnect } from 'wagmi';
 
-import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -27,6 +26,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { WalletConnectionButton } from '@/components/wallet/wallet-connection-button';
 import { WalletDisplay } from '@/components/wallet/wallet-display';
+import { motion } from 'framer-motion';
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -41,15 +41,23 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <motion.div
+      className="space-y-6 p-4 md:p-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <Card className="bg-muted">
-        <CardHeader>
-          <CardTitle className="text-[20px]">Profile Overview</CardTitle>
-          <CardDescription>
+        
+          <CardHeader>
+            <CardTitle className="text-[20px]">Profile Overview</CardTitle>
+            <CardDescription>
             Manage your account and wallet connection
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+            </CardDescription>
+          </CardHeader>
+        
+        
+          <CardContent className="space-y-4">
           {isConnected ? (
             <>
               <div className="flex items-center justify-between">
@@ -184,6 +192,8 @@ export default function SettingsPage() {
           </Button>
         </CardContent>
       </Card>
-    </div>
+
+    </motion.div>
+
   );
 }

@@ -1,12 +1,15 @@
 'use client';
 
-import { PageHeader } from '@/components/layout/page-header';
+import { motion } from 'framer-motion';
 
 export default function HolderBotTutorialPage() {
   return (
-    <>
-      <PageHeader title="Holder Bot Tutorial" />
-
+    <motion.div
+      className="prose dark:prose-invert max-w-none p-4 md:p-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="prose dark:prose-invert max-w-none p-4 md:p-6">
         <p className="text-lg">
           Need to create a diverse holder base for your token? Our Holder Bot
@@ -162,6 +165,6 @@ export default function HolderBotTutorialPage() {
           activity.
         </p>
       </div>
-    </>
+    </motion.div>
   );
 }

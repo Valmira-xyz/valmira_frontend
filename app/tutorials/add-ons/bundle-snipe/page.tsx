@@ -1,12 +1,15 @@
-import { PageHeader } from '@/components/layout/page-header';
+import { motion } from 'framer-motion';
 
 export default function BundleSnipeTutorial() {
   return (
-    <>
-      <PageHeader title="Bundle Snipe Tutorial" />
-      <div className="prose dark:prose-invert max-w-none p-4 md:p-6">
-        <h1 className="text-3xl font-bold mb-6">
-          How the Bundle Snipe Bot Works
+    <motion.div
+      className="prose dark:prose-invert max-w-none p-4 md:p-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <h1 className="text-3xl font-bold mb-6">
+        How the Bundle Snipe Bot Works
         </h1>
         <div className="space-y-4">
           <p>
@@ -26,7 +29,6 @@ export default function BundleSnipeTutorial() {
             please refer to our comprehensive documentation.
           </p>
         </div>
-      </div>
-    </>
+    </motion.div>
   );
 }
