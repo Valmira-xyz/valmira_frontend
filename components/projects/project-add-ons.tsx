@@ -1,12 +1,10 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { AutoSellWizardDialog, WalletInfo } from './auto-sell-wizard-dialog';
-import { SnipeWizardDialog } from './snipe-wizard-dialog';
+import { WalletInfo } from './auto-sell-wizard-dialog';
 // import { BundleSnipingDialog } from './bundle-sniping-dialog';   // (hide on going to production)
-import { VolumeBotWizardDialog } from './volume-bot-wizard-dialog';
 import { Copy, Download, ExternalLink, HelpCircle, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -35,6 +33,11 @@ import websocketService, { WebSocketEvents } from '@/services/websocketService';
 import { toggleBot } from '@/store/slices/botSlice';
 import { AppDispatch, RootState } from '@/store/store';
 import { ProjectWithAddons } from '@/types';
+
+// Lazy load dialog components
+const SnipeWizardDialog = lazy(() => import('./snipe-wizard-dialog').then(module => ({ default: module.SnipeWizardDialog })));
+const AutoSellWizardDialog = lazy(() => import('./auto-sell-wizard-dialog').then(module => ({ default: module.AutoSellWizardDialog })));
+const VolumeBotWizardDialog = lazy(() => import('./volume-bot-wizard-dialog').then(module => ({ default: module.VolumeBotWizardDialog })));
 
 // Utility function for parsing error messages
 const parseErrorMessage = (message: string, details: string) => {
@@ -1081,25 +1084,37 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
               );
             })}
           </div>
-          <SnipeWizardDialog
-            open={isSimulateDialogOpen}
-            onOpenChange={setIsSimulateDialogOpen}
-          />
+          <Suspense fallback={null}>
+            {isSimulateDialogOpen && (
+              <SnipeWizardDialog
+                open={isSimulateDialogOpen}
+                onOpenChange={setIsSimulateDialogOpen}
+              />
+            )}
+          </Suspense>
           {/* <BundleSnipingDialog
             open={isSimulateDialogOpen}
             onOpenChange={setIsSimulateDialogOpen}
           /> */}{' '}
           {/* hide on going to production */}
-          <AutoSellWizardDialog
-            open={isAutoSellDialogOpen}
-            onOpenChange={setIsAutoSellDialogOpen}
-            wallets={wallets}
-            onWalletsChange={setWallets}
-          />
-          <VolumeBotWizardDialog
-            open={isVolumeDialogOpen}
-            onOpenChange={setIsVolumeDialogOpen}
-          />
+          <Suspense fallback={null}>
+            {isAutoSellDialogOpen && (
+              <AutoSellWizardDialog
+                open={isAutoSellDialogOpen}
+                onOpenChange={setIsAutoSellDialogOpen}
+                wallets={wallets}
+                onWalletsChange={setWallets}
+              />
+            )}
+          </Suspense>
+          <Suspense fallback={null}>
+            {isVolumeDialogOpen && (
+              <VolumeBotWizardDialog
+                open={isVolumeDialogOpen}
+                onOpenChange={setIsVolumeDialogOpen}
+              />
+            )}
+          </Suspense>
         </>
       )}
     </div>

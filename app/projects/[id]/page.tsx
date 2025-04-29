@@ -65,6 +65,7 @@ export default function ProjectDetailPage() {
 
   // Add a ref to access the ProjectAnalytics methods
   const analyticsRef = useRef<ProjectAnalyticsHandle>(null);
+  const fetchingProjectRef = useRef(false);
 
   // Combined authentication check and data fetching
   useEffect(() => {
@@ -76,6 +77,10 @@ export default function ProjectDetailPage() {
     setIsAuthenticated(true);
     if (projectId) {
       // Fetch project stats for the last 24 hours
+      if(fetchingProjectRef.current) {
+        return;
+      }
+      fetchingProjectRef.current = true;
       const end = new Date();
       const start = new Date(Date.now() - 24 * 60 * 60 * 1000);
       dispatch(
@@ -120,22 +125,6 @@ export default function ProjectDetailPage() {
   // Safely cast project to ProjectWithAddons or use default values
   const projectWithAddons = project as unknown as ProjectWithAddons | undefined;
 
-  const handleRefresh = async () => {
-    if (projectId) {
-      try {
-        // Fetch project first
-        await dispatch(fetchProject(projectId) as any);
-
-        // Then refresh the analytics component using the exposed method
-        if (analyticsRef.current) {
-          await analyticsRef.current.refreshData();
-        }
-      } catch (error) {
-        console.error('Error refreshing data:', error);
-      }
-    }
-  };
-
   return (
     <motion.div
       className="overflow-x-hidden w-full"
@@ -148,7 +137,6 @@ export default function ProjectDetailPage() {
           project={projectWithAddons}
           walletAddress={projectWithAddons?.tokenAddress}
           projectId={projectId}
-          onRefresh={handleRefresh}
         />
         {projectWithAddons && (
           <ProjectMetrics
@@ -159,7 +147,7 @@ export default function ProjectDetailPage() {
             bnbPriceLoading={bnbPriceLoading}
           />
         )}
-        <ProjectAnalytics project={project} ref={analyticsRef} />
+        <ProjectAnalytics project={project} ref={analyticsRef} projectStats={projectStats} />
         <ProjectAddOns project={projectWithAddons} />
         {projectWithAddons && <ProjectDangerZone project={projectWithAddons} />}
       </div>

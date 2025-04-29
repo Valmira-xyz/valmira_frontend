@@ -13,31 +13,9 @@ import type { DateRange } from 'react-day-picker';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { format, isWithinInterval, subDays, subMonths } from 'date-fns';
-import { ChevronDown, Download } from 'lucide-react';
+
 import { useParams } from 'next/navigation';
 
-import { BotFilter } from '@/components/projects/bot-filter';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DateRangePicker } from '@/components/ui/date-range-picker1';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { formatCurrency } from '@/lib/utils';
 import type {
   ActivityLog,
   BotPerformanceHistory,
@@ -45,7 +23,6 @@ import type {
 } from '@/services/projectService';
 import { projectService } from '@/services/projectService';
 import websocketService, { WebSocketEvents } from '@/services/websocketService';
-import { RootState } from '@/store/store';
 
 import { DataChart } from '@/components/ui/data-chart';
 import { DataTable, type TableTab } from '@/components/ui/data-table';
@@ -137,6 +114,7 @@ interface ProjectAnalyticsProps {
     botPerformance?: BotPerformanceHistory[];
     recentActivity?: ActivityLog[];
   };
+  projectStats?: any;
   ref?: React.Ref<ProjectAnalyticsHandle>;
 }
 
@@ -144,12 +122,11 @@ interface ProjectAnalyticsProps {
 export const ProjectAnalytics = forwardRef<
   ProjectAnalyticsHandle,
   ProjectAnalyticsProps
->(({ project }, ref) => {
+>(({ project, projectStats }, ref ) => {
   const [_volumeTrends, setVolumeTrends] = useState<TimeSeriesDataPoint[]>([]);
   const [_profitTrends, setProfitTrends] = useState<TimeSeriesDataPoint[]>([]);
   const [profitTimePeriod, _setProfitTimePeriod] = useState<TimePeriod>('1m');
   const [volumeTimePeriod, _setVolumeTimePeriod] = useState<TimePeriod>('1m');
-  const { projectStats } = useSelector((state: RootState) => state.projects);
   const dispatch = useDispatch();
   const { id: projectId } = useParams() as { id: string };
 
