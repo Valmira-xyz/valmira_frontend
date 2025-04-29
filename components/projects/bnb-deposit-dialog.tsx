@@ -39,8 +39,6 @@ export function BnbDepositDialog({
   const { toast } = useToast();
   const provider = useEthersProvider({});
   const signer = useEthersSigner({});
-  console.log('[BnbDepositDialog] depositWalletAddress', depositWalletAddress);
-
   const [connectedWalletBalance, setConnectedWalletBalance] = useState<
     number | null
   >(null);
