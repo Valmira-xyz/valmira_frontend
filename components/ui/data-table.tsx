@@ -51,7 +51,7 @@ interface DataTableProps {
   data: Record<string, any>[];
   hideColumns?: string[];
   showColumns?: Column[];
-  filterOption?: string;
+  filterOption?: { key: { label: string; value: string }; options: string[] };
   dateFieldName?: string;
   showCheckbox?: boolean;
   showSearchInput?: boolean;
@@ -103,7 +103,7 @@ export function DataTable({
   const [selectAll, setSelectAll] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>();
   const [currentPageSize, setCurrentPageSize] = useState(pageSize);
-  const [selectedFilter, setSelectedFilter] = useState<string>('all');
+  const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [selectedDateButton, setSelectedDateButton] = useState('1M');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -143,27 +143,27 @@ export function DataTable({
       : [];
   }, [data, hideColumns, showColumns]);
 
-  // Generate filter options from the specified column
-  const filterOptions = useMemo(() => {
-    if (!filterOption || !data.length) return [];
+  // Generate filter options from the specified column and data from database
+  // const filterOptions = useMemo(() => {
+  //   if (!filterOption || !data.length) return [];
     
-    const uniqueValues = Array.from(new Set(data.map(item => item[filterOption])))
-      .filter(Boolean)
-      .sort((a, b) => {
-        if (typeof a === 'number' && typeof b === 'number') {
-          return a - b;
-        }
-        return String(a).localeCompare(String(b));
-      });
+  //   const uniqueValues = Array.from(new Set(data.map(item => item[filterOption.key.value])))
+  //     .filter(Boolean)
+  //     .sort((a, b) => {
+  //       if (typeof a === 'number' && typeof b === 'number') {
+  //         return a - b;
+  //       }
+  //       return String(a).localeCompare(String(b));
+  //     });
 
-    return [
-      { label: 'All', value: 'all' },
-      ...uniqueValues.map(value => ({
-        label: String(value),
-        value: String(value)
-      }))
-    ];
-  }, [data, filterOption]);
+  //   return [
+  //     { label: 'All', value: 'all' },
+  //     ...uniqueValues.map(value => ({
+  //       label: String(value),
+  //       value: String(value)
+  //     }))
+  //   ];
+  // }, [data, filterOption]);
 
   // Find the date column name from showColumns
   const dateColumnName = useMemo(() => {
@@ -178,8 +178,8 @@ export function DataTable({
     let filtered = data;
 
     // Apply column filter
-    if (filterOption && selectedFilter !== 'all') {
-      filtered = filtered.filter(item => String(item[filterOption]) === selectedFilter);
+    if (filterOption && selectedFilter !== 'All') {
+      filtered = filtered.filter(item => String(item[filterOption.key.value]).includes(selectedFilter));
     }
 
     // Apply search filter
@@ -421,6 +421,9 @@ export function DataTable({
         );
       
       case 'normal':
+        if (column.key === 'botName') {
+          return value.split('-')[0];
+        }
       default:
         return value;
     }
@@ -516,7 +519,7 @@ export function DataTable({
         <CardContent>
           <div className="space-y-4">
             {/* Controls section */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between flex-wrap">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-start">
                 {showSearchInput && (
                   <div className="relative">
@@ -533,15 +536,29 @@ export function DataTable({
               
               <div className="flex flex-col sm:flex-row md:items-center justify-start flex-wrap lg:flex-nowrap gap-2">
                 <div className="flex flex-col sm:flex-row gap-4 justify-start w-full md:w-fit">
-                  {filterOption && filterOptions.length > 0 && (
+                  {filterOption && (
                     <Select value={selectedFilter} onValueChange={handleFilterChange}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder={`Filter by ${filterOption}`} />
+                      <SelectTrigger className="w-[180px] text-start">
+                        <SelectValue placeholder={`Filter by ${filterOption}`}>
+                          {selectedFilter && (
+                            <span className="inline-block max-w-[130px] pt-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                              {/* {columns.filter(col => col.key === filterOption.key.value)[0].title}: {
+                                filterOptions.find(opt => opt.value === selectedFilter)?.label
+                              } */}
+                              {filterOption.key.label}: {selectedFilter}
+                            </span>
+                          )}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {filterOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {columns.filter(col => col.key === filterOption)[0].title}: {option.label}
+                        {/* {filterOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="text-start">
+                            {columns.filter(col => col.key === filterOption.key)[0].title}: {option.label}
+                          </SelectItem>
+                        ))} */}
+                        {filterOption.options.map((option) => (
+                          <SelectItem key={option} value={option} className="text-start">
+                            {filterOption.key.label}: {option}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -736,7 +753,7 @@ export function DataTable({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="flex items-center justify-between space-x-2 py-4"
+                className="flex items-center justify-between gap-2 py-4 flex-wrap"
               >
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-muted-foreground">

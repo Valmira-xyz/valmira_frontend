@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 
 import Link from 'next/link';
 
@@ -14,6 +14,7 @@ import type { Project, ProjectWithAddons } from '@/types';
 import { CreateProjectButton } from '../projects/create-project-button';
 
 export function LatestProjects() {
+  console.log('============ LatestProjects rendered');
   const dispatch = useDispatch();
   const { projects, error } = useSelector((state) => state.projects);
   const fetchInProgress = useRef(false);
@@ -36,14 +37,16 @@ export function LatestProjects() {
     fetchProjectsData();
   }, [fetchProjectsData]);
 
-  // Show only active projects, sorted by last updated
-  const activeProjects = projects
-    ?.filter((project: ProjectWithAddons) => project.status === 'active')
-    .sort(
-      (a: ProjectWithAddons, b: ProjectWithAddons) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    )
-    .slice(0, 3); // Show only the 3 most recent projects
+  // Memoize the filtered and sorted projects
+  const activeProjects = useMemo(() => {
+    return projects
+      ?.filter((project: ProjectWithAddons) => project.status === 'active')
+      .sort(
+        (a: ProjectWithAddons, b: ProjectWithAddons) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      )
+      .slice(0, 3);
+  }, [projects]);
 
   if (error) {
     return (

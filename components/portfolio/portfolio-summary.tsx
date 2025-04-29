@@ -31,7 +31,7 @@ export function PortfolioSummary({ dateRange }: PortfolioSummaryProps) {
   const metrics = [
     {
       title: 'Total Profit',
-      value: 24680,
+      value: 2468,
       change: 12.5,
       icon: TrendingUp,
       prefix: '$',
@@ -39,7 +39,7 @@ export function PortfolioSummary({ dateRange }: PortfolioSummaryProps) {
     },
     {
       title: 'Trading Volume',
-      value: 1250000,
+      value: 12500,
       change: 8.3,
       icon: BarChart2,
       prefix: '$',
@@ -84,7 +84,7 @@ export function PortfolioSummary({ dateRange }: PortfolioSummaryProps) {
             <metric.icon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="px-4">
-            <div className="text-2xl font-bold">
+            <div className="text-md sm:text-2xl font-bold">
               <NumberFlow 
                 value={metric.value}
                 format={metric.isCurrency ? {
