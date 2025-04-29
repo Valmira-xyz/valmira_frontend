@@ -357,7 +357,6 @@ export interface ProjectHeaderProps {
   project?: ProjectWithAddons;
   walletAddress?: string;
   projectId: string;
-  onRefresh?: () => Promise<void>;
 }
 
 // Bot related types

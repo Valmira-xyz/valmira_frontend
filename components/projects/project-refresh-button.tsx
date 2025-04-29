@@ -16,7 +16,6 @@ interface ProjectRefreshButtonProps {
 
 export function ProjectRefreshButton({
   projectId,
-  onRefresh,
 }: ProjectRefreshButtonProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
@@ -59,10 +58,6 @@ export function ProjectRefreshButton({
           fetchProjectStats({ projectId, timeRange: { start, end } }) as any
         );
 
-        // Call the onRefresh callback if provided
-        if (onRefresh) {
-          await onRefresh();
-        }
 
         // Show success toast
         toast({

@@ -77,6 +77,7 @@ export function DashboardSidebar() {
   // Fetch projects when component mounts
   useEffect(() => {
     if (isAuthenticated && isConnected) {
+      console.log('================== fetching projects in sidebar');
       dispatch(fetchProjects() as any);
     }
   }, [dispatch, isAuthenticated, isConnected]);

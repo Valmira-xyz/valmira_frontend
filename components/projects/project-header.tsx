@@ -13,8 +13,8 @@ import { Button } from '../ui/button';
 
 export function ProjectHeader({
   project,
+  walletAddress,
   projectId,
-  onRefresh,
 }: ProjectHeaderProps) {
   const { toast } = useToast();
   if (!project) {
@@ -120,7 +120,7 @@ export function ProjectHeader({
             </div>
           </div>
           <div className="flex gap-4 items-center">
-            <ProjectRefreshButton projectId={projectId} onRefresh={onRefresh} />
+            <ProjectRefreshButton projectId={projectId} />
             <Badge
               variant={getBadgeVariant(project.status)}
               className="font-medium text-sm px-3 py-1 rounded-full"
