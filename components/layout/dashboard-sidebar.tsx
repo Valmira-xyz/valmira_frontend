@@ -342,7 +342,7 @@ export function DashboardSidebar() {
                             onClick={() =>
                               onNavigateTo(`/projects/${project._id}`)
                             }
-                            className="flex items-center justify-between w-full px-6 h-8 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
+                            className="flex items-center justify-between w-full pl-6 pr-2 h-8 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
                           >
                             <div className="flex items-center gap-2">
                               <span
@@ -358,14 +358,14 @@ export function DashboardSidebar() {
                                 />
                               </span>
                               <span className="text-xs">
-                                {project.name.length > 10
-                                  ? project.name.slice(0, 8) + '...'
+                                {project.name.length > 12
+                                  ? project.name.slice(0, 10) + '...'
                                   : project.name}
                               </span>
                             </div>
                             <Badge
                               variant={getBadgeVariant(project.status)}
-                              className="font-medium text-[10px] px-1 rounded-full"
+                              className="text-[10px] rounded-full"
                               size="default"
                             >
                               {project.status}
