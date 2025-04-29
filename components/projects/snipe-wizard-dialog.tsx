@@ -602,7 +602,7 @@ export function SnipeWizardDialog({
               <Button
                 onClick={() => handleGenerateWallets()}
                 disabled={_generatingWallets || isProjectLoading}
-                className="h-8"
+                className="h-8 w-full sm:w-auto"
                 size="sm"
               >
                 {_generatingWallets ? (
@@ -624,7 +624,7 @@ export function SnipeWizardDialog({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8"
+                className="h-8 w-full sm:w-auto"
                 onClick={() => {
                   const allAddresses = [
                     ...(project?.addons.SnipeBot.depositWalletId?.publicKey
@@ -1770,10 +1770,10 @@ export function SnipeWizardDialog({
                   className="max-w-32"
                 />
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
                 <span className="text-sm">BNB</span>
                 <Button
-                  className="bg-green-500 hover:bg-green-600"
+                  className="bg-green-500 hover:bg-green-600 w-full sm:w-auto"
                   onClick={() => {
                     handleDistributeExtraBnb();
                   }}
@@ -2261,7 +2261,7 @@ export function SnipeWizardDialog({
 
           {/* Navigation Hint */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-4">
-            <h3 className="text-base font-medium mb-1">Next Steps</h3>
+            <h3 className="text-base text-blue-700 font-medium mb-1">Next Steps</h3>
             <p className="text-sm text-blue-700">
               After successful simulation, proceed to the execution step to
               snipe the token.
@@ -2482,7 +2482,7 @@ export function SnipeWizardDialog({
 
           {/* Next Steps */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-4">
-            <h3 className="text-base font-medium mb-2">Next Steps</h3>
+            <h3 className="text-base text-blue-700 font-medium mb-2">Next Steps</h3>
             <p className="text-sm text-blue-700 mb-2">
               After successful execution, you can:
             </p>
@@ -2790,7 +2790,7 @@ export function SnipeWizardDialog({
             </div>
 
             {/* Action Buttons */}
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-2">
               <Button
                 onClick={() => {
                   const addresses = wallets.map((w) => w.publicKey);
@@ -4573,12 +4573,12 @@ export function SnipeWizardDialog({
             </div>
 
             {/* Navigation buttons */}
-            <div className="flex justify-between mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-4">
               <Button
                 variant="outline"
                 onClick={goToPreviousStep}
                 disabled={currentStep === WizardStep.INTRODUCTION}
-                className="h-9 px-2 sm:px-4"
+                className="h-9 px-2 sm:px-4 "
                 size="sm"
               >
                 <ChevronLeft className="h-4 w-4 sm:mr-2" />

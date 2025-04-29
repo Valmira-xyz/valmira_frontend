@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AutoSellNotification } from './auto-sell-notification';
-import { Copy, Loader2, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Loader2, RefreshCw } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
 import { Badge } from '@/components/ui/badge';
@@ -1127,8 +1127,8 @@ export function AutoSellWizardDialog({
               Distribute extra BNB from your deposit wallet to selected wallets
               for future sell operations.
             </div>
-            <div className="flex justify-between items-center gap-3">
-              <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-center gap-2 w-full">
                 <Label htmlFor="distributeAmount" className="whitespace-nowrap">
                   Amount per wallet:
                 </Label>
@@ -1145,7 +1145,7 @@ export function AutoSellWizardDialog({
                 />
                 <span className="text-sm">BNB</span>
               </div>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2 w-full">
                 <Button
                   onClick={handleDistributeExtraBnb}
                   disabled={
@@ -1183,7 +1183,7 @@ export function AutoSellWizardDialog({
               </div>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              💡 This is useful for providing BNB to wallets for future sell
+          💡  This is useful for providing BNB to wallets for future sell
               operations.
             </p>
           </div>
@@ -1375,7 +1375,7 @@ export function AutoSellWizardDialog({
       <CardContent className="px-0 sm:px-6">
         <div className="space-y-4">
           <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
               <h3 className="text-base font-medium">Configuration Summary</h3>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
@@ -1612,21 +1612,24 @@ export function AutoSellWizardDialog({
             </div>
 
             {/* Navigation buttons */}
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2 mb-4">
               <Button
                 variant="outline"
-                className="w-full"
                 onClick={goToPreviousStep}
                 disabled={currentStep === WizardStep.INTRODUCTION}
+                className="h-9 px-2 sm:px-4 "
+                size="sm"
               >
-                Previous
+                <ChevronLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Previous</span>
               </Button>
               <Button
-                className="w-full"
+                className="h-9 px-2 sm:px-4"
                 onClick={goToNextStep}
                 disabled={currentStep === WizardStep.EXECUTION}
               >
-                Next
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="h-4 w-4 sm:ml-2" />
               </Button>
             </div>
           </div>

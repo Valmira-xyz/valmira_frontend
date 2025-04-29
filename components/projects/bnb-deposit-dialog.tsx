@@ -315,7 +315,7 @@ export function BnbDepositDialog({
           </div>
         </div>
 
-        <DialogFooter className="sm:justify-end">
+        <DialogFooter className="sm:justify-end gap-2">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

@@ -176,7 +176,7 @@ export function ApproveAndAddLiquidityButtons({
     parseFloat(bnbAmount) <= 0;
 
   return (
-    <div className="flex gap-2">
+    <div className="w-full sm:w-auto grid grid-cols-2 gap-2">
       {!isApproved && (
         <Button
           onClick={handleApprove}
