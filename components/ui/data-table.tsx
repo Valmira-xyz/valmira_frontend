@@ -753,7 +753,7 @@ export function DataTable({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="flex items-center justify-between gap-2 py-4 flex-wrap"
+                className="flex items-center justify-between gap-4 py-4 flex-wrap"
               >
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-muted-foreground">

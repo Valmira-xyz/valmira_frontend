@@ -1000,7 +1000,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     )}
                   </CardContent>
                   <CardFooter className="flex flex-col items-start gap-4 mt-auto">
-                    {addon.botType === 'HolderBot' ? (
+                    {addon.botType === 'HolderBot'? (
                       <>
                         <p className="text-sm text-muted-foreground mb-2">
                           Please deposit BNB to the wallet address above and
@@ -1030,8 +1030,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                       addon.botType === 'VolumeBot' ? (
                       <>
                         <p className="text-sm text-muted-foreground mb-2">
-                          Please deposit BNB to the wallet address above and
-                          click Execute to start use Auto sell bot
+                          {addon.botType === 'AutoSellBot'
+                            ? 'Please deposit BNB to the wallet address above and click Execute to start use Auto sell bot'
+                            : 'Please deposit BNB to the wallet address above and click Execute to start generating volume.'}
                         </p>
                         <Button
                           className="w-full mt-2 hover:bg-primary/90 transition-colors"
