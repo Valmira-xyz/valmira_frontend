@@ -11,6 +11,7 @@ import { Copy, Download, ExternalLink, HelpCircle, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
+import { BnbDepositDialog } from '@/components/projects/bnb-deposit-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -752,301 +753,321 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
         <>
           <h2 className="text-xl font-bold">Add-Ons & Configuration</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 pb-4">
-            {addOns.map((addon) => (
-              <Card key={addon.botType} className="w-full flex flex-col">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{addon.name}</CardTitle>
-                    <Badge
-                      variant={getBadgeVariant(
-                        configs[addon.botType].enabled ? 'active' : 'inactive'
-                      )}
-                      className="font-medium text-sm px-3 py-1 rounded-full"
-                    >
-                      {configs[addon.botType].enabled ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                  <CardDescription>{addon.description}</CardDescription>
-                  {addon.tutorialLink && (
-                    <Button
-                      variant="link"
-                      asChild
-                      className="p-0 h-auto font-normal"
-                    >
-                      <Link href={addon.tutorialLink}>
-                        <HelpCircle className="w-4 h-4 mr-2" />
-                        How it works
-                      </Link>
-                    </Button>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-4 flex-1">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor={`${addon.botType}-toggle`}>Enable</Label>
-                    <Switch
-                      id={`${addon.botType}-toggle`}
-                      checked={configs[addon.botType]?.enabled ?? false}
-                      onCheckedChange={(checked) => {
-                        if (isProjectOwner) {
-                          setConfigs((prev) => ({
-                            ...prev,
-                            [addon.botType]: {
-                              ...prev[addon.botType],
-                              enabled: checked,
-                            },
-                          }));
-                          handleToggle(addon.botType);
-                        }
-                      }}
-                      disabled={!isProjectOwner}
-                    />
-                  </div>
-                  {addon.depositWallet && (
-                    <>
-                      <Separator />
-                      <div className="space-y-2">
-                        <Label>Deposit Wallet</Label>
-                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                          <code className="text-sm font-mono">
-                            {addon.depositWallet.slice(0, 6)}...
-                            {addon.depositWallet.slice(-4)}
-                          </code>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() =>
-                                copyToClipboard(addon.depositWallet)
-                              }
-                            >
-                              <Copy className="h-4 w-4" />
-                              <span className="sr-only">Copy address</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              asChild
-                            >
-                              <a
-                                href={`https://bscscan.com/address/${addon.depositWallet}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                                <span className="sr-only">
-                                  View on Explorer
-                                </span>
-                              </a>
-                            </Button>
-
-                            {/* Only show download button for project owners */}
-                            {isProjectOwner && (
+            {addOns.map((addon) => {
+              const [isBnbDepositDialogOpen, setIsBnbDepositDialogOpen] =
+                useState(false);
+              return (
+                <Card key={addon.botType} className="w-full flex flex-col">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>{addon.name}</CardTitle>
+                      <Badge
+                        variant={getBadgeVariant(
+                          configs[addon.botType].enabled ? 'active' : 'inactive'
+                        )}
+                        className="font-medium text-sm px-3 py-1 rounded-full"
+                      >
+                        {configs[addon.botType].enabled ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                    <CardDescription>{addon.description}</CardDescription>
+                    {addon.tutorialLink && (
+                      <Button
+                        variant="link"
+                        asChild
+                        className="p-0 h-auto font-normal"
+                      >
+                        <Link href={addon.tutorialLink}>
+                          <HelpCircle className="w-4 h-4 mr-2" />
+                          How it works
+                        </Link>
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4 flex-1">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor={`${addon.botType}-toggle`}>Enable</Label>
+                      <Switch
+                        id={`${addon.botType}-toggle`}
+                        checked={configs[addon.botType]?.enabled ?? false}
+                        onCheckedChange={(checked) => {
+                          if (isProjectOwner) {
+                            setConfigs((prev) => ({
+                              ...prev,
+                              [addon.botType]: {
+                                ...prev[addon.botType],
+                                enabled: checked,
+                              },
+                            }));
+                            handleToggle(addon.botType);
+                          }
+                        }}
+                        disabled={!isProjectOwner}
+                      />
+                    </div>
+                    {addon.depositWallet && (
+                      <>
+                        <Separator />
+                        <div className="space-y-2">
+                          <Label>Deposit Wallet</Label>
+                          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                            <code className="text-sm font-mono">
+                              {addon.depositWallet.slice(0, 6)}...
+                              {addon.depositWallet.slice(-4)}
+                            </code>
+                            <div className="flex gap-2">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
-                                onClick={async () => {
-                                  try {
-                                    const publicKey = addon.depositWallet;
-                                    const blob =
-                                      await walletApi.downloadWalletAsCsv(
-                                        publicKey
+                                onClick={() =>
+                                  copyToClipboard(addon.depositWallet)
+                                }
+                              >
+                                <Copy className="h-4 w-4" />
+                                <span className="sr-only">Copy address</span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                asChild
+                              >
+                                <a
+                                  href={`https://bscscan.com/address/${addon.depositWallet}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                  <span className="sr-only">
+                                    View on Explorer
+                                  </span>
+                                </a>
+                              </Button>
+
+                              {/* Only show download button for project owners */}
+                              {isProjectOwner && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={async () => {
+                                    try {
+                                      const publicKey = addon.depositWallet;
+                                      const blob =
+                                        await walletApi.downloadWalletAsCsv(
+                                          publicKey
+                                        );
+
+                                      // Create a URL for the blob
+                                      const url =
+                                        window.URL.createObjectURL(blob);
+
+                                      // Create a temporary link element
+                                      const link = document.createElement('a');
+                                      link.href = url;
+                                      link.setAttribute(
+                                        'download',
+                                        `wallet-${publicKey}.csv`
                                       );
 
-                                    // Create a URL for the blob
-                                    const url =
-                                      window.URL.createObjectURL(blob);
+                                      // Append to the document, click it, and remove it
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
 
-                                    // Create a temporary link element
-                                    const link = document.createElement('a');
-                                    link.href = url;
-                                    link.setAttribute(
-                                      'download',
-                                      `wallet-${publicKey}.csv`
-                                    );
+                                      // Clean up the URL object
+                                      window.URL.revokeObjectURL(url);
 
-                                    // Append to the document, click it, and remove it
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-
-                                    // Clean up the URL object
-                                    window.URL.revokeObjectURL(url);
-
-                                    toast({
-                                      title: 'Success',
-                                      description:
-                                        'Wallet downloaded successfully',
-                                    });
-                                  } catch (error) {
-                                    console.error(
-                                      'Failed to download wallet:',
-                                      error
-                                    );
-                                    toast({
-                                      title: 'Download Failed',
-                                      description:
-                                        'Could not download wallet. Please try again.',
-                                      variant: 'destructive',
-                                    });
-                                  }
-                                }}
-                              >
-                                <Download className="h-4 w-4" />
-                                <span className="sr-only">Download Wallet</span>
-                              </Button>
-                            )}
+                                      toast({
+                                        title: 'Success',
+                                        description:
+                                          'Wallet downloaded successfully',
+                                      });
+                                    } catch (error) {
+                                      console.error(
+                                        'Failed to download wallet:',
+                                        error
+                                      );
+                                      toast({
+                                        title: 'Download Failed',
+                                        description:
+                                          'Could not download wallet. Please try again.',
+                                        variant: 'destructive',
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Download className="h-4 w-4" />
+                                  <span className="sr-only">
+                                    Download Wallet
+                                  </span>
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </>
-                  )}
-                  {addon.balances && (
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
+                      </>
+                    )}
+                    {addon.balances && (
+                      <div className="flex flex-col w-full">
                         <Label>BNB Balance</Label>
-                        <p className="text-xl font-bold">
-                          {addon.depositWallet &&
-                          depositWalletBalances[addon.depositWallet]
-                            ? depositWalletBalances[
-                                addon.depositWallet
-                              ].bnbBalance.toFixed(4)
-                            : '0'}{' '}
-                          BNB
-                        </p>
-                      </div>
-                      {addon.botType === 'SnipeBot' && (
-                        <div>
-                          <Label>Token Balance</Label>
+                        <div className="flex items-center justify-between">
                           <p className="text-xl font-bold">
                             {addon.depositWallet &&
                             depositWalletBalances[addon.depositWallet]
                               ? depositWalletBalances[
                                   addon.depositWallet
-                                ].tokenBalance?.toFixed(2)
+                                ].bnbBalance.toFixed(4)
                               : '0'}{' '}
-                            {project?.symbol || project.name}
+                            BNB
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="ml-auto"
+                            onClick={() => setIsBnbDepositDialogOpen(true)}
+                          >
+                            Deposit
+                          </Button>
+                        </div>
+                        <BnbDepositDialog
+                          open={isBnbDepositDialogOpen}
+                          onOpenChange={setIsBnbDepositDialogOpen}
+                          depositWalletAddress={addon.depositWallet}
+                        />
+                      </div>
+                    )}
+                    {addon.botType === 'SnipeBot' && (
+                      <div>
+                        <Label>Token Balance</Label>
+                        <p className="text-xl font-bold">
+                          {addon.depositWallet &&
+                          depositWalletBalances[addon.depositWallet]
+                            ? depositWalletBalances[
+                                addon.depositWallet
+                              ].tokenBalance?.toFixed(2)
+                            : '0'}{' '}
+                          {project?.symbol || project.name}
+                        </p>
+                      </div>
+                    )}
+                    {addon.botType === 'VolumeBot' &&
+                      addon.generatedVolume !== undefined && (
+                        <div>
+                          <Label>Generated Volume</Label>
+                          <p className="text-xl font-bold">
+                            ${formatNumber(addon.generatedVolume)}
                           </p>
                         </div>
                       )}
-                      {addon.botType === 'VolumeBot' &&
-                        addon.generatedVolume !== undefined && (
-                          <div>
-                            <Label>Generated Volume</Label>
-                            <p className="text-xl font-bold">
-                              ${formatNumber(addon.generatedVolume)}
-                            </p>
-                          </div>
-                        )}
-                      {addon.botType === 'HolderBot' &&
-                        addon.generatedHolders !== undefined && (
-                          <div>
-                            <Label>Generated Holders</Label>
-                            <p className="text-xl font-bold">
-                              {addon.generatedHolders}
-                            </p>
-                          </div>
-                        )}
-                      {addon.botType === 'AutoSellBot' && (
-                        <div className="space-y-2 flex flex-col ">
-                          <Label>Total Token Balance</Label>
+                    {addon.botType === 'HolderBot' &&
+                      addon.generatedHolders !== undefined && (
+                        <div>
+                          <Label>Generated Holders</Label>
                           <p className="text-xl font-bold">
-                            {addon.totalTokenBalance !== undefined
-                              ? addon.totalTokenBalance.toFixed(2)
-                              : '0'}{' '}
-                            {project?.symbol || project.name}
-                          </p>
-                          <Label>Active wallets</Label>
-                          <p className="text-xl font-bold">
-                            {addon.countsOfActivaveWallets !== undefined
-                              ? addon.countsOfActivaveWallets
-                              : '0'}
+                            {addon.generatedHolders}
                           </p>
                         </div>
                       )}
-                    </div>
-                  )}
-                </CardContent>
-                <CardFooter className="flex flex-col items-start gap-4 mt-auto">
-                  {addon.botType === 'HolderBot' ? (
-                    <>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Please deposit BNB to the wallet address above and click
-                        Execute to start generating{' '}
-                        {addon.botType === 'HolderBot' ? 'holders' : 'volume'}.
-                      </p>
-                      <Button
-                        className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                        onClick={() =>
-                          isProjectOwner
-                            ? handleToggle(addon.botType)
-                            : toast({
-                                title: 'Error',
-                                description:
-                                  'You are not the owner of this project',
-                                variant: 'destructive',
-                              })
-                        }
-                        disabled={!isProjectOwner}
-                      >
-                        <Save className="h-4 w-4 mr-1" />
-                        {configs[addon.botType]?.enabled ? 'Stop' : 'Start'}
-                      </Button>
-                    </>
-                  ) : addon.botType === 'AutoSellBot' ||
-                    addon.botType === 'VolumeBot' ? (
-                    <>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Please deposit BNB to the wallet address above and click
-                        Execute to start use Auto sell bot
-                      </p>
-                      <Button
-                        className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                        onClick={() =>
-                          isProjectOwner
-                            ? addon.botType === 'AutoSellBot'
-                              ? setIsAutoSellDialogOpen(true)
-                              : setIsVolumeDialogOpen(true)
-                            : toast({
-                                title: 'Error',
-                                description:
-                                  'You are not the owner of this project',
-                                variant: 'destructive',
-                              })
-                        }
-                      >
-                        Configure & Execute
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Please deposit BNB to the wallet address above and click
-                        Execute to start use sniping bot.
-                      </p>
-                      <Button
-                        className="w-full mt-2 hover:bg-primary/90 transition-colors"
-                        // onClick={() =>
-                        //   isProjectOwner
-                        //     ? setIsSimulateDialogOpen(true)
-                        //     : toast({
-                        //         title: 'Error',
-                        //         description:
-                        //           'You are not the owner of this project',
-                        //         variant: 'destructive',
-                        //       })
-                        // }
-                        onClick={() => setIsSimulateDialogOpen(true)}
-                      >
-                        Simulate & Execute
-                      </Button>
-                    </>
-                  )}
-                </CardFooter>
-              </Card>
-            ))}
+                    {addon.botType === 'AutoSellBot' && (
+                      <div className="space-y-2 flex flex-col ">
+                        <Label>Total Token Balance</Label>
+                        <p className="text-xl font-bold">
+                          {addon.totalTokenBalance !== undefined
+                            ? addon.totalTokenBalance.toFixed(2)
+                            : '0'}{' '}
+                          {project?.symbol || project.name}
+                        </p>
+                        <Label>Active wallets</Label>
+                        <p className="text-xl font-bold">
+                          {addon.countsOfActivaveWallets !== undefined
+                            ? addon.countsOfActivaveWallets
+                            : '0'}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter className="flex flex-col items-start gap-4 mt-auto">
+                    {addon.botType === 'HolderBot' ? (
+                      <>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Please deposit BNB to the wallet address above and
+                          click Execute to start generating{' '}
+                          {addon.botType === 'HolderBot' ? 'holders' : 'volume'}
+                          .
+                        </p>
+                        <Button
+                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
+                          onClick={() =>
+                            isProjectOwner
+                              ? handleToggle(addon.botType)
+                              : toast({
+                                  title: 'Error',
+                                  description:
+                                    'You are not the owner of this project',
+                                  variant: 'destructive',
+                                })
+                          }
+                          disabled={!isProjectOwner}
+                        >
+                          <Save className="h-4 w-4 mr-1" />
+                          {configs[addon.botType]?.enabled ? 'Stop' : 'Start'}
+                        </Button>
+                      </>
+                    ) : addon.botType === 'AutoSellBot' ||
+                      addon.botType === 'VolumeBot' ? (
+                      <>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Please deposit BNB to the wallet address above and
+                          click Execute to start use Auto sell bot
+                        </p>
+                        <Button
+                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
+                          onClick={() =>
+                            isProjectOwner
+                              ? addon.botType === 'AutoSellBot'
+                                ? setIsAutoSellDialogOpen(true)
+                                : setIsVolumeDialogOpen(true)
+                              : toast({
+                                  title: 'Error',
+                                  description:
+                                    'You are not the owner of this project',
+                                  variant: 'destructive',
+                                })
+                          }
+                        >
+                          Configure & Execute
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Please deposit BNB to the wallet address above and
+                          click Execute to start use sniping bot.
+                        </p>
+                        <Button
+                          className="w-full mt-2 hover:bg-primary/90 transition-colors"
+                          // onClick={() =>
+                          //   isProjectOwner
+                          //     ? setIsSimulateDialogOpen(true)
+                          //     : toast({
+                          //         title: 'Error',
+                          //         description:
+                          //           'You are not the owner of this project',
+                          //         variant: 'destructive',
+                          //       })
+                          // }
+                          onClick={() => setIsSimulateDialogOpen(true)}
+                        >
+                          Simulate & Execute
+                        </Button>
+                      </>
+                    )}
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
           <SnipeWizardDialog
             open={isSimulateDialogOpen}
