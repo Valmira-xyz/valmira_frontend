@@ -88,10 +88,27 @@ export function BuySellForm() {
             />
           )}
 
-          <div className="flex items-center justify-between gap-2 bg-muted/50 p-2 rounded-lg">
+          <div className="flex items-center justify-between gap-2 bg-muted/50 p-4 rounded-lg">
             <div className="flex items-center gap-2">
               <span className="text-sm">Rate</span>
-              <Info className="h-4 w-4 text-muted-foreground" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">  
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="w-[280px] p-3" align="center">
+                  <div className="flex items-center gap-4 mb-1">
+                    <Info className="h-6 w-6 self-start" />
+                    <div className='flex flex-col'>
+                      <span className="font-medium">Rate</span>
+                      <span className="text-xs text-muted-foreground">
+                        The current exchange rate between the two selected tokens.
+                      </span>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </div>
             <span className="text-sm">1 ETH = 1,850 USD</span>
           </div>
@@ -113,16 +130,18 @@ export function BuySellForm() {
                     <Info className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="w-[280px] p-3" align="start">
+                <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-2 mb-1">
-                    <Info className="h-4 w-4" />
-                    <span className="font-medium">Buy/Sell tool</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {isBuying
+                    <Info className="h-5 w-5 self-start" />
+                    <div className='flex flex-col'>
+                      <span className="font-medium">Buy/Sell tool</span>
+                      <span className="text-xs text-muted-foreground">
+                      {isBuying
                       ? 'This tool enables you to buy crypto with fiat currency'
                       : 'This tool enables you to sell crypto for fiat currency'}
-                  </p>
+                      </span>
+                    </div>
+                  </div>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -161,27 +180,55 @@ export function BuySellForm() {
                 ) : (
                   <span>Withdrawal Fee</span>
                 )}
-                <Info className="h-4 w-4 text-muted-foreground" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="w-[280px] p-3" align="center">
+                    <div className="flex items-center gap-4 mb-1">
+                      <Info className="h-6 w-6 self-start" />
+                      <div className='flex flex-col'>
+                        <span className="font-medium">Provider Fee</span>
+                        <span className="text-xs text-muted-foreground">
+                          The fee charged by the provider for the transaction.
+                        </span>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               </div>
               <span className="bg-muted/50 px-2 rounded-md text-[12px]">
                 2.5%
               </span>
             </div>
-            {/* <div className="flex items-center justify-between text-sm">
-              <span>Minimum received</span>
-              <span>1,841.25 USDT</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span>Price Impact</span>
-              <span className="text-green-500">0.05%</span>
-            </div> */}
           </div>
 
           {/* Summary */}
           <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
             <div className="flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              <span className="text-sm font-medium">Summary</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <Info className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium">Summary</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="w-[280px] p-3" align="center">
+                  <div className="flex items-center gap-4 mb-1">
+                    <Info className="h-6 w-6 self-start" />
+                    <div className='flex flex-col'>
+                      <span className="font-medium">Summary</span>
+                      <span className="text-xs text-muted-foreground">
+                        An overview of your swap details, including amounts, rates and fees.
+                      </span>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </div>
             <p className="text-sm text-foreground">
               {isBuying
@@ -202,14 +249,33 @@ export function BuySellForm() {
           <div className="flex items-center justify-center text-[12px] text-muted-foreground">
             <div className="flex items-center gap-2">
               <span>Quotes includes a 0.05% Phantom Fee</span>
-              <Info className="h-4 w-4" />
+              {/* <Info className="h-4 w-4" /> */}
             </div>
           </div>
 
           <div className="text-sm text-foreground bg-muted/50 p-3 rounded-lg">
             <div className="flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              <span>Important!</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <Info className="h-4 w-4" />
+                    </Button>
+                    <span>Important!</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="w-[280px] p-3" align="center">
+                  <div className="flex items-center gap-4 mb-1">
+                    <Info className="h-8 w-8 self-start" />
+                    <div className='flex flex-col'>
+                      <span className="font-medium">Important!</span>
+                      <span className="text-xs text-muted-foreground">
+                        Always verify the crypto you're buying. Check for audits and community feedback.
+                      </span>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </div>
             <p className="mt-1">
               {isBuying
