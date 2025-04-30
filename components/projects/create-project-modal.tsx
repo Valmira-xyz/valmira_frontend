@@ -47,6 +47,7 @@ import { useEthersSigner } from '@/lib/ether-adapter';
 import { cn } from '@/lib/utils';
 import { TokenDeploymentService } from '@/services/deployTokenService';
 import { createProject, fetchProjects } from '@/store/slices/projectSlice';
+import { Spinner } from '../ui/spinner';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -842,7 +843,7 @@ export function CreateProjectModal({
                   >
                     {tokenImportStatus === 'validating' ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Spinner size="sm" className="mr-2" hasText={false}/>
                         Validating
                       </>
                     ) : (

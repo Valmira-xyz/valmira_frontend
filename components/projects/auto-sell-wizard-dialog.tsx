@@ -1203,12 +1203,13 @@ export function AutoSellWizardDialog({
                 }
                 disabled={isLoadingBalances || isLoadingConfig}
               >
-                {isLoadingBalances || isLoadingConfig ? (
+                {/* {isLoadingBalances || isLoadingConfig ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Refresh Balances
+                )} */}
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingBalances || isLoadingConfig ? 'animate-spin' : ''}`} />
+                {isLoadingBalances || isLoadingConfig ? 'Refreshing...' : 'Refresh Balances'}
               </Button>
             </div>
             <div className="text-sm text-muted-foreground mb-4">

@@ -74,14 +74,6 @@ export function DashboardSidebar() {
     setMounted(true);
   }, []);
 
-  // Fetch projects when component mounts
-  useEffect(() => {
-    if (isAuthenticated && isConnected) {
-      console.log('================== fetching projects in sidebar');
-      dispatch(fetchProjects() as any);
-    }
-  }, [dispatch, isAuthenticated, isConnected]);
-
   // Filter projects to show only the authenticated user's projects,
   // sort by status (active first) then by updatedAt date (newest first),
   // and limit to 10 projects for the sidebar
