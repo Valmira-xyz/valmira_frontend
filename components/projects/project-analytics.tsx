@@ -12,7 +12,7 @@ import {
 import type { DateRange } from 'react-day-picker';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { format, isWithinInterval, subDays, subMonths } from 'date-fns';
+import { format, isWithinInterval, subDays, subMonths, subWeeks } from 'date-fns';
 
 import { useParams } from 'next/navigation';
 
@@ -125,8 +125,8 @@ export const ProjectAnalytics = forwardRef<
 >(({ project, projectStats }, ref ) => {
   const [_volumeTrends, setVolumeTrends] = useState<TimeSeriesDataPoint[]>([]);
   const [_profitTrends, setProfitTrends] = useState<TimeSeriesDataPoint[]>([]);
-  const [profitTimePeriod, _setProfitTimePeriod] = useState<TimePeriod>('1m');
-  const [volumeTimePeriod, _setVolumeTimePeriod] = useState<TimePeriod>('1m');
+  const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>('7d');
+  const [volumeTimePeriod, setVolumeTimePeriod] = useState<TimePeriod>('7d');
   const dispatch = useDispatch();
   const { id: projectId } = useParams() as { id: string };
 
@@ -142,13 +142,13 @@ export const ProjectAnalytics = forwardRef<
   const [botPerformanceDateRange, setBotPerformanceDateRange] = useState<
     DateRange | undefined
   >({
-    from: subDays(new Date(), 30),
+    from: subWeeks(new Date(), 1),
     to: new Date(),
   });
   const [activityLogDateRange, setActivityLogDateRange] = useState<
     DateRange | undefined
   >({
-    from: subDays(new Date(), 30),
+    from: subWeeks(new Date(), 1),
     to: new Date(),
   });
 
@@ -157,10 +157,6 @@ export const ProjectAnalytics = forwardRef<
     string | null
   >(null);
   const [selectedBot, setSelectedBot] = useState<string | null>(null);
-
-  // UI expansion states
-  const [isBotPerformanceExpanded, setBotPerformanceExpanded] = useState(false);
-  const [isActivityLogExpanded, setActivityLogExpanded] = useState(false);
 
   // Refs to prevent duplicate API calls
   const initialRenderComplete = useRef(false);
@@ -1030,6 +1026,8 @@ export const ProjectAnalytics = forwardRef<
           showDateButtons={true} 
           showChartTypeSelector={false}
           showHeaderInVertical={true}
+          dateRange={botPerformanceDateRange}
+          onDateRangeChange={setBotPerformanceDateRange}
         />
 
         <DataChart
@@ -1044,6 +1042,8 @@ export const ProjectAnalytics = forwardRef<
           showDateButtons={true} 
           showChartTypeSelector={false}
           showHeaderInVertical={true}
+          dateRange={activityLogDateRange}
+          onDateRangeChange={setActivityLogDateRange}
         />
       </div>
 
@@ -1067,6 +1067,8 @@ export const ProjectAnalytics = forwardRef<
         showDateButtons={true}
         showDownloadButton={true}
         showTableHeaderInVertical={true}
+        dateRange={botPerformanceDateRange}
+        onDateRangeChange={setBotPerformanceDateRange}
       />
 
       <DataTable
@@ -1089,6 +1091,8 @@ export const ProjectAnalytics = forwardRef<
         showDateButtons={true}
         showDownloadButton={true}
         showTableHeaderInVertical={true}
+        dateRange={activityLogDateRange}
+        onDateRangeChange={setActivityLogDateRange}
       />
     </div>
   );

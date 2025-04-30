@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DateRangePicker } from '@/components/date-range-picker';
-import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval, format } from 'date-fns';
+import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, differenceInDays, isWithinInterval, format } from 'date-fns';
 import { Input } from './input';
 import { Badge } from './badge';
 import { cn } from '@/lib/utils';
@@ -47,7 +47,7 @@ interface TableColumn {
   linkPrefix?: string;
 }
 
-interface DataTableProps {
+export interface DataTableProps {
   data: Record<string, any>[];
   hideColumns?: string[];
   showColumns?: Column[];
@@ -71,6 +71,8 @@ interface DataTableProps {
   isLoading?: boolean;
   emptyStateMessage?: string;
   emptyStateIcon?: JSX.Element;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
 }
 
 export function DataTable({
@@ -97,14 +99,21 @@ export function DataTable({
   isLoading = false,
   emptyStateMessage = "No data available",
   emptyStateIcon,
+  dateRange,
+  onDateRangeChange,
 }: DataTableProps) {
+  const selectedDateButton = useMemo(() => {
+    const diffInDays = differenceInDays(dateRange?.to ?? new Date(), dateRange?.from ?? subDays(new Date(), 1));
+    if (diffInDays > 7) return '1M';
+    if (diffInDays == 1) return '1D';
+    return '1W';
+  }, [dateRange]);
+  
   const [page, setPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState<Record<string, any>[]>([]);
   const [selectAll, setSelectAll] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange>();
   const [currentPageSize, setCurrentPageSize] = useState(pageSize);
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
-  const [selectedDateButton, setSelectedDateButton] = useState('1M');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
@@ -191,59 +200,6 @@ export function DataTable({
       );  
     }
 
-    // Apply date filter if date field exists in data
-    if (filtered.length > 0) {
-      filtered = filtered.filter(item => {
-        try {
-          // Skip if the item doesn't have the date field
-          if (!item[dateColumnName]) return true;
-          
-          const itemDate = parseISO(item[dateColumnName]);
-          const now = new Date();
-          
-          // Use custom date range if selected
-          if (dateRange?.from) {
-            const start = startOfDay(dateRange.from);
-            const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(now);
-            return isWithinInterval(itemDate, { start, end });
-          }
-          
-          // Use date button range
-          if (selectedDateButton) {
-            let start: Date;
-            switch (selectedDateButton) {
-              case '1D':
-                start = subDays(now, 1);
-                break;
-              case '1W':
-                start = subWeeks(now, 1);
-                break;
-              case '1M':
-                start = subMonths(now, 1);
-                break;
-              default:
-                return true; // No date filter if no button selected
-            }
-
-            setDateRange({
-              from: start,
-              to: now
-            });
-
-            return isWithinInterval(itemDate, {
-              start: startOfDay(start),
-              end: endOfDay(now)
-            });
-          }
-          
-          return true; // No date filter if neither range nor button selected
-        } catch (error) {
-          console.error('Error parsing date:', error);
-          return false; // Exclude items with invalid dates
-        }
-      });
-    }
-
     // Apply sorting
     if (sortConfig) {
       filtered = [...filtered].sort((a, b) => {
@@ -297,15 +253,29 @@ export function DataTable({
     onRowSelect?.(newSelectedRows);
   };
 
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    setDateRange(range);
-    // setSelectedDateButton(''); // Clear date button selection when using custom range
-    setPage(1);
-  };
 
   const handleDateButtonChange = (value: string) => {
-    setSelectedDateButton(value);
-    setDateRange(undefined); // Clear date range when using buttons
+    const now = new Date();
+    let start: Date;
+
+    switch (value) {
+      case '1D':
+        start = subDays(now, 1);
+        break;
+      case '1W':
+        start = subWeeks(now, 1);
+        break;
+      case '1M':
+        start = subMonths(now, 1);
+        break;
+      default:
+        return;
+    }
+
+    onDateRangeChange?.({
+      from: start,
+      to: now
+    });
     setPage(1);
   };
 
@@ -566,7 +536,7 @@ export function DataTable({
                   )}
 
                   {showDateRange && (
-                    <DateRangePicker date={dateRange} onDateChange={handleDateRangeChange} />
+                    <DateRangePicker date={dateRange} onDateChange={onDateRangeChange} />
                   )}
                 </div>
 
@@ -655,7 +625,7 @@ export function DataTable({
                       </div>
                     )}
                     <p className="text-muted-foreground text-center">
-                      {dateRange?.from || selectedDateButton !== 'all' 
+                      {dateRange?.from 
                         ? "No data available for the selected date range" 
                         : emptyStateMessage}
                     </p>

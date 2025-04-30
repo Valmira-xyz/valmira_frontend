@@ -19,12 +19,13 @@ import { formatNumber } from '@/lib/utils';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval, format } from 'date-fns';
+import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval, format, differenceInDays } from 'date-fns';
 import { BarChart3, PieChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
 import { Spinner } from './spinner';
+
 export interface DataChartProps {
   title: string;
   description?: string;
@@ -43,6 +44,8 @@ export interface DataChartProps {
   isLoading?: boolean;
   emptyStateMessage?: string;
   emptyStateIcon?: React.ReactNode;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
 }
 
 export function DataChart({
@@ -63,16 +66,17 @@ export function DataChart({
   isLoading = false,
   emptyStateMessage = "No data available",
   emptyStateIcon,
+  dateRange,
+  onDateRangeChange,
 }: DataChartProps) {
   const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>('bar');
-  const [selectedDateButton, setSelectedDateButton] = useState<string>('1M');
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const now = new Date();
-    return {
-      from: subMonths(now, 1),
-      to: now
-    };
-  });
+
+  const selectedDateButton = useMemo(() => {
+    const diffInDays = differenceInDays(dateRange?.to ?? new Date(), dateRange?.from ?? subDays(new Date(), 1));
+    if (diffInDays > 7) return '1M';
+    if (diffInDays == 1) return '1D';
+    return '1W';
+  }, [dateRange]);
 
   const actualYKey = yKey || dataKey || 'value';
 
@@ -82,8 +86,8 @@ export function DataChart({
       if (!item[xKey]) return true;
       try {
         const itemDate = parseISO(item[xKey]);
-        const start = startOfDay(dateRange.from ?? subDays(new Date(), 1));
-        const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(new Date());
+        const start = startOfDay(dateRange?.from ?? subDays(new Date(), 1));
+        const end = dateRange?.to ? endOfDay(dateRange.to) : endOfDay(new Date());
         return isWithinInterval(itemDate, { start, end });
       } catch (error) {
         console.error('Error parsing date:', error);
@@ -129,7 +133,7 @@ export function DataChart({
   }, [filteredData, xKey, actualYKey]);
 
   const handleDateButtonChange = (value: string) => {
-    setSelectedDateButton(value);
+
     const now = new Date();
     let start: Date;
 
@@ -147,18 +151,13 @@ export function DataChart({
         return;
     }
 
-    setDateRange({
+    onDateRangeChange?.({
       from: start,
       to: now
     });
   };
 
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    setSelectedDateButton('');
-    if (range) {
-      setDateRange(range);
-    }
-  };
+
 
   const formatXAxis = (date: string) => {
     try {
@@ -359,7 +358,7 @@ export function DataChart({
             {showDateRange && (
               <DateRangePicker
                 date={dateRange}
-                onDateChange={handleDateRangeChange}
+                onDateChange={onDateRangeChange}
               />
             )}
             {showDateButtons && (
