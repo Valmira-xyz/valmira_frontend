@@ -796,6 +796,14 @@ export function BundleSnipingDialog({
                     <span className="sr-only">View on Explorer</span>
                   </a>
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => setIsOpenBnbDepositDialog(true)}
+                >
+                  Deposit
+                </Button>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -4402,7 +4410,7 @@ export function BundleSnipingDialog({
                     size="sm"
                     onClick={() => setIsOpenBnbDepositDialog(true)}
                   >
-                    Deposit BNB
+                    Deposit
                   </Button>
                 </div>
 

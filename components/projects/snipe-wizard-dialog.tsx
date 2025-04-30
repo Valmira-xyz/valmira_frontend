@@ -65,6 +65,7 @@ import { generateWallets, getWalletBalances } from '@/store/slices/walletSlice';
 import type { AppDispatch, RootState } from '@/store/store';
 import type { Project, ProjectWithAddons } from '@/types';
 import type { ProjectState } from '@/types';
+import { BnbDepositDialog } from './bnb-deposit-dialog';
 
 // Types from the original component
 interface SubWallet {
@@ -207,12 +208,8 @@ export function SnipeWizardDialog({
   open,
   onOpenChange,
 }: SnipeWizardDialogProps) {
-  // lazy load bnb deposit dialog
-  // const BnbDepositDialog = lazy(() => import('@/components/projects/bnb-deposit-dialog').then(module => ({ default: module.BnbDepositDialog })));
-  // const [isBnbDepositDialogOpen, setIsBnbDepositDialogOpen] = useState(false);
-  // const toggleDialog = (open: boolean) => {
-  //   setIsBnbDepositDialogOpen(open);
-  // };
+  const [depositAmount, setDepositAmount] = useState(0);
+  const [isBnbDepositDialogOpen, setIsBnbDepositDialogOpen] = useState(false);
 
   // then read project id from url
   const { id: projectId } = useParams();
@@ -534,6 +531,16 @@ export function SnipeWizardDialog({
                     <span className="sr-only">View on Explorer</span>
                   </a>
                 </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={handleDepositClick}
+                >
+                  Deposit
+                </Button>
+                
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1546,34 +1553,44 @@ export function SnipeWizardDialog({
         <div className="space-y-4 sm:space-y-6">
           {/* Deposit Wallet Balance */}
           <div className="border rounded-lg p-2 sm:p-4 bg-muted/10">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-4">
               <h3 className="text-base font-medium mb-2">Deposit Wallet</h3>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 ml-auto"
-                onClick={() => {
-                  const allAddresses = [
-                    ...(project?.addons.SnipeBot.depositWalletId?.publicKey
-                      ? [project?.addons.SnipeBot.depositWalletId.publicKey]
-                      : []),
-                    ...wallets
-                      .filter((w) => w.role !== 'botmain')
-                      .map((w) => w.publicKey),
-                  ];
-                  fetchBalances(allAddresses);
-                }}
-                disabled={isLoadingBalances}
-              >
-                {/* {isLoadingBalances ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )} */}
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingBalances ? 'animate-spin' : ''}`} />
-                {isLoadingBalances ? 'Refreshing...' : 'Refresh Balances'}
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-full sm:w-fit sm:ml-auto"
+                  onClick={handleDepositClick}
+                >
+                  Deposit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => {
+                    const allAddresses = [
+                      ...(project?.addons.SnipeBot.depositWalletId?.publicKey
+                        ? [project?.addons.SnipeBot.depositWalletId.publicKey]
+                        : []),
+                      ...wallets
+                        .filter((w) => w.role !== 'botmain')
+                        .map((w) => w.publicKey),
+                    ];
+                    fetchBalances(allAddresses);
+                  }}
+                  disabled={isLoadingBalances}
+                >
+                  {/* {isLoadingBalances ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )} */}
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingBalances ? 'animate-spin' : ''}`} />
+                  {isLoadingBalances ? 'Refreshing...' : 'Refresh Balances'}
+                </Button>
+              </div>
+              
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div>
@@ -4552,132 +4569,152 @@ export function SnipeWizardDialog({
     }
   };
 
+  const handleDepositClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsBnbDepositDialogOpen(true);
+  };
+
+  const handleDepositComplete = () => {
+    setIsBnbDepositDialogOpen(false);
+    // Refresh balances after successful deposit
+    if (project?.addons.SnipeBot.depositWalletId?.publicKey) {
+      fetchBalances([project.addons.SnipeBot.depositWalletId.publicKey]);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] lg:max-w-[1100px] xl:max-w-[1200px] max-h-[90vh] overflow-y-auto p-4 md:p-6">
-        <DialogHeader className="pb-2">
-          <DialogTitle>Snipe Wizard</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[900px] lg:max-w-[1100px] xl:max-w-[1200px] max-h-[90vh] overflow-y-auto p-4 md:p-6">
+          <DialogHeader className="pb-2">
+            <DialogTitle>Snipe Wizard</DialogTitle>
+          </DialogHeader>
 
-        <div className="flex flex-col lg:flex-row lg:gap-6">
-          {/* Left side - progress and navigation */}
-          <div className="lg:w-64 lg:flex-shrink-0 mb-4 lg:mb-0">
-            {/* Progress bar */}
-            <div className="mb-4">
-              <div className="flex justify-between text-xs mb-1">
-                <span>
-                  Step {currentStep + 1} of {WizardStep.POST_OPERATION + 1}
-                </span>
-                <span className="hidden sm:inline">
-                  {
-                    Object.keys(WizardStep).filter((key) => isNaN(Number(key)))[
-                      currentStep
-                    ]
+          <div className="flex flex-col lg:flex-row lg:gap-6">
+            {/* Left side - progress and navigation */}
+            <div className="lg:w-64 lg:flex-shrink-0 mb-4 lg:mb-0">
+              {/* Progress bar */}
+              <div className="mb-4">
+                <div className="flex justify-between text-xs mb-1">
+                  <span>
+                    Step {currentStep + 1} of {WizardStep.POST_OPERATION + 1}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {
+                      Object.keys(WizardStep).filter((key) => isNaN(Number(key)))[
+                        currentStep
+                      ]
+                    }
+                  </span>
+                </div>
+                <Progress
+                  value={
+                    ((currentStep + 1) / (WizardStep.POST_OPERATION + 1)) * 100
                   }
-                </span>
+                />
               </div>
-              <Progress
-                value={
-                  ((currentStep + 1) / (WizardStep.POST_OPERATION + 1)) * 100
-                }
-              />
-            </div>
 
-            {/* Navigation buttons */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <Button
-                variant="outline"
-                onClick={goToPreviousStep}
-                disabled={currentStep === WizardStep.INTRODUCTION}
-                className="h-9 px-2 sm:px-4 "
-                size="sm"
-              >
-                <ChevronLeft className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Previous</span>
-              </Button>
+              {/* Navigation buttons */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <Button
+                  variant="outline"
+                  onClick={goToPreviousStep}
+                  disabled={currentStep === WizardStep.INTRODUCTION}
+                  className="h-9 px-2 sm:px-4 "
+                  size="sm"
+                >
+                  <ChevronLeft className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Previous</span>
+                </Button>
 
-              <Button
-                onClick={goToNextStep}
-                disabled={currentStep === WizardStep.POST_OPERATION}
-                className="h-9 px-2 sm:px-4"
-                size="sm"
-              >
-                {currentStep === WizardStep.POST_OPERATION ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Finish</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="hidden sm:inline">Next</span>
-                    <ChevronRight className="h-4 w-4 sm:ml-2" />
-                  </>
-                )}
-              </Button>
-            </div>
+                <Button
+                  onClick={goToNextStep}
+                  disabled={currentStep === WizardStep.POST_OPERATION}
+                  className="h-9 px-2 sm:px-4"
+                  size="sm"
+                >
+                  {currentStep === WizardStep.POST_OPERATION ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Finish</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4 sm:ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
 
-            {/* Step indicator - visible only on larger screens */}
-            <div className="hidden lg:block mt-6">
-              <h3 className="text-sm font-medium mb-3">Wizard Steps</h3>
-              <ul className="space-y-2 text-sm">
-                {Object.entries(WizardStep)
-                  .filter(([key]) => isNaN(Number(key)))
-                  .map(([step, index]) => (
-                    <li
-                      key={step}
-                      className={`px-3 py-2 rounded-md flex items-center gap-2 ${
-                        currentStep === Number(index)
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'text-muted-foreground'
-                      }`}
+              {/* Step indicator - visible only on larger screens */}
+              <div className="hidden lg:block mt-6">
+                <h3 className="text-sm font-medium mb-3">Wizard Steps</h3>
+                <ul className="space-y-2 text-sm">
+                  {Object.entries(WizardStep)
+                    .filter(([key]) => isNaN(Number(key)))
+                    .map(([step, index]) => (
+                      <li
+                        key={step}
+                        className={`px-3 py-2 rounded-md flex items-center gap-2 ${
+                          currentStep === Number(index)
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">
+                          {Number(index) + 1}
+                        </span>
+                        <span>{step.replace(/_/g, ' ')}</span>
+                      </li>
+                    ))}
+                </ul>
+
+                <div className="mt-4">
+                  <div className="border rounded-lg p-4 ">
+                    <h3 className="text-base font-medium mb-2 flex items-center gap-2">
+                      <span>🤖 Recommended: AutoSellBot</span>
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Enhance your trading strategy by setting up automated sell
+                      conditions for your sniping wallets. Configure target prices
+                      and stop losses to protect your investment. You can set this
+                      up right after successful sniping to automate your exit
+                      strategy.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        // Close the current wizard
+                        onOpenChange(false);
+                        // TODO: Open AutoSellBot modal with current sniping wallets
+                        // This should be implemented by the parent component
+                      }}
+                      variant="outline"
+                      className="w-full "
                     >
-                      <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">
-                        {Number(index) + 1}
-                      </span>
-                      <span>{step.replace(/_/g, ' ')}</span>
-                    </li>
-                  ))}
-              </ul>
-
-              <div className="mt-4">
-                <div className="border rounded-lg p-4 ">
-                  <h3 className="text-base font-medium mb-2 flex items-center gap-2">
-                    <span>🤖 Recommended: AutoSellBot</span>
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Enhance your trading strategy by setting up automated sell
-                    conditions for your sniping wallets. Configure target prices
-                    and stop losses to protect your investment. You can set this
-                    up right after successful sniping to automate your exit
-                    strategy.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      // Close the current wizard
-                      onOpenChange(false);
-                      // TODO: Open AutoSellBot modal with current sniping wallets
-                      // This should be implemented by the parent component
-                    }}
-                    variant="outline"
-                    className="w-full "
-                  >
-                    Configure AutoSellBot
-                  </Button>
+                      Configure AutoSellBot
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Right side - step content */}
+            <div className="flex-1">{renderStepContent()}</div>
           </div>
 
-          {/* Right side - step content */}
-          <div className="flex-1">{renderStepContent()}</div>
-        </div>
+        </DialogContent>
+      </Dialog>
 
-        {/* <BnbDepositDialog
+      {project?.addons.SnipeBot.depositWalletId?.publicKey && (
+        <BnbDepositDialog
           open={isBnbDepositDialogOpen}
-          onOpenChange={(open) => toggleDialog(open)}
-          depositWalletAddress={project?.addons.SnipeBot.depositWalletId?.publicKey || ''}
-        /> */}
-      </DialogContent>
-    </Dialog>
+          onOpenChange={setIsBnbDepositDialogOpen}
+          depositWalletAddress={project.addons.SnipeBot.depositWalletId.publicKey}
+          onSuccess={handleDepositComplete}
+        />
+      )}
+    </>
   );
 }

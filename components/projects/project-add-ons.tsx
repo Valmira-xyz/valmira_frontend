@@ -12,7 +12,6 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 
 import { WalletInfo } from './auto-sell-wizard-dialog';
-// import { BundleSnipingDialog } from './bundle-sniping-dialog';   // (hide on going to production)
 import { Copy, Download, ExternalLink, HelpCircle, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -46,6 +45,11 @@ import { ProjectWithAddons } from '@/types';
 const SnipeWizardDialog = lazy(() =>
   import('./snipe-wizard-dialog').then((module) => ({
     default: module.SnipeWizardDialog,
+  }))
+);
+const BundleSnipingDialog = lazy(() =>
+  import('./bundle-sniping-dialog').then((module) => ({
+    default: module.BundleSnipingDialog,
   }))
 );
 const AutoSellWizardDialog = lazy(() =>
@@ -1114,10 +1118,14 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
               />
             )}
           </Suspense>
-          {/* <BundleSnipingDialog
-            open={isSimulateDialogOpen}
-            onOpenChange={setIsSimulateDialogOpen}
-          /> */}{' '}
+          {/* <Suspense fallback={null}>
+            {isSimulateDialogOpen && (
+              <BundleSnipingDialog
+                open={isSimulateDialogOpen}
+                onOpenChange={setIsSimulateDialogOpen}
+              />
+            )}
+          </Suspense> */}
           {/* hide on going to production */}
           <Suspense fallback={null}>
             {isAutoSellDialogOpen && (
