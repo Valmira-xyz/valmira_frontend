@@ -1,10 +1,15 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
 
 import { AutoSellNotification } from './auto-sell-notification';
-import { ChevronLeft, ChevronRight, Copy, Loader2, RefreshCw } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
 import { useParams } from 'next/navigation';
 
 import { Badge } from '@/components/ui/badge';
@@ -39,8 +44,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { BotService } from '@/services/botService';
 import { projectService } from '@/services/projectService';
 import { getTokenPrice, getWalletBalances } from '@/services/web3Utils';
-import { RootState } from '@/store/store';
-import { ProjectState } from '@/types';
 import { Project } from '@/types/project';
 
 interface ExtendedProject extends Project {
@@ -99,23 +102,22 @@ export interface WalletInfo {
 interface AutoSellWizardDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wallets: WalletInfo[];
+  _wallets: WalletInfo[];
   project?: Project;
   projectId?: string;
   tokenAddress?: string;
-  onWalletsChange?: (wallets: WalletInfo[]) => void;
+  _onWalletsChange?: (wallets: WalletInfo[]) => void;
 }
 
 export function AutoSellWizardDialog({
   open,
   onOpenChange,
-  wallets,
-  onWalletsChange,
+  _wallets,
+  _onWalletsChange,
 }: AutoSellWizardDialogProps) {
   const { id: projectIdFromParams } = useParams() as { id: string };
   const [currentStep, setCurrentStep] = useState(WizardStep.INTRODUCTION);
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
-  const [isMigratingWallets, setIsMigratingWallets] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionSuccess, setExecutionSuccess] = useState(false);
   const [targetPrice, setTargetPrice] = useState<string | '0'>('0');
@@ -123,32 +125,18 @@ export function AutoSellWizardDialog({
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
   const { toast } = useToast();
-  const { currentProject, loading: isProjectLoading } = useSelector(
-    (state: RootState) => state.projects as ProjectState
-  );
 
   // Initialize project state
   const [project, setProject] = useState<ExtendedProject | null>(null);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
   const projectFetchRef = useRef<AbortController | null>(null);
-
-  // Update project state when currentProject changes
-  useEffect(() => {
-    if (currentProject) {
-      setProject(currentProject as unknown as ExtendedProject);
-    }
-  }, [currentProject]);
-
   const lastBalanceUpdateRef = useRef<number>(0);
   const MIN_BALANCE_UPDATE_INTERVAL = 5000; // Minimum 5 seconds between balance updates
   const balanceFetchInProgressRef = useRef(false);
-  const [localWallets, setLocalWallets] = useState<WalletInfo[]>(
-    wallets.map((w) => ({ ...w, enabled: false }))
-  );
+  const [localWallets, setLocalWallets] = useState<WalletInfo[]>([]);
   const [currentTokenPrice, setCurrentTokenPrice] = useState<number | null>(
     null
   );
-  const [isTogglingBot, setIsTogglingBot] = useState(false);
   const statusRefreshIntervalRef = useRef<NodeJS.Timeout>();
   const [isDistributingBNBs, setIsDistributingBNBs] = useState(false);
   const [distributeAmount, setDistributeAmount] = useState<number>(0.001);
@@ -233,6 +221,7 @@ export function AutoSellWizardDialog({
                   ...updatedProject.addons.AutoSellBot,
                   isEnabled: projectData.addons.AutoSellBot.isEnabled,
                   status: projectData.addons.AutoSellBot.status,
+                  subWalletIds: projectData.addons.AutoSellBot.subWalletIds,
                 },
               };
             }
@@ -448,45 +437,44 @@ export function AutoSellWizardDialog({
 
         // Update local wallets with their individual configurations from the backend
         if (response.data.wallets.length > 0) {
-          const updatedWallets = response.data.wallets.map((w) => {
-            // Find existing wallet in localWallets
-            const existingWallet = localWallets.find(
-              (lw) => lw.publicKey.toLowerCase() === w.address.toLowerCase()
+          setLocalWallets((prevWallets) => {
+            // Create a map of existing wallets for quick lookup
+            const existingWalletsMap = new Map<string, WalletInfo>(
+              prevWallets.map((w) => [w.publicKey.toLowerCase(), w])
             );
-            // Combine existing wallet with stored configuration
-            // Make sure to preserve each wallet's unique sell price and stop loss
-            return {
-              ...existingWallet,
-              publicKey: w.address,
-              role: 'botsub',
-              // Use the specific values for each wallet from the backend
-              sellPrice: w.sellPrice,
-              stopLoss: w.stopLoss,
-              enabled: w.enabled,
-              // Preserve any existing balance information
-              bnbBalance: existingWallet?.bnbBalance || 0,
-              tokenBalance: existingWallet?.tokenBalance || 0,
-            } as WalletInfo;
+
+            // Update wallets with their configurations
+            const updatedWallets = (response.data?.wallets || []).reduce<
+              WalletInfo[]
+            >((acc, w) => {
+              const existingWallet = existingWalletsMap.get(
+                w.address.toLowerCase()
+              );
+              if (existingWallet) {
+                acc.push({
+                  ...existingWallet,
+                  sellPrice: w.sellPrice || '0',
+                  stopLoss: w.stopLoss || '0',
+                  enabled: w.enabled ?? true,
+                });
+              }
+              return acc;
+            }, []);
+
+            // Add any wallets that weren't in the response but exist in prevWallets
+            const configuredAddresses = new Set(
+              (response.data?.wallets || []).map((w) => w.address.toLowerCase())
+            );
+            const remainingWallets = prevWallets.filter(
+              (w) => !configuredAddresses.has(w.publicKey.toLowerCase())
+            );
+
+            return [...updatedWallets, ...remainingWallets];
           });
-          updatedWallets.push({
-            publicKey:
-              project?.addons?.AutoSellBot?.depositWalletId?.publicKey || '',
-            role: 'botmain',
-            bnbBalance: 0,
-            tokenBalance: 0,
-          });
-          // Replace localWallets with the updated wallets with their individual settings
-          setLocalWallets(updatedWallets);
         }
 
         // Set flag to indicate configuration was loaded successfully
         setConfigLoaded(true);
-
-        // Show success toast
-        toast({
-          title: 'Configuration Loaded',
-          description: `Loaded existing configuration for ${response.data.wallets.length} wallets`,
-        });
       }
     } catch (error) {
       console.error('Error loading auto-sell parameters:', error);
@@ -519,40 +507,6 @@ export function AutoSellWizardDialog({
       title: 'Address copied',
       description: 'Wallet address has been copied to clipboard',
     });
-  };
-
-  const handleMigrateWallets = async () => {
-    if (!projectIdFromParams) return;
-
-    try {
-      setIsMigratingWallets(true);
-      const { status, data: updatedProject } =
-        await projectService.migrateSnipingWallets(projectIdFromParams);
-
-      if (status === 'success') {
-        toast({
-          title: 'Success',
-          description: 'Successfully migrated sniping wallets to AutoSellBot',
-        });
-
-        if (updatedProject?.project?.addons?.AutoSellBot?.subWalletIds) {
-          const walletAddresses =
-            updatedProject?.project?.addons.AutoSellBot.subWalletIds.map(
-              (id: any) => id.publicKey
-            );
-          await fetchWalletBalancesPreservingConfig(walletAddresses);
-        }
-      }
-    } catch (error) {
-      console.error('Error migrating wallets:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to migrate wallets',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsMigratingWallets(false);
-    }
   };
 
   const handleExecute = async () => {
@@ -645,52 +599,6 @@ export function AutoSellWizardDialog({
   const isAllWalletsSelected =
     localWallets.length > 0 && localWallets.every((w) => w.enabled);
   const isSomeWalletsSelected = localWallets.some((w) => w.enabled);
-
-  // Toggle bot enabled status
-  const toggleBotEnabled = async () => {
-    if (!project?.addons?.AutoSellBot?._id) {
-      toast({
-        title: 'Error',
-        description: 'Cannot toggle bot: Bot configuration missing',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsTogglingBot(true);
-
-    try {
-      // Get current bot status
-      const isCurrentlyEnabled = !!project.addons.AutoSellBot.isEnabled;
-
-      // Toggle bot status
-      const result = await BotService.toggleBot(
-        project.addons.AutoSellBot._id,
-        !isCurrentlyEnabled
-      );
-
-      if (result) {
-        toast({
-          title: 'Success',
-          description: `AutoSell bot ${!isCurrentlyEnabled ? 'enabled' : 'disabled'} successfully`,
-        });
-
-        // Refresh project data to get updated bot status
-        if (projectIdFromParams) {
-          fetchAndFillDetailedProject(projectIdFromParams, true);
-        }
-      }
-    } catch (error) {
-      console.error('Error toggling bot status:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to toggle bot status',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsTogglingBot(false);
-    }
-  };
 
   // Set up periodic refresh when on execution step
   useEffect(() => {
@@ -893,6 +801,53 @@ export function AutoSellWizardDialog({
     }
   };
 
+  // Update localWallets when project data changes
+  useEffect(() => {
+    if (project?.addons?.AutoSellBot) {
+      const depositWallet = project.addons.AutoSellBot.depositWalletId;
+      const subWallets = project.addons.AutoSellBot.subWalletIds;
+
+      const newWallets: WalletInfo[] = [];
+
+      // Add deposit wallet if it exists
+      if (depositWallet) {
+        newWallets.push({
+          _id: depositWallet._id,
+          publicKey: depositWallet.publicKey,
+          role: 'botmain',
+          bnbBalance: 0,
+          tokenBalance: 0,
+          sellPrice: '0',
+          stopLoss: '0',
+          enabled: false,
+        });
+      }
+
+      // Add sub wallets
+      subWallets.forEach((wallet) => {
+        newWallets.push({
+          _id: wallet._id,
+          publicKey: wallet.publicKey,
+          role: 'botsub',
+          bnbBalance: 0,
+          tokenBalance: 0,
+          sellPrice: '0',
+          stopLoss: '0',
+          enabled: false,
+        });
+      });
+
+      setLocalWallets(newWallets);
+
+      // Fetch wallet balances
+      const allAddresses = [
+        ...(depositWallet ? [depositWallet.publicKey] : []),
+        ...subWallets.map((w) => w.publicKey),
+      ];
+      fetchWalletBalancesPreservingConfig(allAddresses);
+    }
+  }, [project?.addons?.AutoSellBot]);
+
   const renderIntroductionStep = () => (
     <Card className="border-none shadow-none">
       <CardHeader className="px-0 pt-0 pb-2 sm:px-6 sm:pb-4">
@@ -924,109 +879,76 @@ export function AutoSellWizardDialog({
       <CardHeader className="px-0 pt-0 pb-2 sm:px-6 sm:pb-4">
         <CardTitle>Wallet Setup</CardTitle>
         <CardDescription>
-          Import wallets from SnipeBot or configure existing wallets for
-          auto-selling.
+          Configure existing wallets for auto-selling.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 sm:px-6">
         <div className="space-y-4">
-          {localWallets.length === 0 ? (
-            <div className="border rounded-lg p-4">
-              <h3 className="text-base font-medium mb-2">
-                Import SnipeBot Wallets
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                You can import your existing SnipeBot wallets to configure them
-                for auto-selling.
-              </p>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-medium">Wallet Balances</h3>
               <Button
-                onClick={handleMigrateWallets}
-                disabled={isMigratingWallets}
-                className="w-full"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() =>
+                  fetchWalletBalancesPreservingConfig(
+                    localWallets.map((w) => w.publicKey)
+                  )
+                }
+                disabled={isLoadingBalances}
               >
-                {isMigratingWallets ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Importing...
-                  </>
+                {isLoadingBalances ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
-                  'Import Wallets from SnipeBot'
+                  <RefreshCw className="h-4 w-4 mr-2" />
                 )}
+                Refresh Balances
               </Button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-base font-medium">Wallet Balances</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                  onClick={() =>
-                    fetchWalletBalancesPreservingConfig(
-                      localWallets.map((w) => w.publicKey)
-                    )
-                  }
-                  disabled={isLoadingBalances}
-                >
-                  {isLoadingBalances ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                  )}
-                  Refresh Balances
-                </Button>
-              </div>
 
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[10%]">No</TableHead>
-                      <TableHead className="w-[40%]">Wallet Address</TableHead>
-                      <TableHead className="text-right">BNB Balance</TableHead>
-                      <TableHead className="text-right">
-                        Token Balance
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {localWallets
-                      .filter((w) => w.role != 'botmain')
-                      .map((wallet, index) => (
-                        <TableRow key={wallet.publicKey}>
-                          <TableCell className="text-left">
-                            {index + 1}
-                          </TableCell>
-                          <TableCell className="font-mono">
-                            <div className="flex items-center gap-1">
-                              {wallet.publicKey.slice(0, 6)}...
-                              {wallet.publicKey.slice(-4)}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() =>
-                                  copyToClipboard(wallet.publicKey)
-                                }
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {(wallet.bnbBalance || 0).toFixed(4)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {(wallet.tokenBalance || 0).toLocaleString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
+            <div className="border rounded-md overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[10%]">No</TableHead>
+                    <TableHead className="w-[40%]">Wallet Address</TableHead>
+                    <TableHead className="text-right">BNB Balance</TableHead>
+                    <TableHead className="text-right">Token Balance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {localWallets
+                    .filter((w) => w.role != 'botmain')
+                    .map((wallet, index) => (
+                      <TableRow key={wallet.publicKey}>
+                        <TableCell className="text-left">{index + 1}</TableCell>
+                        <TableCell className="font-mono">
+                          <div className="flex items-center gap-1">
+                            {wallet.publicKey.slice(0, 6)}...
+                            {wallet.publicKey.slice(-4)}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => copyToClipboard(wallet.publicKey)}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {(wallet.bnbBalance || 0).toFixed(4)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {(wallet.tokenBalance || 0).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
             </div>
-          )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -1183,7 +1105,7 @@ export function AutoSellWizardDialog({
               </div>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-          💡  This is useful for providing BNB to wallets for future sell
+              💡 This is useful for providing BNB to wallets for future sell
               operations.
             </p>
           </div>
@@ -1203,13 +1125,12 @@ export function AutoSellWizardDialog({
                 }
                 disabled={isLoadingBalances || isLoadingConfig}
               >
-                {/* {isLoadingBalances || isLoadingConfig ? (
+                {isLoadingBalances || isLoadingConfig ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
-                )} */}
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingBalances || isLoadingConfig ? 'animate-spin' : ''}`} />
-                {isLoadingBalances || isLoadingConfig ? 'Refreshing...' : 'Refresh Balances'}
+                )}
+                Refresh Balances
               </Button>
             </div>
             <div className="text-sm text-muted-foreground mb-4">

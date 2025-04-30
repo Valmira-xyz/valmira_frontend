@@ -1,6 +1,14 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { WalletInfo } from './auto-sell-wizard-dialog';
@@ -9,6 +17,7 @@ import { Copy, Download, ExternalLink, HelpCircle, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
+import { BnbDepositDialog } from '@/components/projects/bnb-deposit-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,10 +43,21 @@ import { AppDispatch, RootState } from '@/store/store';
 import { ProjectWithAddons } from '@/types';
 
 // Lazy load dialog components
-const SnipeWizardDialog = lazy(() => import('./snipe-wizard-dialog').then(module => ({ default: module.SnipeWizardDialog })));
-const AutoSellWizardDialog = lazy(() => import('./auto-sell-wizard-dialog').then(module => ({ default: module.AutoSellWizardDialog })));
-const VolumeBotWizardDialog = lazy(() => import('./volume-bot-wizard-dialog').then(module => ({ default: module.VolumeBotWizardDialog })));
-const BnbDepositDialog = lazy(() => import('@/components/projects/bnb-deposit-dialog').then(module => ({ default: module.BnbDepositDialog })));
+const SnipeWizardDialog = lazy(() =>
+  import('./snipe-wizard-dialog').then((module) => ({
+    default: module.SnipeWizardDialog,
+  }))
+);
+const AutoSellWizardDialog = lazy(() =>
+  import('./auto-sell-wizard-dialog').then((module) => ({
+    default: module.AutoSellWizardDialog,
+  }))
+);
+const VolumeBotWizardDialog = lazy(() =>
+  import('./volume-bot-wizard-dialog').then((module) => ({
+    default: module.VolumeBotWizardDialog,
+  }))
+);
 
 // Utility function for parsing error messages
 const parseErrorMessage = (message: string, details: string) => {
@@ -738,9 +758,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
 
   // Function to toggle dialog state for a specific addon
   const toggleDialog = (addonType: string, isOpen: boolean) => {
-    setDialogStates(prev => ({
+    setDialogStates((prev) => ({
       ...prev,
-      [addonType]: isOpen
+      [addonType]: isOpen,
     }));
   };
 
@@ -768,8 +788,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 pb-4">
             {addOns.map((addon) => {
               // Use the dialog state from the dialogStates object
-              const isBnbDepositDialogOpen = dialogStates[addon.botType] || false;
-              
+              const isBnbDepositDialogOpen =
+                dialogStates[addon.botType] || false;
+
               return (
                 <Card key={addon.botType} className="w-full flex flex-col">
                   <CardHeader>
@@ -947,7 +968,9 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                         </div>
                         <BnbDepositDialog
                           open={isBnbDepositDialogOpen}
-                          onOpenChange={(open) => toggleDialog(addon.botType, open)}
+                          onOpenChange={(open) =>
+                            toggleDialog(addon.botType, open)
+                          }
                           depositWalletAddress={addon.depositWallet}
                         />
                       </div>
@@ -1003,7 +1026,7 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
                     )}
                   </CardContent>
                   <CardFooter className="flex flex-col items-start gap-4 mt-auto">
-                    {addon.botType === 'HolderBot'? (
+                    {addon.botType === 'HolderBot' ? (
                       <>
                         <p className="text-sm text-muted-foreground mb-2">
                           Please deposit BNB to the wallet address above and
@@ -1101,8 +1124,8 @@ export function ProjectAddOns({ project }: ProjectAddOnsProps) {
               <AutoSellWizardDialog
                 open={isAutoSellDialogOpen}
                 onOpenChange={setIsAutoSellDialogOpen}
-                wallets={wallets}
-                onWalletsChange={setWallets}
+                _wallets={wallets}
+                _onWalletsChange={setWallets}
               />
             )}
           </Suspense>
