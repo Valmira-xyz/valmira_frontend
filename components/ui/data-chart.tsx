@@ -24,6 +24,7 @@ import { BarChart3, PieChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
+import { Spinner } from './spinner';
 export interface DataChartProps {
   title: string;
   description?: string;
@@ -256,11 +257,14 @@ export function DataChart({
     return (
       <div className="w-full h-full flex flex-col relative">
         {/* Centered loading indicator */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+        {/* <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
           <div className="animate-spin h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full" />
           <span className="text-sm font-medium text-muted-foreground">Loading data...</span>
-        </div>
+        </div> */}
 
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+          <Spinner size="lg"/>
+        </div>
         {/* Chart skeleton with shimmer effect */}
         <div className="w-full h-[80%] flex items-end justify-between opacity-50">
           {Array.from({ length: 8 }).map((_, i) => (

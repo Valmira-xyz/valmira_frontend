@@ -511,16 +511,16 @@ export function DataTable({
     >
       <Card className={cn("w-full", className)}>
         {(title || description) && (
-          <CardHeader>
+          <CardHeader className="!pb-0">
             {title && <CardTitle>{title}</CardTitle>}
             {description && <CardDescription>{description}</CardDescription>}
           </CardHeader>
         )}
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-4 sm:space-y-6">
             {/* Controls section */}
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between flex-wrap">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-start">
+              <div className="flex flex-col gap-4 sm:flex-row w-full sm:w-fit sm:items-center justify-start">
                 {showSearchInput && (
                   <div className="relative">
                     <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -534,14 +534,14 @@ export function DataTable({
                 )}
               </div>
               
-              <div className="flex flex-col sm:flex-row md:items-center justify-start flex-wrap lg:flex-nowrap gap-2">
+              <div className="flex flex-col sm:flex-row w-full md:w-fit md:items-center justify-start flex-wrap lg:flex-nowrap gap-2">
                 <div className="flex flex-col sm:flex-row gap-4 justify-start w-full md:w-fit">
                   {filterOption && (
                     <Select value={selectedFilter} onValueChange={handleFilterChange}>
-                      <SelectTrigger className="w-[180px] text-start">
+                      <SelectTrigger className="w-full sm:w-[180px] text-start">
                         <SelectValue placeholder={`Filter by ${filterOption}`}>
                           {selectedFilter && (
-                            <span className="inline-block max-w-[130px] pt-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                            <span className="inline-block w-full sm:max-w-[130px] pt-1 overflow-hidden text-ellipsis whitespace-nowrap">
                               {/* {columns.filter(col => col.key === filterOption.key.value)[0].title}: {
                                 filterOptions.find(opt => opt.value === selectedFilter)?.label
                               } */}
@@ -753,7 +753,7 @@ export function DataTable({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="flex items-center justify-between gap-4 py-4 flex-wrap"
+                className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 flex-wrap"
               >
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-muted-foreground">

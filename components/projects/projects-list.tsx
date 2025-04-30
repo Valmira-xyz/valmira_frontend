@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { CreateProjectButton } from './create-project-button';
-import { ChevronDown, Download, Search } from 'lucide-react';
+import { ChevronDown, Download, Search, FolderX } from 'lucide-react';
 
 import { ProjectSummaryCard } from '@/components/projects/project-summary-card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,14 @@ import type { RootState } from '@/store/store';
 import type { ProjectWithAddons } from '@/types';
 import { subWeeks } from 'date-fns';
 import { motion } from 'framer-motion';
+import { Spinner } from '@/components/ui/spinner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ProjectsListProps {
   limit?: number;
@@ -60,10 +68,12 @@ export function ProjectsList({
   const fetchInProgress = useRef(false);
   const lastFetchParams = useRef({ isPublic, currentPage, pageSize });
   const fetchDelayTimer = useRef<NodeJS.Timeout | null>(null);
+  const firstPageFetchEnded = useRef(false);
 
   // Debounced fetch function to prevent multiple API calls
   const loadProjects = useCallback(async () => {
     // Skip if a fetch is already in progress or if parameters haven't changed
+    console.log(`fetchInProgress.current: ${fetchInProgress.current}`);
     if (fetchInProgress.current) {
       console.log('Fetch already in progress, skipping duplicate request');
       return;
@@ -99,9 +109,19 @@ export function ProjectsList({
         await dispatch(fetchProjects() as any);
       }
 
+      if (currentPage === 0) {
+        firstPageFetchEnded.current = true;
+      } else {
+        firstPageFetchEnded.current = false;
+      }
       isFirstRender.current = false;
     } finally {
       fetchInProgress.current = false;
+      if (currentPage === 0) {
+        firstPageFetchEnded.current = true;
+      } else {
+        firstPageFetchEnded.current = false;
+      }
     }
   }, [dispatch, isPublic, currentPage, pageSize]);
 
@@ -261,7 +281,7 @@ export function ProjectsList({
 
   return (
     <motion.div
-      className="my-6 space-y-6"
+      className="my-6 space-y-6 h-full"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
@@ -281,25 +301,26 @@ export function ProjectsList({
 
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto sm:overflow-x-scroll sm:no-scrollbar">
             <div className="flex gap-3 justify-between">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-auto sm:min-w-[180px]">
-                    Status: {statusFilter}{' '}
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setStatusFilter('All Bots')}>
-                    All Bots
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setStatusFilter('Active')}>
-                    Active
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setStatusFilter('Inactive')}>
-                    Inactive
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-auto sm:min-w-[180px] text-start">
+                  <SelectValue placeholder="Status">
+                    <span className="inline-block w-full sm:max-w-[130px] pt-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                      Status: {statusFilter}
+                    </span>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All Bots" className="text-start">
+                    Status: All Bots
+                  </SelectItem>
+                  <SelectItem value="Active" className="text-start">
+                    Status: Active
+                  </SelectItem>
+                  <SelectItem value="Inactive" className="text-start">
+                    Status: Inactive
+                  </SelectItem>
+                </SelectContent>
+              </Select>
 
               <DateRangePicker
                 dateRange={dateRange}
@@ -328,9 +349,33 @@ export function ProjectsList({
           ))}
         </div>
 
+        {/* Empty state */}
+        {displayedProjects.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12">
+            {loading ? (
+              <div className="flex flex-col items-center gap-2">
+                <Spinner size="lg" />
+              </div>
+            ) : currentPage === 0 && firstPageFetchEnded.current === true ? (
+              <>
+                <FolderX className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">No projects found</p>
+                <p className="text-center">
+                  Create your first project by clicking the button "Create New Project"
+                </p>
+              </>
+            ) : (
+              <>
+                <FolderX className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">No more projects to display</p>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Pagination (if needed) */}
-        {isPublic && !limit && displayedProjects.length > 0 && (
-          <div className="flex justify-center items-center gap-2">
+        {isPublic && !limit && (
+          <div className="flex justify-center items-center gap-2 mt-auto">
             <Button
               variant="outline"
               onClick={handlePreviousPage}
@@ -342,24 +387,14 @@ export function ProjectsList({
             <Button
               variant="outline"
               onClick={handleNextPage}
-              disabled={displayedProjects.length < pageSize || loading}
+              disabled={displayedProjects.length < pageSize || loading || displayedProjects.length === 0}
             >
               Next
             </Button>
           </div>
         )}
 
-        {/* Empty state */}
-        {displayedProjects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">No projects found</p>
-
-            <p className="text-center">
-              Create your first project by clicking the button "Create New
-              Project"
-            </p>
-          </div>
-        )}
+       
       </div>
     </motion.div>
   );

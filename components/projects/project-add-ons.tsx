@@ -9,7 +9,6 @@ import { Copy, Download, ExternalLink, HelpCircle, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
-import { BnbDepositDialog } from '@/components/projects/bnb-deposit-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +37,7 @@ import { ProjectWithAddons } from '@/types';
 const SnipeWizardDialog = lazy(() => import('./snipe-wizard-dialog').then(module => ({ default: module.SnipeWizardDialog })));
 const AutoSellWizardDialog = lazy(() => import('./auto-sell-wizard-dialog').then(module => ({ default: module.AutoSellWizardDialog })));
 const VolumeBotWizardDialog = lazy(() => import('./volume-bot-wizard-dialog').then(module => ({ default: module.VolumeBotWizardDialog })));
+const BnbDepositDialog = lazy(() => import('@/components/projects/bnb-deposit-dialog').then(module => ({ default: module.BnbDepositDialog })));
 
 // Utility function for parsing error messages
 const parseErrorMessage = (message: string, details: string) => {

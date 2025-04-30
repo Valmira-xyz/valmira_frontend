@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import {
@@ -207,6 +207,13 @@ export function SnipeWizardDialog({
   open,
   onOpenChange,
 }: SnipeWizardDialogProps) {
+  // lazy load bnb deposit dialog
+  // const BnbDepositDialog = lazy(() => import('@/components/projects/bnb-deposit-dialog').then(module => ({ default: module.BnbDepositDialog })));
+  // const [isBnbDepositDialogOpen, setIsBnbDepositDialogOpen] = useState(false);
+  // const toggleDialog = (open: boolean) => {
+  //   setIsBnbDepositDialogOpen(open);
+  // };
+
   // then read project id from url
   const { id: projectId } = useParams();
   // Track the current wizard step
@@ -638,12 +645,13 @@ export function SnipeWizardDialog({
                 }}
                 disabled={isLoadingBalances}
               >
-                {isLoadingBalances ? (
+                {/* {isLoadingBalances ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Refresh Balances
+                )} */}
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingBalances ? 'animate-spin' : ''}`} />
+                {isLoadingBalances ? 'Refreshing...' : 'Refresh Balances'}
               </Button>
             </div>
 
@@ -809,12 +817,13 @@ export function SnipeWizardDialog({
                     }
                     className="h-6 px-2"
                   >
-                    {isLoadingConnectedWalletBalance || isLoadingLpBalance ? (
+                    {/* {isLoadingConnectedWalletBalance || isLoadingLpBalance ? (
                       <Loader2 className="h-3 w-3 animate-spin mr-1" />
                     ) : (
                       <RefreshCw className="h-3 w-3 mr-1" />
-                    )}
-                    <span className="text-xs">Refresh</span>
+                    )} */}
+                    <RefreshCw className={`h-3 w-3 mr-1 ${isLoadingConnectedWalletBalance || isLoadingLpBalance ? 'animate-spin' : ''}`} />
+                    <span className="text-xs">{isLoadingConnectedWalletBalance || isLoadingLpBalance ? 'Refreshing...' : 'Refresh'}</span>
                   </Button>
                 </div>
                 <div className="grid grid-cols-3 gap-4 mb-3">
@@ -875,12 +884,13 @@ export function SnipeWizardDialog({
                   disabled={isLoadingPoolInfo}
                   className="h-6 px-2"
                 >
-                  {isLoadingPoolInfo ? (
+                  {/* {isLoadingPoolInfo ? (
                     <Loader2 className="h-3 w-3 animate-spin mr-1" />
                   ) : (
                     <RefreshCw className="h-3 w-3 mr-1" />
-                  )}
-                  <span className="text-xs">Refresh</span>
+                  )} */}
+                  <RefreshCw className={`h-3 w-3 mr-1 ${isLoadingPoolInfo ? 'animate-spin' : ''}`} />
+                  <span className="text-xs">{isLoadingPoolInfo ? 'Refreshing...' : 'Refresh'}</span>
                 </Button>
               </div>
 
@@ -1556,12 +1566,13 @@ export function SnipeWizardDialog({
                 }}
                 disabled={isLoadingBalances}
               >
-                {isLoadingBalances ? (
+                {/* {isLoadingBalances ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Refresh Balances
+                )} */}
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingBalances ? 'animate-spin' : ''}`} />
+                {isLoadingBalances ? 'Refreshing...' : 'Refresh Balances'}
               </Button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
@@ -1755,7 +1766,7 @@ export function SnipeWizardDialog({
               Distribute Extra BNB (Recommended)
             </h3>
 
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 <Label htmlFor="distributeAmount" className="whitespace-nowrap">
                   Amount per wallet:
@@ -1769,9 +1780,9 @@ export function SnipeWizardDialog({
                   min="0"
                   className="max-w-32"
                 />
+                <span className="text-sm">BNB</span>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <span className="text-sm">BNB</span>
                 <Button
                   className="bg-green-500 hover:bg-green-600 w-full sm:w-auto"
                   onClick={() => {
@@ -4660,6 +4671,12 @@ export function SnipeWizardDialog({
           {/* Right side - step content */}
           <div className="flex-1">{renderStepContent()}</div>
         </div>
+
+        {/* <BnbDepositDialog
+          open={isBnbDepositDialogOpen}
+          onOpenChange={(open) => toggleDialog(open)}
+          depositWalletAddress={project?.addons.SnipeBot.depositWalletId?.publicKey || ''}
+        /> */}
       </DialogContent>
     </Dialog>
   );

@@ -36,6 +36,7 @@ export function BnbDepositDialog({
   depositWalletAddress,
   onSuccess,
 }: BnbDepositDialogProps) {
+  console.log('==== deposit dialog WalletAddress => ', depositWalletAddress);
   const { toast } = useToast();
   const provider = useEthersProvider({});
   const signer = useEthersSigner({});
