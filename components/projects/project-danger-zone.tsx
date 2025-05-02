@@ -38,6 +38,7 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
   const [confirmationPhrase, setConfirmationPhrase] = useState('');
   const [isValid, setIsValid] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [open, setOpen] = useState(false);
   const dispatch = useDispatch();
   const router = useRouter();
   const { toast } = useToast();
@@ -112,9 +113,24 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="w-full md:w-auto">
-        <AlertDialog>
+        <AlertDialog open={open} onOpenChange={setOpen}>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" className="md:mt-4 w-full md:w-auto">
+            <Button
+              variant="destructive"
+              className="md:mt-4 w-full md:w-auto"
+              onClick={(e) => {
+                e.preventDefault();
+                if (!isProjectOwner) {
+                  toast({
+                    title: 'Permission Denied',
+                    description: 'Only the project owner can destroy this project.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
+                setOpen(true);
+              }}
+            >
               <Trash2 className="mr-2 h-4 w-4" /> Stop/Destroy Project
             </Button>
           </AlertDialogTrigger>
@@ -155,7 +171,7 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
               </div>
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => setOpen(false)}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => isProjectOwner && handleDestroyProject()}
                 disabled={!isValid || isDeleting}
