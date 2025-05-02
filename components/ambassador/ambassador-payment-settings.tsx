@@ -14,8 +14,14 @@ import { Switch } from '@/components/ui/switch';
 import { DataTable } from '@/components/ui/data-table';
 import { mockAmbassadorPaymentSettingsData } from '@/lib/mock-data';
 import { motion } from 'framer-motion';
+import type { DateRange } from 'react-day-picker';
+import { subWeeks } from 'date-fns';  
 
 export function AmbassadorPaymentSettings() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subWeeks(new Date(), 1),
+    to: new Date(),
+  });
   const [paymentMethod, setPaymentMethod] = useState('stablecoins');
   const [animatedAmount, setAnimatedAmount] = useState(0);
   
@@ -188,6 +194,14 @@ export function AmbassadorPaymentSettings() {
       <DataTable
         data={mockAmbassadorPaymentSettingsData}
         filterOption={ filterOption }
+        showColumns={[
+          { name: 'date', type: 'time', displayName: 'Date' },
+          { name: 'amount', type: 'price', displayName: 'Amount' },
+          { name: 'to', type: 'normal', displayName: 'To' },
+          { name: 'status', type: 'status', displayName: 'Status' },
+          { name: 'txHash', type: 'normal', displayName: 'Tx Hash' },
+        ]}
+        dateFieldName='date'
         showSearchInput={false}
         showCheckbox={false}
         showPagination={true}
@@ -195,6 +209,8 @@ export function AmbassadorPaymentSettings() {
         showDateButtons={true}
         showDownloadButton={false}
         showTableHeaderInVertical={false}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
         title="Recent Payments"
         description="Record of all your ambassador payouts"
       />

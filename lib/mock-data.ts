@@ -1,33 +1,33 @@
 // Mock data for charts
 export const mockChartData = [
-  { name: 'Jan', value: 4000, date: '2025-01-15' },
-  { name: 'Feb', value: 3000, date: '2025-02-15' },
-  { name: 'Mar', value: 5000, date: '2025-03-15' },
-  { name: 'Apr', value: 2780, date: '2025-04-15' },
-  { name: 'May', value: 1890, date: '2025-05-15' },
-  { name: 'Jun', value: 2390, date: '2025-06-15' },
-  { name: 'Jul', value: 3490, date: '2025-07-15' },
-  { name: 'Aug', value: 2000, date: '2025-08-15' },
-  { name: 'Sep', value: 2780, date: '2025-09-15' },
-  { name: 'Oct', value: 1890, date: '2025-10-15' },
-  { name: 'Nov', value: 2390, date: '2025-11-15' },
-  { name: 'Dec', value: 3490, date: '2025-12-15' },
+  { name: 'Jan', value: 4000, date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString() },
+  { name: 'Feb', value: 3000, date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString() },
+  { name: 'Mar', value: 5000, date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString() },
+  { name: 'Apr', value: 2780, date: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString() },
+  { name: 'May', value: 1890, date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString() },
+  { name: 'Jun', value: 2390, date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString() },
+  { name: 'Jul', value: 3490, date: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString() },
+  { name: 'Aug', value: 2000, date: new Date(new Date().setDate(new Date().getDate() - 8)).toISOString() },
+  { name: 'Sep', value: 2780, date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString() },
+  { name: 'Oct', value: 1890, date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString() },
+  { name: 'Nov', value: 2390, date: new Date(new Date().setDate(new Date().getDate() - 11)).toISOString() },
+  { name: 'Dec', value: 3490, date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString() },
 ];
 
 // Mock data for portfolio performance
 export const mockPortfolioData = [
-  { name: 'Jan', profit: 4000, volume: 240000, trades: 240, date: '2025-04-15' },
-  { name: 'Feb', profit: 3000, volume: 198000, trades: 210, date: '2025-04-15' },
-  { name: 'Mar', profit: 5000, volume: 280000, trades: 250, date: '2025-04-21' },
-  { name: 'Apr', profit: 2780, volume: 308000, trades: 290, date: '2025-04-22' },
-  { name: 'May', profit: 1890, volume: 248000, trades: 230, date: '2025-04-15' },
-  { name: 'Jun', profit: 2390, volume: 380000, trades: 310, date: '2025-04-15' },
-  { name: 'Jul', profit: 3490, volume: 430000, trades: 340, date: '2025-04-15' },
-  { name: 'Aug', profit: 2000, volume: 290000, trades: 270, date: '2025-04-24' },
-  { name: 'Sep', profit: 2780, volume: 320000, trades: 300, date: '2025-04-15' },
-  { name: 'Oct', profit: 1890, volume: 260000, trades: 240, date: '2025-04-21' },
-  { name: 'Nov', profit: 2390, volume: 350000, trades: 290, date: '2025-04-22' },
-  { name: 'Dec', profit: 3490, volume: 410000, trades: 330, date: '2025-04-23' },
+  { name: 'Jan', profit: 4000, volume: 240000, trades: 240, date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString() },
+  { name: 'Feb', profit: 3000, volume: 198000, trades: 210, date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString() },
+  { name: 'Mar', profit: 5000, volume: 280000, trades: 250, date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString() },
+  { name: 'Apr', profit: 2780, volume: 308000, trades: 290, date: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString() },
+  { name: 'May', profit: 1890, volume: 248000, trades: 230, date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString() },
+  { name: 'Jun', profit: 2390, volume: 380000, trades: 310, date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString() },
+  { name: 'Jul', profit: 3490, volume: 430000, trades: 340, date: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString() },
+  { name: 'Aug', profit: 2000, volume: 290000, trades: 270, date: new Date(new Date().setDate(new Date().getDate() - 8)).toISOString() },
+  { name: 'Sep', profit: 2780, volume: 320000, trades: 300, date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString() },
+  { name: 'Oct', profit: 1890, volume: 260000, trades: 240, date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString() },
+  { name: 'Nov', profit: 2390, volume: 350000, trades: 290, date: new Date(new Date().setDate(new Date().getDate() - 11)).toISOString() },
+  { name: 'Dec', profit: 3490, volume: 410000, trades: 330, date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString() },
 ];
 
 // Mock data for ambassador earnings
@@ -39,7 +39,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$12.22',
     percentage: '10%',
     earnings: '$123.22',
-    date: '2025-04-21'
+    date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
   },
   {
     projectName: 'SHIB',
@@ -48,7 +48,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$12.22',
     percentage: '10%',
     earnings: '$123.22',
-    date: '2025-04-21'
+    date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
   },
   {
     projectName: 'DOGE',
@@ -57,7 +57,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$12.22',
     percentage: '10%',
     earnings: '$123.22',
-    date: '2025-04-20'
+    date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
   },
   {
     projectName: 'MetaToken',
@@ -66,7 +66,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$12.22',
     percentage: '10%',
     earnings: '$123.22',
-    date: '2025-04-18'
+    date: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString(),
   },
   {
     projectName: 'GameFi',
@@ -75,7 +75,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$12.22',
     percentage: '10%',
     earnings: '$123.22',
-    date: '2025-04-18'
+    date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
   },
   {
     projectName: 'PEPE',
@@ -84,7 +84,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$14.50',
     percentage: '10%',
     earnings: '$145.00',
-    date: '2025-03-10'
+    date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
   },
   {
     projectName: 'SHIB',
@@ -93,7 +93,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$9.80',
     percentage: '10%',
     earnings: '$98.00',
-    date: '2025-03-31'
+    date: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
   },
   {
     projectName: 'DOGE',
@@ -102,7 +102,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$15.67',
     percentage: '10%',
     earnings: '$156.70',
-    date: '2025-03-30'
+    date: new Date(new Date().setDate(new Date().getDate() - 8)).toISOString(),
   },
   {
     projectName: 'MetaToken',
@@ -111,7 +111,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$8.90',
     percentage: '10%',
     earnings: '$89.00',
-    date: '2025-03-30'
+    date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString(),
   },
   {
     projectName: 'GameFi',
@@ -120,7 +120,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$21.00',
     percentage: '10%',
     earnings: '$210.00',
-    date: '2025-03-06'
+    date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
   },
   {
     projectName: 'PEPE',
@@ -129,7 +129,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$18.90',
     percentage: '10%',
     earnings: '$189.00',
-    date: '2025-03-05'
+    date: new Date(new Date().setDate(new Date().getDate() - 11)).toISOString(),
   },
   {
     projectName: 'SHIB',
@@ -138,7 +138,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$13.45',
     percentage: '10%',
     earnings: '$134.50',
-    date: '2025-03-04'
+    date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString(),
   },
   {
     projectName: 'DOGE',
@@ -147,7 +147,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$16.78',
     percentage: '10%',
     earnings: '$167.80',
-    date: '2025-03-03'
+    date: new Date(new Date().setDate(new Date().getDate() - 13)).toISOString(),
   },
   {
     projectName: 'MetaToken',
@@ -156,7 +156,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$23.45',
     percentage: '10%',
     earnings: '$234.50',
-    date: '2025-03-02'
+    date: new Date(new Date().setDate(new Date().getDate() - 14)).toISOString(),
   },
   {
     projectName: 'GameFi',
@@ -165,7 +165,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$12.34',
     percentage: '10%',
     earnings: '$123.40',
-    date: '2025-03-01'
+    date: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString(),
   },
   {
     projectName: 'PEPE',
@@ -174,7 +174,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$17.89',
     percentage: '10%',
     earnings: '$178.90',
-    date: '2025-02-29'
+    date: new Date(new Date().setDate(new Date().getDate() - 16)).toISOString(),
   },
   {
     projectName: 'SHIB',
@@ -183,7 +183,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$21.00',
     percentage: '10%',
     earnings: '$210.00',
-    date: '2025-02-28'
+    date: new Date(new Date().setDate(new Date().getDate() - 17)).toISOString(),
   },
   {
     projectName: 'DOGE',
@@ -192,7 +192,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$14.56',
     percentage: '10%',
     earnings: '$145.60',
-    date: '2025-02-27'
+    date: new Date(new Date().setDate(new Date().getDate() - 18)).toISOString(),
   },
   {
     projectName: 'MetaToken',
@@ -201,7 +201,7 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$18.90',
     percentage: '10%',
     earnings: '$189.00',
-    date: '2025-02-26'
+    date: new Date(new Date().setDate(new Date().getDate() - 19)).toISOString(),
   },
   {
     projectName: 'GameFi',
@@ -210,48 +210,48 @@ export const mockAmbassadorEarningsBreakdownData = [
     totalFee: '$23.45',
     percentage: '10%',
     earnings: '$234.50',
-    date: '2025-02-25'
+    date: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString(),
   }
 ]; 
 
 export const mockAmbassadorPaymentSettingsData = [
   {
-    date: '2025-04-21',
+    date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
     amount: '$55.22',
     to: 'USDT',
     status: 'Completed',
     txHash: '102113_139021'
   },
   {
-    date: '2025-03-21',
+    date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'failed',
     txHash: '102013_139021'
   },
   {
-    date: '2025-03-21',
+    date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'Completed',
     txHash: '102013_139021'
   },
   {
-    date: '2025-04-19',
+    date: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'Completed',
     txHash: '102013_139021'
   },
   {
-    date: '2025-04-21',
+    date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'Completed',
     txHash: '102013_139021'
   },
   {
-    date: '2025-04-20',
+    date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'Completed',
@@ -274,7 +274,7 @@ export const mockPortfolioProjects = [
     tradesChange: 5.3,
     profitTrend: [100, 120, 110, 130, 150, 140, 160],
     volumeTrend: [1000, 1200, 1100, 1300, 1500, 1400, 1600],
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
   },
   {
     id: '2',
@@ -290,7 +290,7 @@ export const mockPortfolioProjects = [
     tradesChange: 9.8,
     profitTrend: [80, 85, 90, 88, 92, 95, 98],
     volumeTrend: [900, 950, 980, 970, 990, 1000, 987],
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
   },
   {
     id: '3',
@@ -306,7 +306,7 @@ export const mockPortfolioProjects = [
     tradesChange: -2.1,
     profitTrend: [50, 55, 60, 58, 56, 54, 55],
     volumeTrend: [500, 520, 550, 540, 530, 545, 543],
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
   },
   {
     id: '4',
@@ -322,7 +322,7 @@ export const mockPortfolioProjects = [
     tradesChange: 0,
     profitTrend: [40, 45, 50, 48, 46, 44, 0],
     volumeTrend: [400, 420, 450, 440, 430, 445, 0],
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString(),
   },
   {
     id: '5',
@@ -338,7 +338,7 @@ export const mockPortfolioProjects = [
     tradesChange: 0,
     profitTrend: [40, 45, 50, 48, 46, 44, 0],
     volumeTrend: [300, 320, 350, 340, 330, 345, 343],
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
   },
   {
     id: '6',
@@ -354,7 +354,7 @@ export const mockPortfolioProjects = [
     tradesChange: 0,
     profitTrend: [40, 45, 50, 48, 46, 44, 0],
     volumeTrend: [300, 320, 350, 340, 330, 345, 343],
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
   },
   {
     id: '7',
@@ -370,6 +370,6 @@ export const mockPortfolioProjects = [
     tradesChange: 0,
     profitTrend: [40, 45, 50, 48, 46, 44, 0],
     volumeTrend: [300, 320, 350, 340, 330, 345, 343],
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
   },
 ];

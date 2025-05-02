@@ -8,7 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
 import { DataChart } from '@/components/ui/data-chart';
 import { motion } from 'framer-motion';
+import type { DateRange } from 'react-day-picker';
+import { subWeeks } from 'date-fns';
+
 export function AmbassadorOverview() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subWeeks(new Date(), 1),
+    to: new Date(),
+  });
   const metrics = [
     {
       title: 'Lifetime Earning',
@@ -109,8 +116,14 @@ export function AmbassadorOverview() {
         title="Earning over time"
         description="Your daily earning from the ambassador programs"
         data={mockAmbassadorEarningsBreakdownData}
-        dataKey="numberOfBots"
+        yKey="numberOfBots"
+        xKey="date"
         color="hsl(var(--chart-1))"
+        showDateRange={true}
+        showDateButtons={true} 
+        showChartTypeSelector={true}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
       />
 
       <div className="grid gap-4 md:grid-cols-2">

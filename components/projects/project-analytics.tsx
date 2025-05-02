@@ -1007,7 +1007,7 @@ export const ProjectAnalytics = forwardRef<
       options: ["All", "VolumeBot", "AutoSellBot", "SnipeBot", "HolderBot"] 
     }), []);
 
-  console.log(`\n =============== table 1 data ===============\n${JSON.stringify(filteredBotPerformanceData, null, 2)}`)
+  // console.log(`\n =============== table 1 data ===============\n${JSON.stringify(filteredBotPerformanceData, null, 2)}`)
   console.log(`\n =============== table 2 data ===============\n${JSON.stringify(filteredActivityLogData, null, 2)}`)
 
 

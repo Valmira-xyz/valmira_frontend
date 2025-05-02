@@ -19,8 +19,8 @@ import { formatNumber } from '@/lib/utils';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval, format, differenceInDays } from 'date-fns';
-import { BarChart3, PieChart } from 'lucide-react';
+import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval, format, differenceInDays, addHours, addDays, isSameDay, isBefore, isAfter, differenceInMilliseconds } from 'date-fns';
+import { ChartColumnBig, ChartArea, ChartSpline } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
@@ -40,7 +40,6 @@ export interface DataChartProps {
   showChartTypeSelector?: boolean;
   showHeaderInVertical?: boolean;
   className?: string;
-  formatter?: (value: number) => [string, string];
   isLoading?: boolean;
   emptyStateMessage?: string;
   emptyStateIcon?: React.ReactNode;
@@ -62,7 +61,6 @@ export function DataChart({
   showChartTypeSelector = true,
   showHeaderInVertical = false,
   className,
-  formatter = (value: number) => [formatNumber(value), 'Value'],
   isLoading = false,
   emptyStateMessage = "No data available",
   emptyStateIcon,
@@ -96,44 +94,142 @@ export function DataChart({
     });
   }, [data, xKey, dateRange]);
 
-  // Group data by day (default behavior)
-  const groupedData = useMemo(() => {
-    // Create a map to store aggregated values by day
-    const dayMap = new Map<string, { [key: string]: any }>();
+  // Add these helper functions at the top of the file
+  const getTimeIntervals = (range: DateRange | undefined, button: string) => {
+    const now = new Date();
+    let intervals: Date[] = [];
+    let interval: number;
 
-    filteredData.forEach(item => {
-      try {
-        const date = parseISO(item[xKey]);
-        const dayKey = format(date, 'yyyy-MM-dd');
-        
-        if (!dayMap.has(dayKey)) {
-          // Initialize with the first item's data
-          dayMap.set(dayKey, {
-            [xKey]: dayKey,
-            [actualYKey]: 0
-          });
+    if (range?.from) {
+      const diffInDays = differenceInDays(range.to || now, range.from);
+      if (diffInDays <= 1) {
+        // 1D range with 2-hour intervals
+        interval = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+        const start = startOfDay(range.from);
+        for (let i = 0; i <= 24; i += 2) {
+          intervals.push(addHours(start, i));
         }
-        
-        // Add the value to the aggregated total
-        const currentValue = dayMap.get(dayKey)![actualYKey];
-        const itemValue = typeof item[actualYKey] === 'number' ? item[actualYKey] : 0;
-        dayMap.get(dayKey)![actualYKey] = currentValue + itemValue;
-      } catch (error) {
-        console.error('Error processing date for grouping:', error);
+      } else if (diffInDays <= 7) {
+        // 1W range with 1-day intervals
+        interval = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+        const start = startOfDay(range.from);
+        for (let i = 0; i <= diffInDays; i++) {
+          intervals.push(addDays(start, i));
+        }
+      } else {
+        // 1M range with 1-day intervals
+        interval = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+        const start = startOfDay(range.from);
+        for (let i = 0; i <= diffInDays; i++) {
+          intervals.push(addDays(start, i));
+        }
       }
-    });
+    } else {
+      switch (button) {
+        case '1D':
+          // 1D with 2-hour intervals
+          interval = 2 * 60 * 60 * 1000;
+          const start = startOfDay(subDays(now, 1));
+          for (let i = 0; i <= 24; i += 2) {
+            intervals.push(addHours(start, i));
+          }
+          break;
+        case '1W':
+          // 1W with 1-day intervals
+          interval = 24 * 60 * 60 * 1000;
+          const weekStart = startOfDay(subWeeks(now, 1));
+          for (let i = 0; i <= 7; i++) {
+            intervals.push(addDays(weekStart, i));
+          }
+          break;
+        case '1M':
+          // 1M with 1-day intervals
+          interval = 24 * 60 * 60 * 1000;
+          const monthStart = startOfDay(subMonths(now, 1));
+          for (let i = 0; i <= 30; i++) {
+            intervals.push(addDays(monthStart, i));
+          }
+          break;
+      }
+    }
 
-    // Convert map to array and sort by date
-    return Array.from(dayMap.values())
-      .sort((a, b) => {
-        const dateA = parseISO(a[xKey]);
-        const dateB = parseISO(b[xKey]);
-        return dateA.getTime() - dateB.getTime();
+    return intervals;
+  };
+
+  const interpolateData = (data: any[], intervals: Date[], xKey: string, yKey: string) => {
+    // If there's no data at all, return empty array
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    return intervals.map(interval => {
+      // Find data points within this interval
+      const intervalData = data.filter(item => {
+        try {
+          const itemDate = parseISO(item[xKey]);
+          if (selectedDateButton === '1D' || (dateRange?.from && differenceInDays(dateRange.to || new Date(), dateRange.from) <= 1)) {
+            // For 1D view, check if the hour matches
+            return format(itemDate, 'yyyy-MM-dd HH') === format(interval, 'yyyy-MM-dd HH');
+          } else {
+            // For 1W and 1M views, check if the day matches
+            return format(itemDate, 'yyyy-MM-dd') === format(interval, 'yyyy-MM-dd');
+          }
+        } catch (error) {
+          return false;
+        }
       });
-  }, [filteredData, xKey, actualYKey]);
+
+      // If we have data points, calculate the appropriate value based on the chart type
+      if (intervalData.length > 0) {
+        if (chartType === 'bar') {
+          // For bar charts, sum the values
+          const sum = intervalData.reduce((acc, item) => {
+            const value = Number(item[yKey]) || 0;
+            return acc + value;
+          }, 0);
+          return {
+            [xKey]: format(interval, 'yyyy-MM-dd HH:mm:ss'),
+            [yKey]: sum
+          };
+        } else {
+          // For line and area charts, use the average value
+          const sum = intervalData.reduce((acc, item) => {
+            const value = Number(item[yKey]) || 0;
+            return acc + value;
+          }, 0);
+          const average = sum / intervalData.length;
+          return {
+            [xKey]: format(interval, 'yyyy-MM-dd HH:mm:ss'),
+            [yKey]: average
+          };
+        }
+      }
+
+      // If no data points found, return 0
+      return {
+        [xKey]: format(interval, 'yyyy-MM-dd HH:mm:ss'),
+        [yKey]: 0
+      };
+    });
+  };
+
+  const groupedData = useMemo(() => {
+    const intervals = getTimeIntervals(dateRange, selectedDateButton);
+    return interpolateData(filteredData, intervals, xKey, actualYKey);
+  }, [filteredData, dateRange, selectedDateButton, xKey, actualYKey]);
+
+  const xAxisTicks = useMemo(() => {
+    if (selectedDateButton === '1M' && groupedData.length > 0) {
+      // Show every 2nd date
+      return groupedData
+        .filter((_, idx) => idx % 2 === 0)
+        .map(item => item[xKey]);
+    }
+    // For other ranges, let recharts auto-calculate
+    return undefined;
+  }, [selectedDateButton, groupedData, xKey]);
 
   const handleDateButtonChange = (value: string) => {
-
     const now = new Date();
     let start: Date;
 
@@ -157,11 +253,14 @@ export function DataChart({
     });
   };
 
-
-
   const formatXAxis = (date: string) => {
     try {
-      return format(parseISO(date), 'MMM d');
+      const parsedDate = parseISO(date);
+      if (selectedDateButton === '1D' || (dateRange?.from && differenceInDays(dateRange.to || new Date(), dateRange.from) <= 1)) {
+        return format(parsedDate, 'HH:mm');
+      } else {
+        return format(parsedDate, 'MMM d');
+      }
     } catch (error) {
       return date;
     }
@@ -169,7 +268,12 @@ export function DataChart({
 
   const formatTooltipDate = (date: string) => {
     try {
-      return format(parseISO(date), 'MMM d, yyyy');
+      const parsedDate = parseISO(date);
+      if (selectedDateButton === '1D' || (dateRange?.from && differenceInDays(dateRange.to || new Date(), dateRange.from) <= 1)) {
+        return format(parsedDate, 'HH:mm, MMM d');
+      } else {
+        return format(parsedDate, 'MMM d, yyyy');
+      }
     } catch (error) {
       return date;
     }
@@ -177,6 +281,45 @@ export function DataChart({
 
   const renderChart = () => {
     console.log(`rendering real chart`);
+    console.log(`\n =============== groupedData ===============\n${JSON.stringify(groupedData, null, 2)}`);
+
+    // Calculate min and max values for y-axis
+    const maxValue = Math.max(...groupedData.map(item => item[actualYKey]));
+    const yAxisDomain = [0, Math.max(maxValue * 1.1, 0.0001)]; // Add 10% padding and ensure non-zero max
+
+    const formatYAxis = (value: number) => {
+      let digits = 0;
+       
+      if (maxValue > 1 && maxValue <= 20) 
+        digits = 1
+      else if (maxValue <= 1 && maxValue > 0.1)
+        digits = 2
+      else if (maxValue <= 0.1 && maxValue > 0.01)
+        digits = 3
+      else if (maxValue <= 0.01 && maxValue > 0.001)
+        digits = 4
+      else if (maxValue <= 0.001 && maxValue > 0.0001)
+        digits = 5
+        
+      return value.toFixed(digits).replace(/\.?0+$/, '');  // Format to 3 decimal places
+    };
+
+    const tooltipFormatter = (value: number) => {
+      let digits = 0;
+       
+      if (maxValue > 1 && maxValue <= 20) 
+        digits = 1
+      else if (maxValue <= 1 && maxValue > 0.1)
+        digits = 2
+      else if (maxValue <= 0.1 && maxValue > 0.01)
+        digits = 3
+      else if (maxValue <= 0.01 && maxValue > 0.001)
+        digits = 4
+      else if (maxValue <= 0.001 && maxValue > 0.0001)
+        digits = 5
+      return [formatNumber(value, digits), 'Value'];
+    };
+
     const commonProps = {
       data: groupedData,
       margin: { top: 10, right: 30, left: 0, bottom: 0 },
@@ -191,10 +334,16 @@ export function DataChart({
               dataKey={xKey} 
               tickFormatter={formatXAxis}
               tick={{ fontSize: 12 }}
+              ticks={xAxisTicks}
             />
-            <YAxis tickFormatter={(value) => formatNumber(value)} />
+            <YAxis 
+              tickFormatter={formatYAxis}
+              domain={yAxisDomain}
+              ticks={[0, yAxisDomain[1] * 0.25, yAxisDomain[1] * 0.5, yAxisDomain[1] * 0.75, yAxisDomain[1]]}
+              allowDecimals={true}
+            />
             <Tooltip 
-              formatter={(value: number) => formatter(value)}
+              formatter={(value: number) => tooltipFormatter(value)}
               labelFormatter={formatTooltipDate}
             />
             <Line
@@ -217,10 +366,16 @@ export function DataChart({
               dataKey={xKey} 
               tickFormatter={formatXAxis}
               tick={{ fontSize: 12 }}
+              ticks={xAxisTicks}
             />
-            <YAxis tickFormatter={(value) => formatNumber(value)} />
+            <YAxis 
+              tickFormatter={formatYAxis}
+              domain={yAxisDomain}
+              ticks={[0, yAxisDomain[1] * 0.25, yAxisDomain[1] * 0.5, yAxisDomain[1] * 0.75, yAxisDomain[1]]}
+              allowDecimals={true}
+            />
             <Tooltip 
-              formatter={(value: number) => formatter(value)}
+              formatter={(value: number) => tooltipFormatter(value)}
               labelFormatter={formatTooltipDate}
             />
             <Bar dataKey={actualYKey} fill={color} />
@@ -238,10 +393,16 @@ export function DataChart({
             dataKey={xKey} 
             tickFormatter={formatXAxis}
             tick={{ fontSize: 12 }}
+            ticks={xAxisTicks}
           />
-          <YAxis tickFormatter={(value) => formatNumber(value)} />
+          <YAxis 
+            tickFormatter={formatYAxis}
+            domain={yAxisDomain}
+            ticks={[0, yAxisDomain[1] * 0.25, yAxisDomain[1] * 0.5, yAxisDomain[1] * 0.75, yAxisDomain[1]]}
+            allowDecimals={true}
+          />
           <Tooltip 
-            formatter={(value: number) => formatter(value)}
+            formatter={(value: number) => tooltipFormatter(value)}
             labelFormatter={formatTooltipDate}
           />
           <Area type="monotone" dataKey={actualYKey} fill={color} stroke={color} />
@@ -322,11 +483,11 @@ export function DataChart({
         ) : (
           <div className="h-12 w-12 text-muted-foreground">
             {chartType === 'line' ? (
-              <LineChart className="h-full w-full" />
+              <ChartSpline className="h-full w-full" />
             ) : chartType === 'bar' ? (
-              <BarChart3 className="h-full w-full" />
+              <ChartColumnBig className="h-full w-full" />
             ) : (
-              <PieChart className="h-full w-full" />
+              <ChartArea className="h-full w-full" />
             )}
           </div>
         )}
