@@ -200,6 +200,23 @@ export function DataTable({
       );  
     }
 
+    // Apply date range filter
+    if (dateRange && dateRange.from && dateRange.to && dateColumnName) {
+      filtered = filtered.filter(item => {
+        const dateValue = item[dateColumnName];
+        if (!dateValue) return false;
+        try {
+          const itemDate = parseISO(dateValue);
+          return isWithinInterval(itemDate, {
+            start: startOfDay(dateRange.from ?? new Date()),
+            end: endOfDay(dateRange.to ?? new Date())
+          });
+        } catch {
+          return false;
+        }
+      });
+    }
+
     // Apply sorting
     if (sortConfig) {
       filtered = [...filtered].sort((a, b) => {
@@ -325,7 +342,7 @@ export function DataTable({
     switch (column.type) {
       case 'price':
         const priceValue = typeof value === 'string' ? parseFloat(value) : value;
-        return isNaN(priceValue) ? value : `$${priceValue.toFixed(2)}`;
+        return isNaN(priceValue) ? value : `$${priceValue.toFixed(3).replace(/\.?0+$/, '')}`;
       
       case 'percent':
         const percentValue = typeof value === 'string' ? parseFloat(value) : value;
@@ -359,7 +376,7 @@ export function DataTable({
       case 'status':
         return (
           <Badge 
-            variant={value.toLowerCase() === 'active' ? 'success' : 'destructive'}
+            variant={value.toLowerCase() === 'active' || value.toLowerCase() === 'completed' ? 'success' : 'destructive'}
             className="capitalize"
           >
             {value}

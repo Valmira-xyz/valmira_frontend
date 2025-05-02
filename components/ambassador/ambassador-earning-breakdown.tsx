@@ -4,8 +4,15 @@ import { DataTable, type TableTab } from '@/components/ui/data-table';
 import { DataChart } from '@/components/ui/data-chart';
 import { mockAmbassadorEarningsBreakdownData } from '@/lib/mock-data';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import type { DateRange } from 'react-day-picker';
+import { subWeeks } from 'date-fns';
 
 export function AmbassadorEarningBreakdown() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subWeeks(new Date(), 1),
+    to: new Date(),
+  });
   return (
     <motion.div
       className="space-y-6"
@@ -23,10 +30,13 @@ export function AmbassadorEarningBreakdown() {
         showDateButtons={true} 
         showChartTypeSelector={true}
         showHeaderInVertical={false}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
       />
 
       <DataTable
         data={mockAmbassadorEarningsBreakdownData}
+        dateFieldName='date'
         showColumns={[
           { name: 'projectName', type: 'normal', displayName: 'Project' },
           { name: 'dailyBotFee', type: 'price', displayName: 'Daily Fee' },
@@ -42,6 +52,8 @@ export function AmbassadorEarningBreakdown() {
         showDateButtons={true}
         showDownloadButton={true}
         showTableHeaderInVertical={true}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
         title="Your Referrals"
         description="Track all projects you've referred to Valmira"
       />

@@ -47,53 +47,6 @@ export function AmbassadorReferralDetails({ dateRange }: AmbassadorReferralDetai
     });
   };
 
-  const referralData: ReferralData[] = [
-    {
-      project: "PEPE",
-      dateJoined: "1/15/2024",
-      dailyFees: "$45.67",
-      monthlyFees: "$1245.78",
-      percentage: "10%",
-      earnings: "$124.58",
-      status: "Active",
-    },
-    {
-      project: "SHIB",
-      dateJoined: "2/20/2023",
-      dailyFees: "$32.45",
-      monthlyFees: "$987.65",
-      percentage: "10%",
-      earnings: "$98.77",
-      status: "Active",
-    },
-    {
-      project: "DOGE",
-      dateJoined: "3/10/2023",
-      dailyFees: "$28.90",
-      monthlyFees: "$867.00",
-      percentage: "10%",
-      earnings: "$86.70",
-      status: "Active",
-    },
-    {
-      project: "MetaToken",
-      dateJoined: "1/15/2024",
-      dailyFees: "$12.22",
-      monthlyFees: "$12.22",
-      percentage: "10%",
-      earnings: "$123.22",
-      status: "Active",
-    },
-    {
-      project: "GameFi",
-      dateJoined: "1/15/2024",
-      dailyFees: "$12.22",
-      monthlyFees: "$12.22",
-      percentage: "10%",
-      earnings: "$123.22",
-      status: "Inactive",
-    },
-  ];
 
   return (
     <motion.div
@@ -157,7 +110,6 @@ export function AmbassadorReferralDetails({ dateRange }: AmbassadorReferralDetai
           { name: 'earnings', type: 'price'},
           { name: 'date', type: 'time', displayName: 'Date' },
         ]}
-        filterOption=""
         showSearchInput={false}
         showCheckbox={false}
         showPagination={true} 

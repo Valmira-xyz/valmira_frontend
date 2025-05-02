@@ -23,11 +23,13 @@ export function LatestProjects() {
   const fetchProjectsData = useCallback(async () => {
     // Skip if fetch is already in progress or if we've already fetched
     if (fetchInProgress.current || (hasInitialFetch.current && !error)) return;
+    fetchInProgress.current = true;
 
     try {
-      fetchInProgress.current = true;
       await dispatch(fetchProjects());
       hasInitialFetch.current = true;
+    } catch (error) {
+      console.error('Error fetching projects:', error);
     } finally {
       fetchInProgress.current = false;
     }
@@ -83,7 +85,7 @@ export function LatestProjects() {
                   ? 'All your projects are either completed or inactive. Create a new project or reactivate an existing one.'
                   : 'You have projects, but none are currently active. Activate an existing project or create a new one.'}
             </p>
-            <CreateProjectButton />
+            <CreateProjectButton variant="secondary"/>
           </CardContent>
         </Card>
       </div>

@@ -5,10 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatNumber(value: number): string {
+export function formatNumber(value: number, digits?: number): string {
   return new Intl.NumberFormat('en-US', {
     notation: value >= 1000000 ? 'compact' : 'standard',
-    maximumFractionDigits: 2,
+    maximumFractionDigits: digits || 2,
   }).format(value);
 }
 
