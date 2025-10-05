@@ -1,33 +1,30 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
+const AMBASSADOR_QUERY_PARAM = 'amb';
+const REFERRAL_COOKIE_NAME = 'referralCode';
+
 export function middleware(request: NextRequest) {
-  // Get the pathname of the request
-  const path = request.nextUrl.pathname;
+  const params = request.nextUrl.searchParams;
+  const referralCode = params.get(AMBASSADOR_QUERY_PARAM);
+  const response = NextResponse.next();
 
-  // Check if the request is for the splash page or a static asset
-  const isSplashPage = path === '/splash';
-  const isStaticAsset =
-    path.startsWith('/_next') ||
-    path.startsWith('/favicon.ico') ||
-    path.startsWith('/sidebar');
-
-  // For splash page or static assets, allow access regardless of authentication
-  if (isSplashPage || isStaticAsset) {
-    return NextResponse.next();
+  // Set referral cookie if referral code is present
+  if (referralCode) {
+    console.log(`Middleware: Found referral code in URL: ${referralCode}`);
+    response.cookies.set({
+      name: REFERRAL_COOKIE_NAME,
+      value: referralCode.toUpperCase(),
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      sameSite: 'lax',
+    });
   }
 
-  // Get the cookie for trial authentication
-  const isTrialAuthenticated = request.cookies.has('isTrialAuthenticated');
-
-  // For all other routes, require authentication
-  if (!isTrialAuthenticated) {
-    // If not authenticated, redirect to splash page
-    return NextResponse.redirect(new URL('/splash', request.url));
-  }
-
-  // Continue for authenticated users
-  return NextResponse.next();
+  // Allow access to all routes - no authentication required
+  return response;
 }
 
 // Configure the middleware to run on all routes except specific paths

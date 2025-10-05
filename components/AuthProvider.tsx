@@ -7,7 +7,11 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const { isConnected, address, isAuthenticating } = useWeb3Auth();
+  const {
+    isConnected: _isConnected,
+    address: _address,
+    isAuthenticating: _isAuthenticating,
+  } = useWeb3Auth();
 
   // Show loading state while authentication is in progress
   // if (isAuthenticating) {

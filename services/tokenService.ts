@@ -14,6 +14,7 @@ interface TokenInfo {
     symbol: string;
     decimals: number;
   };
+  chainName: string;
 }
 
 interface ApiResponse<T> {
@@ -30,10 +31,10 @@ export const tokenService = {
    * @param address Token contract address
    * @returns Promise with token information
    */
-  async getTokenInfo(address: string): Promise<TokenInfo> {
+  async getTokenInfo(address: string, chainName: string): Promise<TokenInfo> {
     try {
       const response = await axios.get<ApiResponse<TokenInfo>>(
-        `${BACKEND_URL}/web3/token/${address}`
+        `${BACKEND_URL}/web3/token?address=${address}&chainName=${chainName}`
       );
 
       if (!response.data.success || !response.data.data) {

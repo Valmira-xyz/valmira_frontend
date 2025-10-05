@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 interface SpinnerProps {
@@ -14,13 +15,24 @@ const sizeMap = {
   lg: 'h-8 w-8',
 };
 
-export function Spinner({ loading = true, size = 'md', className, hasText = true }: SpinnerProps) {
+export function Spinner({
+  loading = true,
+  size = 'md',
+  className,
+  hasText = true,
+}: SpinnerProps) {
   if (!loading) return null;
 
   return (
     <div className="flex flex-col items-center justify-center gap-2">
-      <Loader2 className={cn('animate-spin text-muted-foreground', sizeMap[size], className)} />
+      <Loader2
+        className={cn(
+          'animate-spin text-muted-foreground',
+          sizeMap[size],
+          className
+        )}
+      />
       {hasText && <p className="text-muted-foreground">Loading data...</p>}
     </div>
   );
-} 
+}

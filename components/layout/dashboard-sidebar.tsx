@@ -1,16 +1,22 @@
 'use client';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { FiRepeat } from 'react-icons/fi';
+import { IoIosLink } from 'react-icons/io';
+import { LuSettings2 } from 'react-icons/lu';
+import { LuClipboardPen } from 'react-icons/lu';
+import { LuUsersRound } from 'react-icons/lu';
+import { LuPlay } from 'react-icons/lu';
+import { MdOutlineWidgets } from 'react-icons/md';
+import { useSelector } from 'react-redux';
 
 import {
   AlertCircleIcon,
   BookOpen,
+  Calculator,
   ChevronDown,
   Circle,
   FolderKanban,
-  HelpCircle,
   HomeIcon,
-  Repeat2,
   Settings,
   Wallet,
 } from 'lucide-react';
@@ -37,50 +43,124 @@ import {
 import { getBadgeVariant } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import Logo from '@/public/sidebar/logo.svg';
+import { config } from '@/services/config';
+import { projectService } from '@/services/projectService';
 import websocketService, { WebSocketEvents } from '@/services/websocketService';
-import { fetchProjects } from '@/store/slices/projectSlice';
 import { RootState } from '@/store/store';
 
 import { WalletConnectionButton } from '../wallet/wallet-connection-button';
 import { WalletDisplay } from '../wallet/wallet-display';
 
+// Configure which embed paths should hide the sidebar
+const EMBED_WIDGET_PATHS = [
+  '/embed/tokenboost',
+  '/embed/widget',
+  // Add more clean widget paths here in the future
+  // '/embed/new-widget',
+  // '/embed/partner-widget',
+];
+
 export function DashboardSidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const dispatch = useDispatch();
   const { isConnected } = useAccount();
-  const [openProjects, setOpenProjects] = useState(true);
-  const [openYourProjects, setOpenYourProjects] = useState(true);
-  const [openKnowledge, setOpenKnowledge] = useState(false);
-  // const { theme, resolvedTheme } = useTheme();
+  // const dispatch = useDispatch();
+
+  // Don't render sidebar on specific embed widget pages
+  if (EMBED_WIDGET_PATHS.includes(pathname)) {
+    return null;
+  }
+
+  // Initialize collapsible states based on current path
+  const [openProjects, setOpenProjects] = useState(
+    () => pathname.startsWith('/projects') || pathname === '/public-projects'
+  );
+  const [openYourProjects, setOpenYourProjects] = useState(
+    () =>
+      pathname.startsWith('/projects') &&
+      pathname !== '/projects/fee-calculator' &&
+      pathname !== '/public-projects'
+  );
+
+  const [openPacks, setOpenPacks] = useState(() =>
+    pathname.startsWith('/public-packs')
+  );
+
+  const [openYourPacks, setOpenYourPacks] = useState(() =>
+    pathname.startsWith('/packs')
+  );
+
+  const [openKnowledge, setOpenKnowledge] = useState(
+    () => pathname.startsWith('/tutorials') || pathname.startsWith('/faqs')
+  );
+  const [openAmbassador, setOpenAmbassador] = useState(() =>
+    pathname.startsWith('/ambassador')
+  );
+
   const { open, setOpen, isMobile } = useSidebar();
+
   const [mounted, setMounted] = useState(false);
   const [updatedTotalProfit, setUpdatedTotalProfit] = useState<number | null>(
     null
   );
+  const [userProjects, setUserProjects] = useState<any[]>([]);
+  const [userPacks, setUserPacks] = useState<any[]>([]);
+  const loadingRef = useRef(false);
+  const loadingPacksRef = useRef(false);
 
   // Get auth state from Redux store
-  const { user, isAuthenticated } = useSelector(
+  const { user, isAuthenticated, isAdmin } = useSelector(
     (state: RootState) => state.auth
-  );
-  const { projects, loading: _projectsLoading } = useSelector(
-    (state: RootState) => state.projects
   );
 
   const sidebarRef = useRef<SidebarRef>(null);
 
   // Set mounted state to true after component mounts
+  // Update collapsible states when pathname changes
   useEffect(() => {
     setMounted(true);
-  }, []);
 
-  // Filter projects to show only the authenticated user's projects,
-  // sort by status (active first) then by updatedAt date (newest first),
-  // and limit to 10 projects for the sidebar
-  const filteredAndSortedProjects =
-    projects
-      ?.filter((project) => {
-        // Check if project has owner property (from ProjectWithAddons interface)
+    // Don't close dropdowns - just open the relevant ones based on current path
+    // This allows users to keep multiple dropdowns open
+
+    // Open the relevant collapsible based on the current path
+    if (pathname.startsWith('/projects') || pathname === '/public-projects') {
+      setOpenProjects(true);
+      if (
+        pathname.startsWith('/projects') &&
+        pathname !== '/projects/fee-calculator' &&
+        pathname !== '/public-projects'
+      ) {
+        setOpenYourProjects(true);
+      }
+    } else if (pathname.startsWith('/packs') || pathname === '/public-packs') {
+      setOpenPacks(true);
+      if (pathname.startsWith('/packs')) {
+        setOpenYourPacks(true);
+      }
+    } else if (
+      pathname.startsWith('/tutorials') ||
+      pathname.startsWith('/faqs')
+    ) {
+      setOpenKnowledge(true);
+    } else if (pathname.startsWith('/ambassador')) {
+      setOpenAmbassador(true);
+    }
+  }, [pathname]);
+
+  // Fetch user's projects
+  const fetchUserProjects = useCallback(async () => {
+    if (!isAuthenticated || !user) return;
+
+    // Prevent multiple simultaneous calls using ref
+    if (loadingRef.current) return;
+
+    try {
+      loadingRef.current = true;
+      const allProjects = await projectService.getProjects();
+
+      // Filter projects for the current user
+      const filteredProjects = allProjects.filter((project) => {
         if ('owner' in project) {
           const ownerObj = project.owner as {
             _id?: string;
@@ -92,9 +172,133 @@ export function DashboardSidebar() {
               user?.walletAddress?.toLowerCase()
           );
         }
-        // If no owner field, fall back to userId (from Project interface)
-        return project.userId === user?._id;
-      })
+        return false;
+      });
+
+      setUserProjects(filteredProjects);
+    } catch (error) {
+      console.error('Error fetching user projects:', error);
+    } finally {
+      loadingRef.current = false;
+    }
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    fetchUserProjects();
+  }, [fetchUserProjects]);
+
+  // Fetch user's packs directly from backend to ensure real-time status
+  const fetchUserPacks = useCallback(async () => {
+    if (!isAuthenticated || !user) return;
+
+    // Prevent multiple simultaneous calls using ref
+    if (loadingPacksRef.current) return;
+
+    try {
+      loadingPacksRef.current = true;
+
+      // Fetch fresh data directly from backend instead of Redux store
+      const response = await fetch(
+        `${config.apiUrl}/projects?isProject=false`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch packs');
+      }
+
+      const result = await response.json();
+      const allPacks = result.data.projects; // Backend returns as projects but they're actually packs
+
+      // Filter packs for the current user
+      const filteredPacks = allPacks.filter((pack: any) => {
+        if ('owner' in pack) {
+          const ownerObj = pack.owner as {
+            _id?: string;
+            walletAddress?: string;
+          };
+          return (
+            ownerObj?._id === user?._id ||
+            ownerObj?.walletAddress?.toLowerCase() ===
+              user?.walletAddress?.toLowerCase()
+          );
+        }
+        return false;
+      });
+
+      // console.log('[filteredPacks fresh from backend]', filteredPacks);
+
+      setUserPacks(filteredPacks);
+    } catch (error) {
+      console.error('Error fetching user packs:', error);
+    } finally {
+      loadingPacksRef.current = false;
+    }
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    fetchUserPacks();
+  }, [fetchUserPacks]);
+
+  // Add periodic refresh for pack data to ensure real-time status updates
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    // Refresh pack data every 30 seconds to keep status current
+    const interval = setInterval(() => {
+      fetchUserPacks();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user, fetchUserPacks]);
+
+  // Clear projects and packs when user disconnects/logs out
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      setUserProjects([]);
+      setUserPacks([]);
+    }
+  }, [isAuthenticated, user]);
+
+  // Listen for project changes (creation/deletion)
+  useEffect(() => {
+    const handleProjectsChanged = () => {
+      fetchUserProjects();
+    };
+
+    // Listen for custom project changes event
+    window.addEventListener('projectsChanged', handleProjectsChanged);
+
+    return () => {
+      window.removeEventListener('projectsChanged', handleProjectsChanged);
+    };
+  }, [fetchUserProjects]);
+
+  // Listen for pack changes (creation/deletion)
+  useEffect(() => {
+    const handlePacksChanged = () => {
+      fetchUserPacks();
+    };
+
+    // Listen for custom pack changes event
+    window.addEventListener('packsChanged', handlePacksChanged);
+
+    return () => {
+      window.removeEventListener('packsChanged', handlePacksChanged);
+    };
+  }, [fetchUserPacks]);
+
+  // Filter projects to show only the authenticated user's projects,
+  // sort by status (active first) then by updatedAt date (newest first),
+  // and limit to 10 projects for the sidebar
+  const filteredAndSortedProjects =
+    userProjects
       ?.sort((a, b) => {
         // First sort by status (active first)
         if (a.status === 'active' && b.status !== 'active') return -1;
@@ -107,24 +311,22 @@ export function DashboardSidebar() {
       })
       ?.slice(0, 10) || []; // Limit to 10 projects for the sidebar
 
-  // Get all user projects for stats (without the 10 limit)
-  const userProjects =
-    projects?.filter((project) => {
-      // Check if project has owner property (from ProjectWithAddons interface)
-      if ('owner' in project) {
-        const ownerObj = project.owner as {
-          _id?: string;
-          walletAddress?: string;
-        };
+  // Filter packs to show only the authenticated user's packs,
+  // sort by status (active first) then by updatedAt date (newest first),
+  // and limit to 10 packs for the sidebar
+  const filteredAndSortedPacks =
+    userPacks
+      ?.sort((a, b) => {
+        // First sort by status (active first) - use pack.status directly from backend
+        if (a.status === 'active' && b.status !== 'active') return -1;
+        if (a.status !== 'active' && b.status === 'active') return 1;
+
+        // Then sort by updatedAt date (newest first)
         return (
-          ownerObj?._id === user?._id ||
-          ownerObj?.walletAddress?.toLowerCase() ===
-            user?.walletAddress?.toLowerCase()
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
-      }
-      // If no owner field, fall back to userId (from Project interface)
-      return project.userId === user?._id;
-    }) || [];
+      })
+      ?.slice(0, 10) || []; // Limit to 10 packs for the sidebar
 
   const activeProjects = userProjects.filter(
     (project) => project.status === 'active'
@@ -223,6 +425,14 @@ export function DashboardSidebar() {
     };
   }, [isAuthenticated, isConnected, userProjects, handleMetricsUpdate]);
 
+  // Helper function to check if a route is active
+  const isActive = (path: string, exact: boolean = false) => {
+    if (exact) {
+      return pathname === path;
+    }
+    return pathname.startsWith(path);
+  };
+
   const onNavigateTo = (path: string) => {
     router.push(path);
     if (sidebarRef.current) {
@@ -254,7 +464,11 @@ export function DashboardSidebar() {
         <div className="px-2">
           <SidebarMenuButton
             onClick={() => onNavigateTo('/')}
-            className="flex items-center "
+            className={cn(
+              'flex items-center',
+              isActive('/', true) &&
+                'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+            )}
           >
             <HomeIcon className="h-4 w-4" />
             <span>Dashboard</span>
@@ -262,19 +476,156 @@ export function DashboardSidebar() {
 
           <SidebarMenuButton
             onClick={() => onNavigateTo('/portfolio')}
-            className="flex items-center "
+            className={cn(
+              'flex items-center',
+              isActive('/portfolio') &&
+                'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+            )}
           >
             <Wallet className="h-4 w-4" />
             <span className="text-sm">Portfolio</span>
           </SidebarMenuButton>
 
           <SidebarMenuButton
-            onClick={() => onNavigateTo('/swap')}
-            className="flex items-center"
+            onClick={() => {}} // Clickable but does nothing
+            className={cn(
+              'flex items-center',
+              isActive('/swap') &&
+                'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+            )}
           >
-            <Repeat2 className="h-4 w-4" />
+            <FiRepeat className="h-4 w-4" />
+            {/* <Repeat2 className="h-4 w-4" /> */}
             <span className="text-sm">Swap</span>
+            <span className="ml-auto px-1.5 py-0.5 text-xs rounded bg-yellow-200 text-yellow-800 font-semibold whitespace-nowrap">
+              Coming Soon
+            </span>
           </SidebarMenuButton>
+
+          {/* Strategy Packs with submenu */}
+          <Collapsible
+            open={openPacks && open}
+            onOpenChange={(isOpen) => {
+              setOpenPacks(isOpen);
+              if (isOpen && !open) {
+                setOpen(true);
+              }
+            }}
+          >
+            <CollapsibleTrigger
+              className={cn(
+                'flex items-center justify-between w-full px-2 py-1 h-8 rounded-md',
+                'hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                // Only highlight parent when on general pack pages, not specific pack pages
+                pathname === '/packs' &&
+                  'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <MdOutlineWidgets className="h-4 w-4" />
+                {open && <span className="text-sm">Strategy Packs</span>}
+              </div>
+              {open && (
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    openPacks && 'transform rotate-180'
+                  )}
+                />
+              )}
+            </CollapsibleTrigger>
+
+            <CollapsibleContent>
+              <div className="ml-4 border-l-[1px]">
+                {/* Your Projects submenu */}
+                {isAuthenticated && (
+                  <Collapsible
+                    open={openYourPacks}
+                    onOpenChange={setOpenYourPacks}
+                  >
+                    <CollapsibleTrigger
+                      className={cn(
+                        'flex items-center justify-between w-full pl-4 pr-2 py-1 h-8 text-sm rounded-md',
+                        'text-muted-foreground hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                        // Removed background color on open state to only show on hover/active
+                        isActive('/your-packs') &&
+                          'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                      )}
+                    >
+                      <span>Your Packs</span>
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 transition-transform',
+                          openYourPacks && 'transform rotate-180'
+                        )}
+                      />
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent>
+                      {filteredAndSortedPacks &&
+                      filteredAndSortedPacks.length > 0 ? (
+                        <>
+                          {filteredAndSortedPacks.map((pack) => (
+                            <SidebarMenuButton
+                              key={pack._id}
+                              onClick={() => onNavigateTo(`/packs/${pack._id}`)}
+                              className={cn(
+                                'flex items-center justify-between w-full pl-6 pr-2 h-8 py-2 text-sm rounded-md',
+                                pathname === `/packs/${pack._id}` &&
+                                  'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="relative"
+                                  title={`Status: ${pack.status}`}
+                                >
+                                  <Circle
+                                    className={`h-4 w-4 ${
+                                      pack.status === 'active'
+                                        ? 'text-green-500 animate-pulse'
+                                        : 'text-gray-400'
+                                    }`}
+                                  />
+                                </span>
+                                <span className="text-xs">
+                                  {pack.name.length > 12
+                                    ? pack.name.slice(0, 10) + '...'
+                                    : pack.name}
+                                </span>
+                              </div>
+                              <Badge
+                                variant={getBadgeVariant(pack.status)}
+                                className="text-[10px] rounded-full"
+                                size="default"
+                              >
+                                {pack.status}
+                              </Badge>
+                            </SidebarMenuButton>
+                          ))}
+                        </>
+                      ) : (
+                        <div className="px-6 py-2 text-sm h-8 text-muted-foreground flex items-center">
+                          No packs found
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+                <button
+                  onClick={() => onNavigateTo('/public-packs')}
+                  className={cn(
+                    'flex items-center w-full px-4 py-1 h-8 text-sm rounded-md',
+                    'text-muted-foreground hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                    isActive('/public-packs') &&
+                      'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                  )}
+                >
+                  View all packs
+                </button>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Projects with submenu */}
           <Collapsible
@@ -285,8 +636,18 @@ export function DashboardSidebar() {
                 setOpen(true);
               }
             }}
+            // className={(openProjects && open) ? `dark:bg-sidebar-accent dark:text-sidebar-accent-foreground dark:hover:bg-accent dark:hover:text-accent-foreground` : ''}
           >
-            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1  h-8 hover:bg-accent hover:text-accent-foreground rounded-md">
+            <CollapsibleTrigger
+              className={cn(
+                'flex items-center justify-between w-full px-2 py-1 h-8 rounded-md',
+                'hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                // Only highlight parent when on general projects overview page (if it exists)
+                // Don't highlight when on Fee Calculator, View all projects, or specific project pages
+                pathname === '/projects' &&
+                  'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+              )}
+            >
               <div className="flex items-center gap-2">
                 <FolderKanban className="h-4 w-4" />
                 {open && <span className="text-sm">Projects</span>}
@@ -303,78 +664,109 @@ export function DashboardSidebar() {
 
             <CollapsibleContent>
               <div className="ml-4 border-l-[1px]">
+                {/* Fee Calculator */}
+                <SidebarMenuButton
+                  onClick={() => onNavigateTo('/projects/fee-calculator')}
+                  className={cn(
+                    'flex items-center',
+                    isActive('/projects/fee-calculator') &&
+                      'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                  )}
+                >
+                  <Calculator className="h-4 w-4 ml-2" />
+                  <span className="text-sm">Fee Calculator</span>
+                </SidebarMenuButton>
+
+                {/* Your Projects submenu */}
+                {isAuthenticated && (
+                  <Collapsible
+                    open={openYourProjects}
+                    onOpenChange={setOpenYourProjects}
+                  >
+                    <CollapsibleTrigger
+                      className={cn(
+                        'flex items-center justify-between w-full pl-4 pr-2 py-1 h-8 text-sm rounded-md',
+                        'text-muted-foreground hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                        // Only highlight when on general your projects route (if it exists)
+                        isActive('/your-projects') &&
+                          'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                      )}
+                    >
+                      <span>Your Projects</span>
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 transition-transform',
+                          openYourProjects && 'transform rotate-180'
+                        )}
+                      />
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent>
+                      {filteredAndSortedProjects &&
+                      filteredAndSortedProjects.length > 0 ? (
+                        <>
+                          {filteredAndSortedProjects.map((project) => (
+                            <SidebarMenuButton
+                              key={project._id}
+                              onClick={() =>
+                                onNavigateTo(`/projects/${project._id}`)
+                              }
+                              className={cn(
+                                'flex items-center justify-between w-full pl-6 pr-2 h-8 py-2 text-sm rounded-md',
+                                pathname === `/projects/${project._id}` &&
+                                  'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="relative"
+                                  title={`Status: ${project.status}`}
+                                >
+                                  <Circle
+                                    className={`h-4 w-4 ${
+                                      project.status === 'active'
+                                        ? 'text-green-500 animate-pulse'
+                                        : 'text-gray-400'
+                                    }`}
+                                  />
+                                </span>
+                                <span className="text-xs">
+                                  {project.name.length > 12
+                                    ? project.name.slice(0, 10) + '...'
+                                    : project.name}
+                                </span>
+                              </div>
+                              <Badge
+                                variant={getBadgeVariant(project.status)}
+                                className="text-[10px] rounded-full"
+                                size="default"
+                              >
+                                {project.status}
+                              </Badge>
+                            </SidebarMenuButton>
+                          ))}
+                        </>
+                      ) : (
+                        <div className="px-6 py-2 text-sm h-8 text-muted-foreground flex items-center">
+                          No projects found
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
+                {/* View all projects */}
                 <button
                   onClick={() => onNavigateTo('/public-projects')}
-                  className="flex items-center w-full px-4 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
+                  className={cn(
+                    'flex items-center w-full px-4 py-1 h-8 text-sm rounded-md',
+                    'text-muted-foreground hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                    isActive('/public-projects') &&
+                      'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                  )}
                 >
                   View all projects
                 </button>
-
-                {/* Your Projects submenu */}
-                <Collapsible
-                  open={openYourProjects}
-                  onOpenChange={setOpenYourProjects}
-                >
-                  <CollapsibleTrigger className="flex items-center justify-between w-full pl-4 pr-2 py-2 h-8 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md">
-                    <span>Your projects</span>
-                    <ChevronDown
-                      className={cn(
-                        'h-4 w-4 transition-transform',
-                        openYourProjects && 'transform rotate-180'
-                      )}
-                    />
-                  </CollapsibleTrigger>
-
-                  <CollapsibleContent>
-                    {filteredAndSortedProjects &&
-                    filteredAndSortedProjects.length > 0 ? (
-                      <>
-                        {filteredAndSortedProjects.map((project) => (
-                          <button
-                            key={project._id}
-                            onClick={() =>
-                              onNavigateTo(`/projects/${project._id}`)
-                            }
-                            className="flex items-center justify-between w-full pl-6 pr-2 h-8 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="relative"
-                                title={`Status: ${project.status}`}
-                              >
-                                <Circle
-                                  className={`h-3 w-3 ${
-                                    project.status === 'active'
-                                      ? 'text-green-500 animate-pulse'
-                                      : 'text-gray-400'
-                                  }`}
-                                />
-                              </span>
-                              <span className="text-xs">
-                                {project.name.length > 12
-                                  ? project.name.slice(0, 10) + '...'
-                                  : project.name}
-                              </span>
-                            </div>
-                            <Badge
-                              variant={getBadgeVariant(project.status)}
-                              className="text-[10px] rounded-full"
-                              size="default"
-                            >
-                              {project.status}
-                            </Badge>
-                          </button>
-                        ))}
-                      </>
-                    ) : (
-                      <div className="px-6 py-2 text-sm h-8 text-muted-foreground flex items-center">
-                        {projects &&
-                          projects.length === 0 &&
-                          'No projects found'}
-                      </div>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -389,60 +781,160 @@ export function DashboardSidebar() {
               }
             }}
           >
-            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1 h-8  hover:bg-accent hover:text-accent-foreground rounded-md">
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1 h-8 hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground rounded-md">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
                 {open && <span className="text-sm">Knowledge Base</span>}
               </div>
-              <ChevronDown
-                className={cn(
-                  'h-4 w-4 transition-transform',
-                  openKnowledge && 'transform rotate-180'
-                )}
-              />
+              {open && (
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    openKnowledge && 'transform rotate-180'
+                  )}
+                />
+              )}
             </CollapsibleTrigger>
 
             <CollapsibleContent>
               <div className="ml-4 border-l-[1px]">
-                <button
+                <SidebarMenuButton
                   onClick={() => onNavigateTo('/tutorials')}
-                  className="flex items-center w-full px-4 py-2 h-8 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
+                  className={cn(
+                    'flex items-center w-full px-4 py-1 h-8 text-sm rounded-md',
+                    'text-muted-foreground hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                    isActive('/tutorials') &&
+                      'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                  )}
                 >
                   <div className="flex items-center gap-2">
                     <AlertCircleIcon className="w-4 h-4" />
                     <span className="text-sm">Tutorials</span>
                   </div>
-                </button>
-                <button
+                </SidebarMenuButton>
+                <SidebarMenuButton
                   onClick={() => onNavigateTo('/faqs')}
-                  className="flex items-center w-full px-4 py-2 h-8 text-sm hover:bg-accent hover:text-accent-foreground rounded-md"
+                  className={cn(
+                    'flex items-center w-full px-4 py-1 h-8 text-sm rounded-md',
+                    'text-muted-foreground hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                    isActive('/faqs') &&
+                      'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                  )}
                 >
                   <div className="flex items-center gap-2">
                     <AlertCircleIcon className="w-4 h-4" />
                     <span className="text-sm">FAQs</span>
                   </div>
-                </button>
+                </SidebarMenuButton>
               </div>
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Help & Support */}
-          <SidebarMenuButton
-            onClick={() => onNavigateTo('/ambassador')}
-            className="flex items-center "
+          {/* Ambassador Program with submenu */}
+          <Collapsible
+            open={openAmbassador && open}
+            onOpenChange={(isOpen) => {
+              setOpenAmbassador(isOpen);
+              if (isOpen && !open) {
+                setOpen(true);
+              }
+            }}
           >
-            <HelpCircle className="h-4 w-4" />
-            <span className="text-sm">Ambassador Program</span>
-          </SidebarMenuButton>
+            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1 h-8 hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground rounded-md">
+              <div className="flex items-center gap-2">
+                <LuClipboardPen className="w-4 h-4" />
+                {open && <span className="text-sm">Ambassador Program</span>}
+              </div>
+              {open && (
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    openAmbassador && 'transform rotate-180'
+                  )}
+                />
+              )}
+            </CollapsibleTrigger>
+
+            <CollapsibleContent>
+              <div className="ml-4 border-l-[1px]">
+                <SidebarMenuButton
+                  onClick={() => onNavigateTo('/ambassador/')}
+                  className={cn(
+                    'flex items-center w-full px-4 py-1 h-8 text-sm rounded-md',
+                    'hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                    isActive('/ambassador', true) &&
+                      'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                  )}
+                >
+                  <LuUsersRound className="w-4 h-4" />
+                  <span className="text-sm ml-2">Overview</span>
+                </SidebarMenuButton>
+                <SidebarMenuButton
+                  onClick={() => onNavigateTo('/ambassador/referral')}
+                  className={cn(
+                    'flex items-center w-full px-4 py-1 h-8 text-sm rounded-md',
+                    'hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                    isActive('/ambassador/referral') &&
+                      'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                  )}
+                >
+                  <IoIosLink className="w-4 h-4" />
+                  <span className="text-sm  ml-2">Referral</span>
+                </SidebarMenuButton>
+                <SidebarMenuButton
+                  onClick={() => onNavigateTo('/ambassador/widget-config')}
+                  className={cn(
+                    'flex items-center w-full px-4 py-1 h-8 text-sm rounded-md',
+                    'hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                    isActive('/ambassador/widget-config') &&
+                      'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                  )}
+                >
+                  <MdOutlineWidgets className="w-4 h-4" />
+                  <span className="text-sm  ml-2">Widget Configuration</span>
+                </SidebarMenuButton>
+                <SidebarMenuButton
+                  onClick={() => onNavigateTo('/ambassador/widget-preview')}
+                  className={cn(
+                    'flex items-center w-full px-4 py-1 h-8 text-sm rounded-md',
+                    'hover:bg-accent hover:text-accent-foreground dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground',
+                    isActive('/ambassador/widget-preview') &&
+                      'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+                  )}
+                >
+                  <LuPlay className="w-4 h-4" />
+                  <span className="text-sm ml-2">Widget Preview</span>
+                </SidebarMenuButton>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Settings */}
           <SidebarMenuButton
             onClick={() => onNavigateTo('/settings')}
-            className="flex items-center "
+            className={cn(
+              'flex items-center',
+              isActive('/settings') &&
+                'dark:bg-sidebar-accent dark:text-sidebar-accent-foreground'
+            )}
           >
-            <Settings className="h-4 w-4" />
+            {/* <Settings className="h-4 w-4" /> */}
+            <LuSettings2 className="h-4 w-4" />
             <span className="text-sm">Settings</span>
           </SidebarMenuButton>
+
+          {/* Admin */}
+          {isAdmin && (
+            <SidebarMenuButton className="flex items-center ">
+              <Settings className="h-4 w-4" />
+              <span
+                className="text-sm"
+                onClick={() => onNavigateTo('/fee-management')}
+              >
+                Fee Management
+              </span>
+            </SidebarMenuButton>
+          )}
         </div>
 
         {/* Profile section at the bottom */}

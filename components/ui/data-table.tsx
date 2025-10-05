@@ -1,21 +1,62 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { type DateRange } from 'react-day-picker';
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, Search, ArrowUpRight, ArrowDownRight, ExternalLink } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DateRangePicker } from '@/components/date-range-picker';
-import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, differenceInDays, isWithinInterval, format } from 'date-fns';
-import { Input } from './input';
+
 import { Badge } from './badge';
-import { cn } from '@/lib/utils';
+import { Input } from './input';
+import {
+  differenceInDays,
+  endOfDay,
+  format,
+  isWithinInterval,
+  parseISO,
+  startOfDay,
+  subDays,
+  subMonths,
+  subWeeks,
+} from 'date-fns';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Download,
+  ExternalLink,
+  Search,
+} from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { SparklineChart } from '@/components/ui/sparkline-chart';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 export interface TableTab {
   label: string;
@@ -27,7 +68,14 @@ export interface ColumnChild {
   type: ColumnType;
 }
 
-export type ColumnType = 'normal' | 'price' | 'percent' | 'time' | 'graph' | 'status' | 'link';
+export type ColumnType =
+  | 'normal'
+  | 'price'
+  | 'percent'
+  | 'time'
+  | 'graph'
+  | 'status'
+  | 'link';
 
 export interface Column {
   name: string;
@@ -61,6 +109,11 @@ export interface DataTableProps {
   showDownloadButton?: boolean;
   showPageSizeSelect?: boolean;
   showTableHeaderInVertical?: boolean;
+  showTitleSideByside?: boolean;
+  showDataTablist?: boolean;
+  dataTabs?: TableTab[];
+  selectedDataTabButton?: string;
+  handleDataTabChange?: (value: string) => void;
   pageSize?: number;
   className?: string;
   title?: string;
@@ -88,7 +141,12 @@ export function DataTable({
   showDateButtons = true,
   showDownloadButton = true,
   showPageSizeSelect = true,
-  showTableHeaderInVertical = true,
+  // showTableHeaderInVertical = true,
+  showTitleSideByside = false,
+  showDataTablist = false,
+  dataTabs = [],
+  selectedDataTabButton = '',
+  handleDataTabChange = () => {},
   pageSize = 5,
   className,
   title,
@@ -97,25 +155,31 @@ export function DataTable({
   onFilterChange,
   onSearchChange,
   isLoading = false,
-  emptyStateMessage = "No data available",
+  emptyStateMessage = 'No data available',
   emptyStateIcon,
   dateRange,
   onDateRangeChange,
 }: DataTableProps) {
   const selectedDateButton = useMemo(() => {
-    const diffInDays = differenceInDays(dateRange?.to ?? new Date(), dateRange?.from ?? subDays(new Date(), 1));
+    const diffInDays = differenceInDays(
+      dateRange?.to ?? new Date(),
+      dateRange?.from ?? subDays(new Date(), 1)
+    );
     if (diffInDays > 7) return '1M';
     if (diffInDays == 1) return '1D';
     return '1W';
   }, [dateRange]);
-  
+
   const [page, setPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState<Record<string, any>[]>([]);
   const [selectAll, setSelectAll] = useState(false);
   const [currentPageSize, setCurrentPageSize] = useState(pageSize);
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: 'asc' | 'desc';
+  } | null>(null);
 
   // Reset page when page size changes
   useEffect(() => {
@@ -125,37 +189,39 @@ export function DataTable({
   // Automatically determine columns from data or use showColumns if provided
   const columns = useMemo<TableColumn[]>(() => {
     if (showColumns && showColumns.length > 0) {
-      return showColumns.map(column => ({
+      return showColumns.map((column) => ({
         key: column.name,
-        title: column.displayName || column.name
-          .replace(/([A-Z])/g, ' $1')
-          .replace(/^./, str => str.toUpperCase()),
+        title:
+          column.displayName ||
+          column.name
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/^./, (str) => str.toUpperCase()),
         type: column.type,
         child: column.child,
         sort: column.sort ?? false,
-        linkPrefix: column.linkPrefix
+        linkPrefix: column.linkPrefix,
       }));
     }
-    
-    return data.length > 0 
+
+    return data.length > 0
       ? Object.keys(data[0])
-        .filter(key => !hideColumns.includes(key.toLowerCase()))
-        .map(key => ({
-          key,
-          title: key
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, str => str.toUpperCase()),
-          type: 'normal' as ColumnType,
-          sort: false,
-          linkPrefix: undefined
-        }))
+          .filter((key) => !hideColumns.includes(key.toLowerCase()))
+          .map((key) => ({
+            key,
+            title: key
+              .replace(/([A-Z])/g, ' $1')
+              .replace(/^./, (str) => str.toUpperCase()),
+            type: 'normal' as ColumnType,
+            sort: false,
+            linkPrefix: undefined,
+          }))
       : [];
   }, [data, hideColumns, showColumns]);
 
   // Generate filter options from the specified column and data from database
   // const filterOptions = useMemo(() => {
   //   if (!filterOption || !data.length) return [];
-    
+
   //   const uniqueValues = Array.from(new Set(data.map(item => item[filterOption.key.value])))
   //     .filter(Boolean)
   //     .sort((a, b) => {
@@ -178,8 +244,8 @@ export function DataTable({
   const dateColumnName = useMemo(() => {
     if (dateFieldName) return dateFieldName;
     if (!showColumns) return 'date';
-    const dateColumn = showColumns.find(col => col.type === 'time');
-    return dateColumn?.name || 'date';
+    const dateColumn = showColumns.find((col) => col.type === 'time');
+    return dateColumn?.name || undefined;
   }, [showColumns]);
 
   // Filter data based on selected filter and date range
@@ -188,28 +254,32 @@ export function DataTable({
 
     // Apply column filter
     if (filterOption && selectedFilter !== 'All') {
-      filtered = filtered.filter(item => String(item[filterOption.key.value]).includes(selectedFilter));
+      filtered = filtered.filter((item) =>
+        String(item[filterOption.key.value]).includes(selectedFilter)
+      );
     }
 
     // Apply search filter
     if (showSearchInput && searchQuery) {
-      filtered = filtered.filter(item => 
-        columns.some(col => 
-          String(item[col.key]).toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter((item) =>
+        columns.some((col) =>
+          String(item[col.key])
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
         )
-      );  
+      );
     }
 
     // Apply date range filter
     if (dateRange && dateRange.from && dateRange.to && dateColumnName) {
-      filtered = filtered.filter(item => {
+      filtered = filtered.filter((item) => {
         const dateValue = item[dateColumnName];
         if (!dateValue) return false;
         try {
           const itemDate = parseISO(dateValue);
           return isWithinInterval(itemDate, {
             start: startOfDay(dateRange.from ?? new Date()),
-            end: endOfDay(dateRange.to ?? new Date())
+            end: endOfDay(dateRange.to ?? new Date()),
           });
         } catch {
           return false;
@@ -224,7 +294,9 @@ export function DataTable({
         const bValue = b[sortConfig.key];
 
         if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+          return sortConfig.direction === 'asc'
+            ? aValue - bValue
+            : bValue - aValue;
         }
 
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -235,15 +307,15 @@ export function DataTable({
 
     return filtered;
   }, [
-    data, 
-    filterOption, 
-    selectedFilter, 
-    dateRange, 
-    selectedDateButton, 
-    searchQuery, 
-    columns, 
+    data,
+    filterOption,
+    selectedFilter,
+    dateRange,
+    selectedDateButton,
+    searchQuery,
+    columns,
     sortConfig,
-    dateColumnName
+    dateColumnName,
   ]);
 
   const totalPages = Math.ceil(filteredData.length / currentPageSize);
@@ -270,28 +342,30 @@ export function DataTable({
     onRowSelect?.(newSelectedRows);
   };
 
-
   const handleDateButtonChange = (value: string) => {
     const now = new Date();
     let start: Date;
 
     switch (value) {
-      case '1D':
+      case '1D': {
         start = subDays(now, 1);
         break;
-      case '1W':
+      }
+      case '1W': {
         start = subWeeks(now, 1);
         break;
-      case '1M':
+      }
+      case '1M': {
         start = subMonths(now, 1);
         break;
+      }
       default:
         return;
     }
 
     onDateRangeChange?.({
       from: start,
-      to: now
+      to: now,
     });
     setPage(1);
   };
@@ -310,16 +384,20 @@ export function DataTable({
 
   const handleDownload = () => {
     // Convert data to CSV
-    const headers = columns.map(col => col.title).join(',');
-    const rows = selectedRows.map(row => 
-      columns.map(col => {
-        const value = row[col.key];
-        // Handle values that might contain commas
-        return typeof value === 'string' && value.includes(',') 
-          ? `"${value}"`
-          : value;
-      }).join(',')
-    ).join('\n');
+    const headers = columns.map((col) => col.title).join(',');
+    const rows = selectedRows
+      .map((row) =>
+        columns
+          .map((col) => {
+            const value = row[col.key];
+            // Handle values that might contain commas
+            return typeof value === 'string' && value.includes(',')
+              ? `"${value}"`
+              : value;
+          })
+          .join(',')
+      )
+      .join('\n');
     const csv = `${headers}\n${rows}`;
 
     // Create and trigger download
@@ -336,97 +414,156 @@ export function DataTable({
   };
 
   // Format cell value based on column type
-  const formatCellValue = (value: any, column: { key: string; type: ColumnType; child?: ColumnChild; linkPrefix?: string }) => {
-    if (value === undefined || value === null) return '';
+  const formatCellValue = (
+    value: any,
+    column: { key: string; type: ColumnType; linkPrefix?: string }
+  ) => {
+    // Handle null/undefined values based on column type
+    if (value === undefined || value === null) {
+      switch (column.type) {
+        case 'price':
+          return '$0.00';
+        case 'percent':
+          return '0%';
+        case 'normal':
+          // Check if this is likely a numeric field based on column name
+          if (
+            column.key.toLowerCase().includes('earning') ||
+            column.key.toLowerCase().includes('commission') ||
+            column.key.toLowerCase().includes('amount') ||
+            column.key.toLowerCase().includes('balance')
+          ) {
+            return '0';
+          }
+          // Handle specific column defaults
+          if (column.key === 'dateJoined') {
+            return 'N/A';
+          }
+          if (column.key === 'yourPercentage') {
+            return '10%'; // Default L1 commission rate
+          }
+          if (column.key === 'action') {
+            return 'View';
+          }
+          if (column.key === 'projects') {
+            return '0';
+          }
+          return '-';
+        default:
+          return '-';
+      }
+    }
 
     switch (column.type) {
-      case 'price':
-        const priceValue = typeof value === 'string' ? parseFloat(value) : value;
-        return isNaN(priceValue) ? value : `$${priceValue.toFixed(3).replace(/\.?0+$/, '')}`;
-      
-      case 'percent':
-        const percentValue = typeof value === 'string' ? parseFloat(value) : value;
+      case 'price': {
+        const priceValue =
+          typeof value === 'string' ? parseFloat(value) : value;
+        return isNaN(priceValue) ? '$0.00' : `$${priceValue.toFixed(2)}`;
+      }
+
+      case 'percent': {
+        const percentValue =
+          typeof value === 'string' ? parseFloat(value) : value;
         if (isNaN(percentValue)) return value;
-        
+
         const isPositive = percentValue >= 0;
         const Icon = isPositive ? ArrowUpRight : ArrowDownRight;
-        
+
         return (
           <div className="flex items-center gap-1 mt-1">
-            <Icon className={cn(
-              "h-4 w-4",
-              isPositive ? "text-green-500" : "text-red-500"
-            )} />
-            <span className={cn(
-              isPositive ? "text-green-500" : "text-red-500"
-            )}>
-              {Math.abs(percentValue).toFixed(2)}%
+            <Icon
+              className={cn(
+                'h-3 w-3',
+                isPositive ? 'text-green-500' : 'text-red-500'
+              )}
+            />
+            <span
+              className={cn(isPositive ? 'text-green-500' : 'text-red-500')}
+            >
+              {Math.abs(percentValue).toFixed(4)}%
             </span>
           </div>
         );
-      
-      case 'time':
+      }
+
+      case 'time': {
         try {
           const date = typeof value === 'string' ? new Date(value) : value;
-          return format(date, 'yyyy-MM-dd HH:mm:ss');
+          return format(date, 'MMM d, yyyy h:mm a');
         } catch (error) {
+          console.log(error);
           return value;
         }
-      
-      case 'status':
+      }
+
+      case 'status': {
         return (
-          <Badge 
-            variant={value.toLowerCase() === 'active' || value.toLowerCase() === 'completed' ? 'success' : 'destructive'}
+          <Badge
+            variant={
+              value.toLowerCase() === 'active' ||
+              value.toLowerCase() === 'completed'
+                ? 'success'
+                : 'destructive'
+            }
             className="capitalize"
           >
             {value}
           </Badge>
         );
-      
-      case 'link':
+      }
+
+      case 'link': {
         const href = column.linkPrefix ? `${column.linkPrefix}${value}` : value;
         return (
-          <a 
+          <a
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline inline-flex items-center gap-1"
+            className="text-primary hover:underline flex items-center gap-1"
           >
+            {/* {value} */}
             <ExternalLink className="h-4 w-4" />
           </a>
         );
-      
-      case 'graph':
+      }
+
+      case 'graph': {
         if (!Array.isArray(value)) return value;
         return (
-          <div className="w-24">
-            <SparklineChart
-              data={value}
-              color="hsl(var(--chart-1))"
-            />
+          <div className="w-24 h-8">
+            <SparklineChart data={value} color="hsl(var(--chart-1))" />
           </div>
         );
-      
+      }
+
       case 'normal':
         if (column.key === 'botName') {
           return value.split('-')[0];
         }
+        return value;
+
       default:
         return value;
     }
   };
 
   // Render cell with optional child value
-  const renderCell = (row: Record<string, any>, column: { key: string; type: ColumnType; child?: ColumnChild }) => {
+  const renderCell = (
+    row: Record<string, any>,
+    column: { key: string; type: ColumnType; child?: ColumnChild }
+  ) => {
     const value = row[column.key];
     const childValue = column.child ? row[column.child.name] : undefined;
-    
+
     return (
       <div className="flex flex-col">
         <div>{formatCellValue(value, column)}</div>
         {column.child && childValue !== undefined && (
           <div className="text-xs text-muted-foreground">
-            {formatCellValue(childValue, { key: column.child!.name, type: column.child!.type })}
+            {formatCellValue(childValue, {
+              key: column.child!.name,
+              type: column.child!.type,
+            })}
           </div>
         )}
       </div>
@@ -437,16 +574,16 @@ export function DataTable({
   const handleSort = (column: TableColumn) => {
     if (!column.sort) return;
 
-    setSortConfig(current => {
+    setSortConfig((current) => {
       if (current?.key === column.key) {
         return {
           key: column.key,
-          direction: current.direction === 'asc' ? 'desc' : 'asc'
+          direction: current.direction === 'asc' ? 'desc' : 'asc',
         };
       }
       return {
         key: column.key,
-        direction: 'asc'
+        direction: 'asc',
       };
     });
   };
@@ -454,53 +591,70 @@ export function DataTable({
   // Animation variants
   const tableVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: {
         duration: 0.3,
-        staggerChildren: 0.05
-      }
+        staggerChildren: 0.05,
+      },
     },
-    exit: { 
-      opacity: 0, 
+    exit: {
+      opacity: 0,
       y: -20,
       transition: {
-        duration: 0.2
-      }
-    }
+        duration: 0.2,
+      },
+    },
   };
 
   const rowVariants = {
     hidden: { opacity: 0, x: -20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       x: 0,
       transition: {
-        duration: 0.3
-      }
+        duration: 0.3,
+      },
     },
-    exit: { 
-      opacity: 0, 
+    exit: {
+      opacity: 0,
       x: 20,
       transition: {
-        duration: 0.2
-      }
-    }
+        duration: 0.2,
+      },
+    },
   };
 
   return (
     <motion.div
-      className={cn("w-full", className)}
+      className={cn('w-full', className)}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className={cn("w-full", className)}>
-        {(title || description) && (
+      <Card className={cn('w-full', className)}>
+        {!showTitleSideByside && (title || description) && (
           <CardHeader className="!pb-0">
-            {title && <CardTitle>{title}</CardTitle>}
+            {title && <CardTitle className="font-tt">{title}</CardTitle>}
             {description && <CardDescription>{description}</CardDescription>}
+            {showDataTablist && (
+              <Tabs
+                value={selectedDataTabButton}
+                className="w-fit flex-wrap"
+                onValueChange={handleDataTabChange}
+              >
+                <TabsList className="flex w-full grid-cols-4">
+                  {dataTabs.map((tab) => {
+                    return (
+                      <TabsTrigger key={tab.value} value={tab.value}>
+                        {tab.label}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+              </Tabs>
+            )}
           </CardHeader>
         )}
         <CardContent>
@@ -508,6 +662,14 @@ export function DataTable({
             {/* Controls section */}
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between flex-wrap">
               <div className="flex flex-col gap-4 sm:flex-row w-full sm:w-fit sm:items-center justify-start">
+                {showTitleSideByside && (title || description) && (
+                  <CardHeader className="!p-0">
+                    {title && <CardTitle>{title}</CardTitle>}
+                    {description && (
+                      <CardDescription>{description}</CardDescription>
+                    )}
+                  </CardHeader>
+                )}
                 {showSearchInput && (
                   <div className="relative">
                     <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -520,11 +682,14 @@ export function DataTable({
                   </div>
                 )}
               </div>
-              
+
               <div className="flex flex-col sm:flex-row w-full md:w-fit md:items-center justify-start flex-wrap lg:flex-nowrap gap-2">
                 <div className="flex flex-col sm:flex-row gap-4 justify-start w-full md:w-fit">
                   {filterOption && (
-                    <Select value={selectedFilter} onValueChange={handleFilterChange}>
+                    <Select
+                      value={selectedFilter}
+                      onValueChange={handleFilterChange}
+                    >
                       <SelectTrigger className="w-full sm:w-[180px] text-start">
                         <SelectValue placeholder={`Filter by ${filterOption}`}>
                           {selectedFilter && (
@@ -543,8 +708,12 @@ export function DataTable({
                             {columns.filter(col => col.key === filterOption.key)[0].title}: {option.label}
                           </SelectItem>
                         ))} */}
-                        {filterOption.options.map((option) => (
-                          <SelectItem key={option} value={option} className="text-start">
+                        {filterOption.options.map((option, index) => (
+                          <SelectItem
+                            key={`${option}-${index}`}
+                            value={option}
+                            className="text-start"
+                          >
                             {filterOption.key.label}: {option}
                           </SelectItem>
                         ))}
@@ -553,13 +722,20 @@ export function DataTable({
                   )}
 
                   {showDateRange && (
-                    <DateRangePicker date={dateRange} onDateChange={onDateRangeChange} />
+                    <DateRangePicker
+                      date={dateRange}
+                      onDateChange={onDateRangeChange}
+                    />
                   )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-start w-full w-fit">
                   {showDateButtons && (
-                    <Tabs value={selectedDateButton} className="w-fit flex-wrap" onValueChange={handleDateButtonChange}>
+                    <Tabs
+                      value={selectedDateButton}
+                      className="w-fit flex-wrap"
+                      onValueChange={handleDateButtonChange}
+                    >
                       <TabsList className="flex w-full grid-cols-4">
                         <TabsTrigger value="1D">1D</TabsTrigger>
                         <TabsTrigger value="1W">1W</TabsTrigger>
@@ -584,7 +760,7 @@ export function DataTable({
 
             {/* Loading state */}
             {isLoading ? (
-              <motion.div 
+              <motion.div
                 className="rounded-md border"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -607,14 +783,14 @@ export function DataTable({
                   </TableHeader>
                   <TableBody>
                     {Array.from({ length: 5 }).map((_, index) => (
-                      <TableRow key={index}>
+                      <TableRow key={`loading-row-${index}`}>
                         {showCheckbox && (
                           <TableCell>
                             <div className="h-4 w-4 rounded bg-muted animate-pulse"></div>
                           </TableCell>
                         )}
                         {columns.map((column) => (
-                          <TableCell key={column.key}>
+                          <TableCell key={`loading-${column.key}`}>
                             <div className="h-4 w-full rounded bg-muted animate-pulse"></div>
                           </TableCell>
                         ))}
@@ -642,8 +818,8 @@ export function DataTable({
                       </div>
                     )}
                     <p className="text-muted-foreground text-center">
-                      {dateRange?.from 
-                        ? "No data available for the selected date range" 
+                      {dateRange?.from
+                        ? 'No data available for the selected date range'
                         : emptyStateMessage}
                     </p>
                   </motion.div>
@@ -661,15 +837,18 @@ export function DataTable({
                         <TableRow className="bg-muted/50">
                           {showCheckbox && (
                             <TableHead className="w-[30px]">
-                              <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
+                              <Checkbox
+                                checked={selectAll}
+                                onCheckedChange={handleSelectAll}
+                              />
                             </TableHead>
                           )}
                           {columns.map((column) => (
-                            <TableHead 
+                            <TableHead
                               key={column.key}
                               className={cn(
-                                column.sort && "cursor-pointer hover:bg-muted",
-                                "transition-colors"
+                                column.sort && 'cursor-pointer hover:bg-muted',
+                                'transition-colors'
                               )}
                               onClick={() => handleSort(column)}
                             >
@@ -677,20 +856,22 @@ export function DataTable({
                                 {column.title}
                                 {column.sort && (
                                   <div className="flex flex-col">
-                                    <ChevronUp 
+                                    <ChevronUp
                                       className={cn(
-                                        "h-3 w-3 -mb-1",
-                                        sortConfig?.key === column.key && sortConfig.direction === 'asc' 
-                                          ? "text-foreground" 
-                                          : "text-muted-foreground"
+                                        'h-3 w-3 -mb-1',
+                                        sortConfig?.key === column.key &&
+                                          sortConfig.direction === 'asc'
+                                          ? 'text-foreground'
+                                          : 'text-muted-foreground'
                                       )}
                                     />
-                                    <ChevronDown 
+                                    <ChevronDown
                                       className={cn(
-                                        "h-3 w-3",
-                                        sortConfig?.key === column.key && sortConfig.direction === 'desc' 
-                                          ? "text-foreground" 
-                                          : "text-muted-foreground"
+                                        'h-3 w-3',
+                                        sortConfig?.key === column.key &&
+                                          sortConfig.direction === 'desc'
+                                          ? 'text-foreground'
+                                          : 'text-muted-foreground'
                                       )}
                                     />
                                   </div>
@@ -704,7 +885,7 @@ export function DataTable({
                         <AnimatePresence mode="popLayout">
                           {currentData.map((row, index) => (
                             <motion.tr
-                              key={index}
+                              key={`row-${index}-${row.id || row._id || index}`}
                               variants={rowVariants}
                               initial="hidden"
                               animate="visible"
@@ -720,7 +901,9 @@ export function DataTable({
                                 </TableCell>
                               )}
                               {columns.map((column) => (
-                                <TableCell key={column.key}>
+                                <TableCell
+                                  key={`cell-${column.key}-${row.id || row._id || index}`}
+                                >
                                   {renderCell(row, column)}
                                 </TableCell>
                               ))}
@@ -740,23 +923,29 @@ export function DataTable({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 flex-wrap"
+                className="flex flex-col sm:flex-row items-center justify-between gap-4 py-0 px-4 flex-wrap"
               >
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-muted-foreground">
-                    {selectedRows.length} of {filteredData.length} row(s) selected.
+                    {selectedRows.length} of {filteredData.length} row(s)
+                    selected.
                   </div>
                   {showPageSizeSelect && (
                     <Select
                       value={currentPageSize.toString()}
-                      onValueChange={(value) => setCurrentPageSize(Number(value))}
+                      onValueChange={(value) =>
+                        setCurrentPageSize(Number(value))
+                      }
                     >
                       <SelectTrigger className="w-[80px] h-10">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {[5, 10, 25, 50].map((size) => (
-                          <SelectItem key={size} value={size.toString()}>
+                          <SelectItem
+                            key={`pagesize-${size}`}
+                            value={size.toString()}
+                          >
                             {size}
                           </SelectItem>
                         ))}
@@ -798,7 +987,9 @@ export function DataTable({
                       }}
                       className="w-16 h-10 text-start"
                     />
-                    <span className="text-sm text-muted-foreground">of {totalPages}</span>
+                    <span className="text-sm text-muted-foreground">
+                      of {totalPages}
+                    </span>
                   </div>
                   <Button
                     variant="outline"
@@ -821,14 +1012,14 @@ export function DataTable({
 }
 
 // Add this new function for sorting
-const sortData = (data: any[], column: Column, direction: 'asc' | 'desc') => {
+const _sortData = (data: any[], column: Column, direction: 'asc' | 'desc') => {
   return [...data].sort((a, b) => {
     const aValue = a[column.name];
     const bValue = b[column.name];
-    
+
     if (direction === 'asc') {
       return aValue > bValue ? 1 : -1;
     }
     return aValue < bValue ? 1 : -1;
   });
-}; 
+};

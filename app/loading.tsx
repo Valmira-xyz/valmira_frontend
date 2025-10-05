@@ -18,7 +18,6 @@ export default function Loading() {
       setTheme(currentTheme);
     };
 
-    // Добавляем слушатель события storage
     window.addEventListener('storage', handleStorageChange);
 
     return () => {

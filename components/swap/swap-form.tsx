@@ -15,6 +15,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+interface SwapFormProps {
+  compactMode?: boolean;
+}
+
 const networks = [
   { value: 'ethereum', label: 'Ethereum' },
   { value: 'bsc', label: 'BSC' },
@@ -22,7 +26,7 @@ const networks = [
   { value: 'arbitrum', label: 'Arbitrum' },
 ];
 
-export function SwapForm() {
+export function SwapForm({ compactMode = false }: SwapFormProps) {
   const [fromAmount, setFromAmount] = useState('0.0');
   const [toAmount, setToAmount] = useState('0.0');
   const [fromToken, setFromToken] = useState('ETH');
@@ -52,9 +56,9 @@ export function SwapForm() {
   };
 
   return (
-    <Card className="border">
+    <Card className="border dark:bg-[hsl(var(--card-dark-bg))]">
       <CardContent className="p-4">
-        <div className="space-y-6">
+        <div className={compactMode ? 'space-y-3' : 'space-y-6'}>
           {/* From Section */}
           <TokenInput
             type="from"
@@ -85,10 +89,11 @@ export function SwapForm() {
                 <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-4 mb-1">
                     <Info className="h-6 w-6 self-start" />
-                    <div className='flex flex-col'>
+                    <div className="flex flex-col">
                       <span className="font-medium">Rate</span>
                       <span className="text-xs text-muted-foreground">
-                        The current exchange rate between the two selected tokens.
+                        The current exchange rate between the two selected
+                        tokens.
                       </span>
                     </div>
                   </div>
@@ -118,10 +123,11 @@ export function SwapForm() {
                 <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-4 mb-1">
                     <Info className="h-6 w-6 self-start" />
-                    <div className='flex flex-col'>
+                    <div className="flex flex-col">
                       <span className="font-medium">Swap tool</span>
                       <span className="text-xs text-muted-foreground">
-                        This tool enables you to swap tokens between same chain and other chains
+                        This tool enables you to swap tokens between same chain
+                        and other chains
                       </span>
                     </div>
                   </div>
@@ -160,10 +166,11 @@ export function SwapForm() {
                 <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-4 mb-1">
                     <Info className="h-6 w-6 self-start" />
-                    <div className='flex flex-col'>
+                    <div className="flex flex-col">
                       <span className="font-medium">Summary</span>
                       <span className="text-xs text-muted-foreground">
-                        An overview of your swap details, including amounts, rates and fees.
+                        An overview of your swap details, including amounts,
+                        rates and fees.
                       </span>
                     </div>
                   </div>
@@ -183,7 +190,7 @@ export function SwapForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <span>Provider</span> 
+                <span>Provider</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -193,10 +200,11 @@ export function SwapForm() {
                   <TooltipContent className="w-[280px] p-3" align="center">
                     <div className="flex items-center gap-4 mb-1">
                       <Info className="h-8 w-8 self-start" />
-                      <div className='flex flex-col'>
+                      <div className="flex flex-col">
                         <span className="font-medium">Provider</span>
                         <span className="text-xs text-muted-foreground">
-                          Swap cryptocurrency instantly with real-time rates and secure transactions.
+                          Swap cryptocurrency instantly with real-time rates and
+                          secure transactions.
                         </span>
                       </div>
                     </div>
@@ -211,22 +219,23 @@ export function SwapForm() {
               <div className="flex items-center gap-2">
                 <span>Minimum received</span>
                 <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="w-[280px] p-3" align="center">
-                  <div className="flex items-center gap-4 mb-1">
-                    <Info className="h-8 w-8 self-start" />
-                    <div className='flex flex-col'>
-                      <span className="font-medium">Minimum received</span>
-                      <span className="text-xs text-muted-foreground">
-                        The least amount you'll get after the swap, accounting for fees and slippage.
-                      </span>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="w-[280px] p-3" align="center">
+                    <div className="flex items-center gap-4 mb-1">
+                      <Info className="h-8 w-8 self-start" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Minimum received</span>
+                        <span className="text-xs text-muted-foreground">
+                          The least amount you'll get after the swap, accounting
+                          for fees and slippage.
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </TooltipContent>
+                  </TooltipContent>
                 </Tooltip>
               </div>
               <span>1,841.25 USDT</span>
@@ -243,10 +252,11 @@ export function SwapForm() {
                   <TooltipContent className="w-[280px] p-3" align="center">
                     <div className="flex items-center gap-4 mb-1">
                       <Info className="h-8 w-8 self-start" />
-                      <div className='flex flex-col'>
+                      <div className="flex flex-col">
                         <span className="font-medium">Price Impact</span>
                         <span className="text-xs text-muted-foreground">
-                          The difference between market price and your swap price due to trade size.
+                          The difference between market price and your swap
+                          price due to trade size.
                         </span>
                       </div>
                     </div>
@@ -305,14 +315,15 @@ export function SwapForm() {
                     </Button>
                     <span>Important!</span>
                   </div>
-                  </TooltipTrigger>
+                </TooltipTrigger>
                 <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-4 mb-1">
                     <Info className="h-10 w-10 self-start" />
-                    <div className='flex flex-col'>
+                    <div className="flex flex-col">
                       <span className="font-medium">Important!</span>
                       <span className="text-xs text-muted-foreground">
-                        Always double-check token contracts. Verified audits and community feedback help you avoid scams.
+                        Always double-check token contracts. Verified audits and
+                        community feedback help you avoid scams.
                       </span>
                     </div>
                   </div>

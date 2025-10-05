@@ -1,22 +1,16 @@
-import { ArrowDown, ChevronDown, Search } from 'lucide-react';
 import { useState } from 'react';
 
+import { ArrowDown, ChevronDown, Search } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 
 const tokens = [
   { symbol: 'BTC', name: 'Bitcoin', icon: '/blockchain-icons/btc.png' },
@@ -29,17 +23,16 @@ const tokens = [
   { symbol: 'USDC', name: 'USD Coin', icon: '/blockchain-icons/usdc.png' },
 ];
 
-
 export function ManageWallet() {
   // Token and network state
   const [fromToken, setFromToken] = useState('SOL');
   const [toToken, setToToken] = useState('ETH');
   const [network, setNetwork] = useState('SOL');
-  
+
   // Amount state
   const [fromAmount, setFromAmount] = useState('0.0');
   const [toAmount, setToAmount] = useState('0.0');
-  
+
   // UI state
   const [fromSearch, setFromSearch] = useState('');
   const [toSearch, setToSearch] = useState('');
@@ -73,7 +66,7 @@ export function ManageWallet() {
     const tempToken = fromToken;
     setFromToken(toToken);
     setToToken(tempToken);
-    
+
     // Swap amounts
     const tempAmount = fromAmount;
     setFromAmount(toAmount);
@@ -81,7 +74,7 @@ export function ManageWallet() {
   };
 
   return (
-    <Card className="border">
+    <Card className="border dark:bg-[hsl(var(--card-dark-bg))]">
       <CardContent className="p-4 space-y-4">
         <h3 className="font-medium">Manage Wallet</h3>
         <div className="flex flex-row gap-4 w-full justify-between">
@@ -95,17 +88,23 @@ export function ManageWallet() {
                     className="w-full flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2">
-                      <img 
-                        src={tokens.find((token) => token.symbol === network)?.icon} 
-                        alt={network} 
-                        className="w-5 h-5" 
+                      <img
+                        src={
+                          tokens.find((token) => token.symbol === network)?.icon
+                        }
+                        alt={network}
+                        className="w-5 h-5"
                       />
                       <span>{network}</span>
                     </div>
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[240px] p-0" side="bottom" align="start">
+                <PopoverContent
+                  className="w-[240px] p-0"
+                  side="bottom"
+                  align="start"
+                >
                   <div className="px-2 pt-2">
                     <div className="relative">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -130,7 +129,11 @@ export function ManageWallet() {
                         }}
                       >
                         <div className="flex items-center gap-2">
-                          <img src={token.icon} alt={token.symbol} className="w-5 h-5" />
+                          <img
+                            src={token.icon}
+                            alt={token.symbol}
+                            className="w-5 h-5"
+                          />
                           <div className="flex flex-col items-start">
                             <span>{token.symbol}</span>
                           </div>
@@ -153,17 +156,24 @@ export function ManageWallet() {
                     className="w-full flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2">
-                      <img 
-                        src={tokens.find((token) => token.symbol === fromToken)?.icon} 
-                        alt={fromToken} 
-                        className="w-5 h-5" 
+                      <img
+                        src={
+                          tokens.find((token) => token.symbol === fromToken)
+                            ?.icon
+                        }
+                        alt={fromToken}
+                        className="w-5 h-5"
                       />
                       <span>{fromToken}</span>
                     </div>
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[240px] p-0" side="bottom" align="start">
+                <PopoverContent
+                  className="w-[240px] p-0"
+                  side="bottom"
+                  align="start"
+                >
                   <div className="px-2 pt-2">
                     <div className="relative">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -188,7 +198,11 @@ export function ManageWallet() {
                         }}
                       >
                         <div className="flex items-center gap-2">
-                          <img src={token.icon} alt={token.symbol} className="w-5 h-5" />
+                          <img
+                            src={token.icon}
+                            alt={token.symbol}
+                            className="w-5 h-5"
+                          />
                           <div className="flex flex-col items-start">
                             <span>{token.symbol}</span>
                           </div>
@@ -202,9 +216,9 @@ export function ManageWallet() {
           </div>
         </div>
         <div className="flex justify-center">
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             className="rounded-md"
             onClick={handleSwap}
           >
@@ -221,17 +235,23 @@ export function ManageWallet() {
                   className="w-full flex items-center justify-between"
                 >
                   <div className="flex items-center gap-2">
-                    <img 
-                      src={tokens.find((token) => token.symbol === toToken)?.icon} 
-                      alt={toToken} 
-                      className="w-5 h-5" 
+                    <img
+                      src={
+                        tokens.find((token) => token.symbol === toToken)?.icon
+                      }
+                      alt={toToken}
+                      className="w-5 h-5"
                     />
                     <span>{toToken}</span>
                   </div>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[240px] p-0" side="bottom" align="start">
+              <PopoverContent
+                className="w-[240px] p-0"
+                side="bottom"
+                align="start"
+              >
                 <div className="px-2 pt-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -256,7 +276,11 @@ export function ManageWallet() {
                       }}
                     >
                       <div className="flex items-center gap-2">
-                        <img src={token.icon} alt={token.symbol} className="w-5 h-5" />
+                        <img
+                          src={token.icon}
+                          alt={token.symbol}
+                          className="w-5 h-5"
+                        />
                         <div className="flex flex-col items-start">
                           <span>{token.symbol}</span>
                         </div>

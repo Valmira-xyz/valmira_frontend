@@ -1,7 +1,8 @@
 'use client';
 
-import { ProjectsList } from '@/components/projects/projects-list';
 import { motion } from 'framer-motion';
+
+import { ProjectsList } from '@/components/projects/projects-list';
 
 export default function PublicProjectsPage() {
   return (

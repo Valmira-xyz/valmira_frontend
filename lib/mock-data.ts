@@ -1,33 +1,155 @@
+import type { BotConfig } from '@/types/fee-calculator';
+
 // Mock data for charts
 export const mockChartData = [
-  { name: 'Jan', value: 4000, date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString() },
-  { name: 'Feb', value: 3000, date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString() },
-  { name: 'Mar', value: 5000, date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString() },
-  { name: 'Apr', value: 2780, date: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString() },
-  { name: 'May', value: 1890, date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString() },
-  { name: 'Jun', value: 2390, date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString() },
-  { name: 'Jul', value: 3490, date: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString() },
-  { name: 'Aug', value: 2000, date: new Date(new Date().setDate(new Date().getDate() - 8)).toISOString() },
-  { name: 'Sep', value: 2780, date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString() },
-  { name: 'Oct', value: 1890, date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString() },
-  { name: 'Nov', value: 2390, date: new Date(new Date().setDate(new Date().getDate() - 11)).toISOString() },
-  { name: 'Dec', value: 3490, date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString() },
+  {
+    name: 'Jan',
+    value: 4000,
+    date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+  },
+  {
+    name: 'Feb',
+    value: 3000,
+    date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
+  },
+  {
+    name: 'Mar',
+    value: 5000,
+    date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
+  },
+  {
+    name: 'Apr',
+    value: 2780,
+    date: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString(),
+  },
+  {
+    name: 'May',
+    value: 1890,
+    date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
+  },
+  {
+    name: 'Jun',
+    value: 2390,
+    date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
+  },
+  {
+    name: 'Jul',
+    value: 3490,
+    date: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
+  },
+  {
+    name: 'Aug',
+    value: 2000,
+    date: new Date(new Date().setDate(new Date().getDate() - 8)).toISOString(),
+  },
+  {
+    name: 'Sep',
+    value: 2780,
+    date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString(),
+  },
+  {
+    name: 'Oct',
+    value: 1890,
+    date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
+  },
+  {
+    name: 'Nov',
+    value: 2390,
+    date: new Date(new Date().setDate(new Date().getDate() - 11)).toISOString(),
+  },
+  {
+    name: 'Dec',
+    value: 3490,
+    date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString(),
+  },
 ];
 
 // Mock data for portfolio performance
 export const mockPortfolioData = [
-  { name: 'Jan', profit: 4000, volume: 240000, trades: 240, date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString() },
-  { name: 'Feb', profit: 3000, volume: 198000, trades: 210, date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString() },
-  { name: 'Mar', profit: 5000, volume: 280000, trades: 250, date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString() },
-  { name: 'Apr', profit: 2780, volume: 308000, trades: 290, date: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString() },
-  { name: 'May', profit: 1890, volume: 248000, trades: 230, date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString() },
-  { name: 'Jun', profit: 2390, volume: 380000, trades: 310, date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString() },
-  { name: 'Jul', profit: 3490, volume: 430000, trades: 340, date: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString() },
-  { name: 'Aug', profit: 2000, volume: 290000, trades: 270, date: new Date(new Date().setDate(new Date().getDate() - 8)).toISOString() },
-  { name: 'Sep', profit: 2780, volume: 320000, trades: 300, date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString() },
-  { name: 'Oct', profit: 1890, volume: 260000, trades: 240, date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString() },
-  { name: 'Nov', profit: 2390, volume: 350000, trades: 290, date: new Date(new Date().setDate(new Date().getDate() - 11)).toISOString() },
-  { name: 'Dec', profit: 3490, volume: 410000, trades: 330, date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString() },
+  {
+    name: 'Jan',
+    profit: 4000,
+    volume: 240000,
+    trades: 240,
+    date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+  },
+  {
+    name: 'Feb',
+    profit: 3000,
+    volume: 198000,
+    trades: 210,
+    date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
+  },
+  {
+    name: 'Mar',
+    profit: 5000,
+    volume: 280000,
+    trades: 250,
+    date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
+  },
+  {
+    name: 'Apr',
+    profit: 2780,
+    volume: 308000,
+    trades: 290,
+    date: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString(),
+  },
+  {
+    name: 'May',
+    profit: 1890,
+    volume: 248000,
+    trades: 230,
+    date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
+  },
+  {
+    name: 'Jun',
+    profit: 2390,
+    volume: 380000,
+    trades: 310,
+    date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
+  },
+  {
+    name: 'Jul',
+    profit: 3490,
+    volume: 430000,
+    trades: 340,
+    date: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
+  },
+  {
+    name: 'Aug',
+    profit: 2000,
+    volume: 290000,
+    trades: 270,
+    date: new Date(new Date().setDate(new Date().getDate() - 8)).toISOString(),
+  },
+  {
+    name: 'Sep',
+    profit: 2780,
+    volume: 320000,
+    trades: 300,
+    date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString(),
+  },
+  {
+    name: 'Oct',
+    profit: 1890,
+    volume: 260000,
+    trades: 240,
+    date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
+  },
+  {
+    name: 'Nov',
+    profit: 2390,
+    volume: 350000,
+    trades: 290,
+    date: new Date(new Date().setDate(new Date().getDate() - 11)).toISOString(),
+  },
+  {
+    name: 'Dec',
+    profit: 3490,
+    volume: 410000,
+    trades: 330,
+    date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString(),
+  },
 ];
 
 // Mock data for ambassador earnings
@@ -211,8 +333,557 @@ export const mockAmbassadorEarningsBreakdownData = [
     percentage: '10%',
     earnings: '$234.50',
     date: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString(),
-  }
-]; 
+  },
+];
+
+export const mockAmbassadorFeeBreakdownDataBots = [
+  {
+    projectName: 'CryptoBotX',
+    dailyBotFee: '$1500',
+    numberOfBots: 5,
+    totalFee: '$15.00',
+    percentage: '12%',
+    earnings: '$180.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 0)).toISOString(), // Today
+  },
+  {
+    projectName: 'DeFiYield',
+    dailyBotFee: '$950',
+    numberOfBots: 2,
+    totalFee: '$9.50',
+    percentage: '8%',
+    earnings: '$76.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
+  },
+  {
+    projectName: 'NFTCrafter',
+    dailyBotFee: '$2100',
+    numberOfBots: 7,
+    totalFee: '$21.00',
+    percentage: '15%',
+    earnings: '$315.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
+  },
+  {
+    projectName: 'Web3Game',
+    dailyBotFee: '$780',
+    numberOfBots: 1,
+    totalFee: '$7.80',
+    percentage: '10%',
+    earnings: '$78.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString(),
+  },
+  {
+    projectName: 'ChainLink',
+    dailyBotFee: '$1820',
+    numberOfBots: 4,
+    totalFee: '$18.20',
+    percentage: '11%',
+    earnings: '$200.20',
+    date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString(),
+  },
+  {
+    projectName: 'SolanaFlow',
+    dailyBotFee: '$1100',
+    numberOfBots: 3,
+    totalFee: '$11.00',
+    percentage: '9%',
+    earnings: '$99.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString(),
+  },
+  {
+    projectName: 'PolygonNet',
+    dailyBotFee: '$2500',
+    numberOfBots: 8,
+    totalFee: '$25.00',
+    percentage: '13%',
+    earnings: '$325.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 18)).toISOString(),
+  },
+  {
+    projectName: 'AvalancheDEX',
+    dailyBotFee: '$1350',
+    numberOfBots: 6,
+    totalFee: '$13.50',
+    percentage: '10%',
+    earnings: '$135.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 21)).toISOString(),
+  },
+  {
+    projectName: 'CardanoStake',
+    dailyBotFee: '$600',
+    numberOfBots: 1,
+    totalFee: '$6.00',
+    percentage: '7%',
+    earnings: '$42.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 24)).toISOString(),
+  },
+  {
+    projectName: 'CosmosHub',
+    dailyBotFee: '$2900',
+    numberOfBots: 9,
+    totalFee: '$29.00',
+    percentage: '14%',
+    earnings: '$406.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 27)).toISOString(),
+  },
+  {
+    projectName: 'PolkadotBridge',
+    dailyBotFee: '$1750',
+    numberOfBots: 5,
+    totalFee: '$17.50',
+    percentage: '12%',
+    earnings: '$210.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
+  },
+  {
+    projectName: 'TerraLUNA',
+    dailyBotFee: '$800',
+    numberOfBots: 2,
+    totalFee: '$8.00',
+    percentage: '8%',
+    earnings: '$64.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 33)).toISOString(),
+  },
+  {
+    projectName: 'BinanceChain',
+    dailyBotFee: '$2200',
+    numberOfBots: 7,
+    totalFee: '$22.00',
+    percentage: '15%',
+    earnings: '$330.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 36)).toISOString(),
+  },
+  {
+    projectName: 'EthereumClassic',
+    dailyBotFee: '$1050',
+    numberOfBots: 3,
+    totalFee: '$10.50',
+    percentage: '9%',
+    earnings: '$94.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 39)).toISOString(),
+  },
+  {
+    projectName: 'TronNetwork',
+    dailyBotFee: '$1600',
+    numberOfBots: 4,
+    totalFee: '$16.00',
+    percentage: '11%',
+    earnings: '$176.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 42)).toISOString(),
+  },
+  {
+    projectName: 'LitecoinPool',
+    dailyBotFee: '$700',
+    numberOfBots: 1,
+    totalFee: '$7.00',
+    percentage: '7%',
+    earnings: '$49.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 45)).toISOString(),
+  },
+  {
+    projectName: 'RippleXRP',
+    dailyBotFee: '$3100',
+    numberOfBots: 10,
+    totalFee: '$31.00',
+    percentage: '16%',
+    earnings: '$496.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 48)).toISOString(),
+  },
+  {
+    projectName: 'DogecoinFarm',
+    dailyBotFee: '$1400',
+    numberOfBots: 5,
+    totalFee: '$14.00',
+    percentage: '10%',
+    earnings: '$140.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 51)).toISOString(),
+  },
+  {
+    projectName: 'ShibaSwap',
+    dailyBotFee: '$1950',
+    numberOfBots: 6,
+    totalFee: '$19.50',
+    percentage: '12%',
+    earnings: '$234.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 54)).toISOString(),
+  },
+  {
+    projectName: 'UniswapDEX',
+    dailyBotFee: '$2700',
+    numberOfBots: 8,
+    totalFee: '$27.00',
+    percentage: '14%',
+    earnings: '$378.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 57)).toISOString(), // Approximately two months back
+  },
+];
+
+export const mockAmbassadorFeeBreakdownDataVolume = [
+  {
+    projectName: 'VolumeBoost',
+    dailyBotFee: '$1800',
+    numberOfBots: 6,
+    totalFee: '$18.00',
+    percentage: '11%',
+    earnings: '$198.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 0)).toISOString(),
+  },
+  {
+    projectName: 'TradeFlow',
+    dailyBotFee: '$1150',
+    numberOfBots: 3,
+    totalFee: '$11.50',
+    percentage: '9%',
+    earnings: '$103.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
+  },
+  {
+    projectName: 'LiquidityPro',
+    dailyBotFee: '$2300',
+    numberOfBots: 8,
+    totalFee: '$23.00',
+    percentage: '14%',
+    earnings: '$322.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
+  },
+  {
+    projectName: 'MarketMaker',
+    dailyBotFee: '$900',
+    numberOfBots: 2,
+    totalFee: '$9.00',
+    percentage: '8%',
+    earnings: '$72.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString(),
+  },
+  {
+    projectName: 'ArbitrageX',
+    dailyBotFee: '$2050',
+    numberOfBots: 5,
+    totalFee: '$20.50',
+    percentage: '12%',
+    earnings: '$246.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString(),
+  },
+  {
+    projectName: 'SwapMaster',
+    dailyBotFee: '$1400',
+    numberOfBots: 4,
+    totalFee: '$14.00',
+    percentage: '10%',
+    earnings: '$140.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString(),
+  },
+  {
+    projectName: 'DEXAggro',
+    dailyBotFee: '$2800',
+    numberOfBots: 9,
+    totalFee: '$28.00',
+    percentage: '15%',
+    earnings: '$420.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 18)).toISOString(),
+  },
+  {
+    projectName: 'FlashLoan',
+    dailyBotFee: '$1650',
+    numberOfBots: 7,
+    totalFee: '$16.50',
+    percentage: '11%',
+    earnings: '$181.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 21)).toISOString(),
+  },
+  {
+    projectName: 'YieldHarvester',
+    dailyBotFee: '$750',
+    numberOfBots: 1,
+    totalFee: '$7.50',
+    percentage: '7%',
+    earnings: '$52.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 24)).toISOString(),
+  },
+  {
+    projectName: 'CrossChain',
+    dailyBotFee: '$3200',
+    numberOfBots: 10,
+    totalFee: '$32.00',
+    percentage: '16%',
+    earnings: '$512.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 27)).toISOString(),
+  },
+  {
+    projectName: 'StakingBot',
+    dailyBotFee: '$1900',
+    numberOfBots: 5,
+    totalFee: '$19.00',
+    percentage: '12%',
+    earnings: '$228.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
+  },
+  {
+    projectName: 'LendingBot',
+    dailyBotFee: '$1000',
+    numberOfBots: 3,
+    totalFee: '$10.00',
+    percentage: '8%',
+    earnings: '$80.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 33)).toISOString(),
+  },
+  {
+    projectName: 'BorrowBot',
+    dailyBotFee: '$2400',
+    numberOfBots: 7,
+    totalFee: '$24.00',
+    percentage: '15%',
+    earnings: '$360.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 36)).toISOString(),
+  },
+  {
+    projectName: 'OptionsBot',
+    dailyBotFee: '$850',
+    numberOfBots: 2,
+    totalFee: '$8.50',
+    percentage: '10%',
+    earnings: '$85.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 39)).toISOString(),
+  },
+  {
+    projectName: 'FuturesBot',
+    dailyBotFee: '$2150',
+    numberOfBots: 6,
+    totalFee: '$21.50',
+    percentage: '13%',
+    earnings: '$279.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 42)).toISOString(),
+  },
+  {
+    projectName: 'PerpBot',
+    dailyBotFee: '$1550',
+    numberOfBots: 4,
+    totalFee: '$15.50',
+    percentage: '11%',
+    earnings: '$170.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 45)).toISOString(),
+  },
+  {
+    projectName: 'SpotBot',
+    dailyBotFee: '$2950',
+    numberOfBots: 9,
+    totalFee: '$29.50',
+    percentage: '16%',
+    earnings: '$472.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 48)).toISOString(),
+  },
+  {
+    projectName: 'MarginBot',
+    dailyBotFee: '$1700',
+    numberOfBots: 5,
+    totalFee: '$17.00',
+    percentage: '10%',
+    earnings: '$170.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 51)).toISOString(),
+  },
+  {
+    projectName: 'YieldFarm',
+    dailyBotFee: '$2250',
+    numberOfBots: 7,
+    totalFee: '$22.50',
+    percentage: '14%',
+    earnings: '$315.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 54)).toISOString(),
+  },
+  {
+    projectName: 'DexBalancer',
+    dailyBotFee: '$3000',
+    numberOfBots: 10,
+    totalFee: '$30.00',
+    percentage: '15%',
+    earnings: '$450.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 57)).toISOString(),
+  },
+];
+
+export const mockAmbassadorFeeBreakdownDataLiquidation = [
+  {
+    projectName: 'LiquidateNow',
+    dailyBotFee: '$2500',
+    numberOfBots: 8,
+    totalFee: '$25.00',
+    percentage: '15%',
+    earnings: '$375.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 0)).toISOString(),
+  },
+  {
+    projectName: 'SafeGuard',
+    dailyBotFee: '$1200',
+    numberOfBots: 4,
+    totalFee: '$12.00',
+    percentage: '10%',
+    earnings: '$120.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
+  },
+  {
+    projectName: 'RiskOff',
+    dailyBotFee: '$3000',
+    numberOfBots: 10,
+    totalFee: '$30.00',
+    percentage: '18%',
+    earnings: '$540.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
+  },
+  {
+    projectName: 'Deleverager',
+    dailyBotFee: '$950',
+    numberOfBots: 3,
+    totalFee: '$9.50',
+    percentage: '9%',
+    earnings: '$85.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 9)).toISOString(),
+  },
+  {
+    projectName: 'MarginCall',
+    dailyBotFee: '$2800',
+    numberOfBots: 9,
+    totalFee: '$28.00',
+    percentage: '16%',
+    earnings: '$448.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString(),
+  },
+  {
+    projectName: 'CollateralGuard',
+    dailyBotFee: '$1600',
+    numberOfBots: 5,
+    totalFee: '$16.00',
+    percentage: '12%',
+    earnings: '$192.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString(),
+  },
+  {
+    projectName: 'ForcedSale',
+    dailyBotFee: '$3500',
+    numberOfBots: 12,
+    totalFee: '$35.00',
+    percentage: '20%',
+    earnings: '$700.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 18)).toISOString(),
+  },
+  {
+    projectName: 'DebtReducer',
+    dailyBotFee: '$1300',
+    numberOfBots: 4,
+    totalFee: '$13.00',
+    percentage: '10%',
+    earnings: '$130.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 21)).toISOString(),
+  },
+  {
+    projectName: 'FlashLiquidate',
+    dailyBotFee: '$2900',
+    numberOfBots: 10,
+    totalFee: '$29.00',
+    percentage: '17%',
+    earnings: '$493.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 24)).toISOString(),
+  },
+  {
+    projectName: 'RebalanceBot',
+    dailyBotFee: '$1050',
+    numberOfBots: 3,
+    totalFee: '$10.50',
+    percentage: '9%',
+    earnings: '$94.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 27)).toISOString(),
+  },
+  {
+    projectName: 'CrisisManager',
+    dailyBotFee: '$2600',
+    numberOfBots: 8,
+    totalFee: '$26.00',
+    percentage: '15%',
+    earnings: '$390.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
+  },
+  {
+    projectName: 'DefaultPreventer',
+    dailyBotFee: '$1450',
+    numberOfBots: 5,
+    totalFee: '$14.50',
+    percentage: '11%',
+    earnings: '$159.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 33)).toISOString(),
+  },
+  {
+    projectName: 'EmergencyExit',
+    dailyBotFee: '$3100',
+    numberOfBots: 11,
+    totalFee: '$31.00',
+    percentage: '19%',
+    earnings: '$589.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 36)).toISOString(),
+  },
+  {
+    projectName: 'DebtRepay',
+    dailyBotFee: '$1100',
+    numberOfBots: 3,
+    totalFee: '$11.00',
+    percentage: '9%',
+    earnings: '$99.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 39)).toISOString(),
+  },
+  {
+    projectName: 'AssetRecovery',
+    dailyBotFee: '$2700',
+    numberOfBots: 9,
+    totalFee: '$27.00',
+    percentage: '16%',
+    earnings: '$432.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 42)).toISOString(),
+  },
+  {
+    projectName: 'HealthMonitor',
+    dailyBotFee: '$1500',
+    numberOfBots: 5,
+    totalFee: '$15.00',
+    percentage: '12%',
+    earnings: '$180.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 45)).toISOString(),
+  },
+  {
+    projectName: 'MarketStability',
+    dailyBotFee: '$3200',
+    numberOfBots: 11,
+    totalFee: '$32.00',
+    percentage: '20%',
+    earnings: '$640.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 48)).toISOString(),
+  },
+  {
+    projectName: 'PortfolioRescue',
+    dailyBotFee: '$1250',
+    numberOfBots: 4,
+    totalFee: '$12.50',
+    percentage: '10%',
+    earnings: '$125.00',
+    date: new Date(new Date().setDate(new Date().getDate() - 51)).toISOString(),
+  },
+  {
+    projectName: 'AutoLiquidate',
+    dailyBotFee: '$2950',
+    numberOfBots: 10,
+    totalFee: '$29.50',
+    percentage: '17%',
+    earnings: '$501.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 54)).toISOString(),
+  },
+  {
+    projectName: 'PositionClose',
+    dailyBotFee: '$1150',
+    numberOfBots: 3,
+    totalFee: '$11.50',
+    percentage: '9%',
+    earnings: '$103.50',
+    date: new Date(new Date().setDate(new Date().getDate() - 57)).toISOString(),
+  },
+];
 
 export const mockAmbassadorPaymentSettingsData = [
   {
@@ -220,43 +891,43 @@ export const mockAmbassadorPaymentSettingsData = [
     amount: '$55.22',
     to: 'USDT',
     status: 'Completed',
-    txHash: '102113_139021'
+    txHash: '102113_139021',
   },
   {
     date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'failed',
-    txHash: '102013_139021'
+    txHash: '102013_139021',
   },
   {
     date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'Completed',
-    txHash: '102013_139021'
+    txHash: '102013_139021',
   },
   {
     date: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'Completed',
-    txHash: '102013_139021'
+    txHash: '102013_139021',
   },
   {
     date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'Completed',
-    txHash: '102013_139021'
+    txHash: '102013_139021',
   },
   {
     date: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
     amount: '$123.22',
     to: 'USDC',
     status: 'Completed',
-    txHash: '102013_139021'
-  }
+    txHash: '102013_139021',
+  },
 ];
 
 export const mockPortfolioProjects = [
@@ -274,7 +945,9 @@ export const mockPortfolioProjects = [
     tradesChange: 5.3,
     profitTrend: [100, 120, 110, 130, 150, 140, 160],
     volumeTrend: [1000, 1200, 1100, 1300, 1500, 1400, 1600],
-    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+    lastUpdated: new Date(
+      new Date().setDate(new Date().getDate() - 1)
+    ).toISOString(),
   },
   {
     id: '2',
@@ -290,7 +963,9 @@ export const mockPortfolioProjects = [
     tradesChange: 9.8,
     profitTrend: [80, 85, 90, 88, 92, 95, 98],
     volumeTrend: [900, 950, 980, 970, 990, 1000, 987],
-    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
+    lastUpdated: new Date(
+      new Date().setDate(new Date().getDate() - 2)
+    ).toISOString(),
   },
   {
     id: '3',
@@ -306,7 +981,9 @@ export const mockPortfolioProjects = [
     tradesChange: -2.1,
     profitTrend: [50, 55, 60, 58, 56, 54, 55],
     volumeTrend: [500, 520, 550, 540, 530, 545, 543],
-    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
+    lastUpdated: new Date(
+      new Date().setDate(new Date().getDate() - 3)
+    ).toISOString(),
   },
   {
     id: '4',
@@ -322,7 +999,9 @@ export const mockPortfolioProjects = [
     tradesChange: 0,
     profitTrend: [40, 45, 50, 48, 46, 44, 0],
     volumeTrend: [400, 420, 450, 440, 430, 445, 0],
-    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString(),
+    lastUpdated: new Date(
+      new Date().setDate(new Date().getDate() - 4)
+    ).toISOString(),
   },
   {
     id: '5',
@@ -338,7 +1017,9 @@ export const mockPortfolioProjects = [
     tradesChange: 0,
     profitTrend: [40, 45, 50, 48, 46, 44, 0],
     volumeTrend: [300, 320, 350, 340, 330, 345, 343],
-    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
+    lastUpdated: new Date(
+      new Date().setDate(new Date().getDate() - 5)
+    ).toISOString(),
   },
   {
     id: '6',
@@ -354,7 +1035,9 @@ export const mockPortfolioProjects = [
     tradesChange: 0,
     profitTrend: [40, 45, 50, 48, 46, 44, 0],
     volumeTrend: [300, 320, 350, 340, 330, 345, 343],
-    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
+    lastUpdated: new Date(
+      new Date().setDate(new Date().getDate() - 6)
+    ).toISOString(),
   },
   {
     id: '7',
@@ -370,6 +1053,256 @@ export const mockPortfolioProjects = [
     tradesChange: 0,
     profitTrend: [40, 45, 50, 48, 46, 44, 0],
     volumeTrend: [300, 320, 350, 340, 330, 345, 343],
-    lastUpdated: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
+    lastUpdated: new Date(
+      new Date().setDate(new Date().getDate() - 7)
+    ).toISOString(),
+  },
+];
+export const directReferrals = [
+  {
+    projectName: 'Project A',
+    date: new Date('2024-01-12'),
+    dailyBotFee: 5,
+    monthlyFee: 120,
+    percentage: 10,
+    earnings: 12,
+    status: 'Active',
+    action: 'View',
+  },
+  {
+    projectName: 'Project B',
+    date: new Date('2024-03-10'),
+    dailyBotFee: 3,
+    monthlyFee: 90,
+    percentage: 12,
+    earnings: 10,
+    status: 'Active',
+    action: 'View',
+  },
+];
+
+export const indirectReferrals = [
+  {
+    projectName: 'Project C',
+    date: new Date('2024-04-05'),
+    dailyBotFee: 2,
+    monthlyFee: 60,
+    percentage: 5,
+    earnings: 3,
+    status: 'Pending',
+    action: 'View',
+  },
+  {
+    projectName: 'Project D',
+    date: new Date('2024-02-20'),
+    dailyBotFee: 4,
+    monthlyFee: 110,
+    percentage: 6,
+    earnings: 5,
+    status: 'Inactive',
+    action: 'View',
+  },
+];
+
+export const staticBotCalculatorMetadata: BotConfig[] = [
+  {
+    id: 'liquidation',
+    name: 'Liquidation Bot',
+    description: 'Automatically add liquidity and manage token sales',
+    dailyFee: 0, // Placeholder, will be replaced by backend's dailyBotFee
+    performanceFeeOptions: [
+      {
+        type: 'profit',
+        value: 0, // Placeholder, will be replaced by backend's liquidationBotProfitPercentage
+        description: '5% of net profits from token sales',
+      },
+    ],
+    defaultPerformanceFeeOption: 0,
+    inputFields: [
+      {
+        id: 'expectedMonthlyProfit',
+        label: 'Expected Monthly Profit',
+        type: 'number',
+        prefix: '$',
+        default: 10000,
+        tooltip: 'Estimated profit from token sales per month',
+      },
+      {
+        id: 'activeDaysPerMonth',
+        label: 'Active Days Per Month',
+        type: 'slider',
+        min: 1,
+        max: 30,
+        default: 30,
+        tooltip: 'Number of days the bot will be active per month',
+      },
+    ],
+  },
+  {
+    id: 'volume',
+    name: 'Volume Bot',
+    description: 'Boost trading volume with automated transactions',
+    dailyFee: 0, // Placeholder, will be replaced by backend's dailyBotFee
+    performanceFeeOptions: [
+      {
+        type: 'volume',
+        value: 0, // Placeholder, will be replaced by backend's volumeBotPercentage
+        description: '0.05% of bot-generated trade volume',
+      },
+      {
+        type: 'volume',
+        value: 0.1, // This static option might remain if backend doesn't provide tiers dynamically
+        description: '0.1% of bot-generated trade volume',
+      },
+    ],
+    defaultPerformanceFeeOption: 0,
+    inputFields: [
+      {
+        id: 'monthlyVolume',
+        label: 'Expected Monthly Volume',
+        type: 'number',
+        prefix: '$',
+        default: 100000,
+        tooltip: 'Estimated trading volume generated by the bot per month',
+      },
+      {
+        id: 'activeDaysPerMonth',
+        label: 'Active Days Per Month',
+        type: 'slider',
+        min: 1,
+        max: 30,
+        default: 30,
+        tooltip: 'Number of days the bot will be active per month',
+      },
+      {
+        id: 'feeRate',
+        label: 'Fee Rate',
+        type: 'select',
+        default: 0.05, // Placeholder, will use actual value from `performanceFeeOptions`
+        options: [
+          { value: 0.05, label: '0.05% (Standard)' }, // Values will be updated by feeService
+          { value: 0.1, label: '0.1% (High Volume)' }, // Values will be updated by feeService
+        ],
+        tooltip: 'Fee percentage based on volume tier',
+      },
+    ],
+  },
+  {
+    id: 'bundle-snipe',
+    name: 'Bundle Snipe Bot',
+    description:
+      'Perform first sniping with multiple wallets in the same bundle',
+    dailyFee: 0, // Placeholder
+    performanceFeeOptions: [
+      { type: 'tokens', value: 0, description: '2% of tokens sniped' }, // Placeholder
+      { type: 'tokens', value: 5, description: '5% of tokens sniped' }, // Placeholder (if backend only gives one token fee)
+      { type: 'profit', value: 0, description: '5% of realized profit' }, // Placeholder
+      { type: 'profit', value: 7, description: '7% of realized profit' }, // Placeholder (if backend only gives one profit fee)
+    ],
+    defaultPerformanceFeeOption: 0,
+    inputFields: [
+      {
+        id: 'tokenAmount',
+        label: 'Expected Token Amount',
+        type: 'number',
+        default: 1000000,
+        tooltip: 'Estimated number of tokens to be sniped',
+      },
+      {
+        id: 'tokenValue',
+        label: 'Estimated Token Value',
+        type: 'number',
+        prefix: '$',
+        default: 50000,
+        tooltip: 'Estimated value of sniped tokens',
+      },
+      {
+        id: 'activeDaysPerMonth',
+        label: 'Active Days Per Month',
+        type: 'slider',
+        min: 1,
+        max: 30,
+        default: 5,
+        tooltip: 'Number of days the bot will be active per month',
+      },
+      {
+        id: 'feeStructure',
+        label: 'Fee Structure',
+        type: 'select',
+        default: 0, // Default index for the select
+        options: [
+          { value: 0, label: '2% of tokens' }, // These options' values will be updated
+          { value: 1, label: '5% of tokens' },
+          { value: 2, label: '5% of profit' },
+          { value: 3, label: '7% of profit' },
+        ],
+        tooltip: 'Choose between token-based or profit-based fee structure',
+      },
+    ],
+  },
+  {
+    id: 'distribution',
+    name: 'Distribution Bot',
+    description: 'Distribute tokens across multiple wallets',
+    dailyFee: 0, // Placeholder
+    performanceFeeOptions: [
+      {
+        type: 'tokens',
+        value: 0, // Placeholder
+        description: '0.5% of total tokens distributed',
+      },
+      {
+        type: 'tokens',
+        value: 1, // Placeholder
+        description: '1% of total tokens distributed',
+      },
+      { type: 'flat', value: 0, description: '$0.50 per wallet' }, // Placeholder
+    ],
+    defaultPerformanceFeeOption: 0,
+    inputFields: [
+      {
+        id: 'tokenAmount',
+        label: 'Token Amount to Distribute',
+        type: 'number',
+        default: 1000000,
+        tooltip: 'Total number of tokens to distribute',
+      },
+      {
+        id: 'walletCount',
+        label: 'Number of Wallets',
+        type: 'number',
+        default: 100,
+        tooltip: 'Number of wallets to distribute tokens to',
+      },
+      {
+        id: 'tokenValue',
+        label: 'Estimated Token Value',
+        type: 'number',
+        prefix: '$',
+        default: 10000,
+        tooltip: 'Estimated total value of tokens being distributed',
+      },
+      {
+        id: 'activeDaysPerMonth',
+        label: 'Active Days Per Month',
+        type: 'slider',
+        min: 1,
+        max: 30,
+        default: 1,
+        tooltip: 'Number of days the bot will be active per month',
+      },
+      {
+        id: 'feeStructure',
+        label: 'Fee Structure',
+        type: 'select',
+        default: 0,
+        options: [
+          { value: 0, label: '0.5% of tokens' }, // Values will be updated
+          { value: 1, label: '1% of tokens' },
+          { value: 2, label: '$0.50 per wallet' },
+        ],
+        tooltip: 'Choose between token-based or flat per-wallet fee',
+      },
+    ],
   },
 ];

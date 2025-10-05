@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+package-lock.json
 
 # next.js
 /.next/
@@ -30,3 +31,39 @@ next-env.d.ts
 
 .idea
 .vscode
+docs/ambassador-api-integration.md
+.zed/settings.json
+
+.config/
+EMBED_PAGES_FUNCTIONALITY.md
+GEMINI.md
+.gitignore
+PARTNER_ONBOARDING.md
+TOKENBOOST_INTEGRATION_PLAN.md
+TOKENBOOST_WIDGET_CONTEXT.md
+TOKENBOOST_WIDGET_PLAN.md
+WIDGET_FEATURE_IMPLEMENTATION_PLAN.md
+WIDGET_FIXES_PLAN.md
+builder.config.json
+docs/tokenboost-integration-plan.md
+
+app/embed/widget/
+jest.config.js
+.gitignore
+__tests__/components/ambassador/ambassador-payment-settings.test.tsx
+__tests__/README.md
+__tests__/components/ambassador/ambassador-referral-details.test.tsx
+__tests__/components/ambassador/widget-integration.test.tsx
+__tests__/integration/widget-integration.test.tsx
+__tests__/services/widgetService.test.ts
+scripts/test-ambassador.js
+jest.setup.js
+docs/TOKENBOOST_PACK_INTEGRATION_PROGRESS.md
+public/code4arenaSVG/use-only-when-neccessary/.DS_Store
+public/code4arenaSVG/use-only-when-neccessary/code4rena-logo-lockup_all-white.svg
+public/code4arenaSVG/.DS_Store
+public/code4arenaSVG/code4rena-logo-lockup_alt.svg
+public/code4arenaSVG/code4rena-logo.svg
+public/code4arenaSVG/code4rena-logotype.svg
+public/code4arenaSVG/code4rena-logotype-alt.svg
+public/alphaProjectIcon.svg

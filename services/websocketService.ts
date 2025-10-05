@@ -8,6 +8,13 @@ export enum WebSocketEvents {
   TIME_SERIES_UPDATED = 'timeseries:updated',
   VOLUME_GENERATION_UPDATED = 'volume:generation:updated',
   HOLDER_GENERATION_UPDATED = 'holder:generation:updated',
+  DISTRIBUTION_UPDATES = 'distribution:updates',
+  TRENDING_GENERATION_UPDATED = 'trending:generation:updated',
+  SNIPE_RESULT = 'snipe:result',
+  // Pack orchestration events
+  PACK_BOT_COMPLETED = 'pack:bot:completed',
+  PACK_BOT_FAILED = 'pack:bot:failed',
+  PACK_STATUS_UPDATED = 'pack:status:updated',
 }
 
 // Event handler type definition
@@ -17,9 +24,8 @@ class WebSocketService {
   private socket: Socket | null = null;
   private isConnected: boolean = false;
   private eventHandlers: Map<string, Set<EventHandler>> = new Map();
-  private reconnectionAttempts: number = 0;
-  private maxReconnectionAttempts: number = 5;
   private projectId: string | null = null;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
 
   // Connect to the WebSocket server
   connect(apiUrl?: string): void {
@@ -32,7 +38,6 @@ class WebSocketService {
 
     this.socket = io(url, {
       reconnection: true,
-      reconnectionAttempts: this.maxReconnectionAttempts,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
@@ -51,7 +56,6 @@ class WebSocketService {
 
     this.socket.on('connect', () => {
       this.isConnected = true;
-      this.reconnectionAttempts = 0;
       console.log('🔌 [WebSocket] Connected successfully', {
         socketId: this.socket?.id,
         timestamp: new Date().toISOString(),
@@ -71,42 +75,19 @@ class WebSocketService {
       this.isConnected = false;
       console.warn('🔌 [WebSocket] Disconnected:', {
         reason,
-        reconnectionAttempts: this.reconnectionAttempts,
-        maxReconnectionAttempts: this.maxReconnectionAttempts,
         timestamp: new Date().toISOString(),
       });
 
-      if (reason === 'io server disconnect') {
-        // The server has forcefully disconnected the connection
-        if (this.reconnectionAttempts < this.maxReconnectionAttempts) {
-          this.reconnectionAttempts++;
-          console.log(
-            '🔌 [WebSocket] Attempting server disconnect reconnection',
-            {
-              attempt: this.reconnectionAttempts,
-              timestamp: new Date().toISOString(),
-            }
-          );
-          setTimeout(() => {
-            this.socket?.connect();
-          }, 1000);
-        }
-      } else if (reason === 'transport close' || reason === 'ping timeout') {
-        // Client-side socket connection issues - try to reconnect
-        if (this.reconnectionAttempts < this.maxReconnectionAttempts) {
-          this.reconnectionAttempts++;
-          console.log(
-            '🔌 [WebSocket] Attempting transport/timeout reconnection',
-            {
-              attempt: this.reconnectionAttempts,
-              timestamp: new Date().toISOString(),
-            }
-          );
-          setTimeout(() => {
-            this.socket?.connect();
-          }, 2000);
-        }
+      // Clear any existing reconnect timeout
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
       }
+
+      // Attempt to reconnect
+      this.reconnectTimeout = setTimeout(() => {
+        console.log('🔌 [WebSocket] Attempting to reconnect...');
+        this.socket?.connect();
+      }, 2000);
     });
 
     this.socket.on('reconnect', (attemptNumber) => {
@@ -134,11 +115,11 @@ class WebSocketService {
     // Set up listeners for all event types
     Object.values(WebSocketEvents).forEach((eventType) => {
       this.socket?.on(eventType, (data) => {
-        console.log(`📡 [WebSocket] Received event: ${eventType}`, {
-          data,
-          timestamp: new Date().toISOString(),
-          handlers: this.eventHandlers.get(eventType)?.size || 0,
-        });
+        // console.log(`📡 [WebSocket] Received event: ${eventType}`, {
+        //   data,
+        //   timestamp: new Date().toISOString(),
+        //   handlers: this.eventHandlers.get(eventType)?.size || 0,
+        // });
 
         const handlers = this.eventHandlers.get(eventType);
         if (handlers && handlers.size > 0) {
@@ -182,11 +163,11 @@ class WebSocketService {
       return;
     }
 
-    console.log('🔌 [WebSocket] Joining project room', {
-      projectId,
-      socketId: this.socket.id,
-      timestamp: new Date().toISOString(),
-    });
+    // console.log('🔌 [WebSocket] Joining project room', {
+    //   projectId,
+    //   socketId: this.socket.id,
+    //   timestamp: new Date().toISOString(),
+    // });
     this.socket.emit('joinProject', projectId);
     this.projectId = projectId;
   }
@@ -198,20 +179,22 @@ class WebSocketService {
     }
 
     this.socket.emit('leaveProject', projectId);
-
     if (this.projectId === projectId) {
       this.projectId = null;
     }
   }
 
   // Subscribe to a specific event
-  subscribe(event: WebSocketEvents, handler: EventHandler): void {
+  subscribe(
+    event: string | WebSocketEvents,
+    handler: EventHandler
+  ): () => void {
     if (!this.socket) {
       console.warn('🔌 [WebSocket] Cannot subscribe: Socket not initialized', {
         event,
         timestamp: new Date().toISOString(),
       });
-      return;
+      return () => {}; // Return empty function instead of undefined;
     }
 
     // Create a handler set if none exists
@@ -220,31 +203,16 @@ class WebSocketService {
     }
 
     const handlers = this.eventHandlers.get(event);
-
     if (handlers) {
-      // Convert Set to Array to check if handler exists
-      const handlersArray = Array.from(handlers);
-      const isAlreadyRegistered = handlersArray.some((h) => h === handler);
-
-      if (!isAlreadyRegistered) {
-        // Add the handler if it's not already registered
-        handlers.add(handler);
-        console.log('🔌 [WebSocket] Subscribed to event', {
-          event,
-          totalHandlers: handlers.size,
-          timestamp: new Date().toISOString(),
-        });
-      } else {
-        console.warn('🔌 [WebSocket] Handler already registered for event', {
-          event,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      handlers.add(handler);
     }
+
+    // Return unsubscribe function
+    return () => this.unsubscribe(event, handler);
   }
 
   // Unsubscribe from a specific event
-  unsubscribe(event: WebSocketEvents, handler: EventHandler): void {
+  unsubscribe(event: string | WebSocketEvents, handler: EventHandler): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
       handlers.delete(handler);
@@ -253,15 +221,17 @@ class WebSocketService {
 
   // Disconnect from the WebSocket server
   disconnect(): void {
-    if (!this.socket) {
-      return;
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
     }
 
-    this.socket.disconnect();
-    this.isConnected = false;
-    this.socket = null;
-    this.eventHandlers.clear();
-    this.projectId = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.isConnected = false;
+      this.socket = null;
+      this.eventHandlers.clear();
+      this.projectId = null;
+    }
   }
 
   // Get connection status

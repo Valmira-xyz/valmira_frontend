@@ -3,9 +3,9 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import CryptoJS from 'crypto-js';
 import { jwtDecode } from 'jwt-decode';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useAccount } from 'wagmi';
 
-import { web3modal } from '@/components/providers';
+import { appkit } from '@/components/providers';
 import { authService } from '@/services/authService';
 import {
   logout,
@@ -26,7 +26,6 @@ interface JwtPayload {
 export const useWeb3Auth = () => {
   const dispatch = useDispatch();
   const { address, isConnected, isDisconnected } = useAccount();
-  const { disconnect } = useDisconnect();
   const { user } = useSelector((state: RootState) => state.auth);
 
   // Use refs to maintain stable references
@@ -98,10 +97,11 @@ export const useWeb3Auth = () => {
       isAuthenticatingRef.current = true;
       dispatch(setLoading(true));
       const userProfile = await authService.getProfile();
+      console.log('userProfile', userProfile);
       dispatch(setUser(userProfile));
       return true;
     } catch (error) {
-      console.error('Failed to load user profile with existing token:', error);
+      console.error('Error loading user profile:', error);
       // If profile loading fails, clear the token as it may be invalid
       localStorage.removeItem('token');
       return false;
@@ -121,59 +121,78 @@ export const useWeb3Auth = () => {
     }
   }, [isConnected]);
 
-  const handleAuthentication = useCallback(async () => {
-    // Reset isAuthenticatingRef if it's been stuck for too long
-    if (isAuthenticatingRef.current) {
-      isAuthenticatingRef.current = false;
-    }
-
-    const currentAddress = addressRef.current;
-    const currentIsConnected = isConnectedRef.current;
-    const currentUser = userRef.current;
-
-    if (!currentAddress || !currentIsConnected) {
-      return;
-    }
-
-    // Check if MetaMask is locked
-    const isLocked = await checkMetaMaskLockStatus();
-    if (isLocked) {
-      dispatch(
-        setError('Please unlock your wallet to continue authentication')
-      );
-      alert('Please unlock your wallet to continue.');
-      return;
-    }
-
-    // If user is already authenticated with the current address, skip
-    if (
-      currentUser &&
-      currentUser.walletAddress.toLowerCase() === currentAddress.toLowerCase()
-    ) {
-      return;
-    }
-
-    try {
-      isAuthenticatingRef.current = true;
-      dispatch(setLoading(true));
-
-      // Check if we have a valid token in localStorage
-      if (validateExistingToken(currentAddress)) {
-        // If token is valid, load user profile and return
-        const profileLoaded = await loadUserProfile();
-        if (profileLoaded) {
-          return;
-        }
-        // If profile loading failed, proceed with full authentication
+  const handleAuthentication = useCallback(
+    async (referralCode?: string) => {
+      // Reset isAuthenticatingRef if it's been stuck for too long
+      if (isAuthenticatingRef.current) {
+        isAuthenticatingRef.current = false;
       }
 
-      // Get nonce from backend
-      const nonceResponse = await authService.getNonce(currentAddress);
+      const currentAddress = addressRef.current;
+      const currentIsConnected = isConnectedRef.current;
+      const currentUser = userRef.current;
 
-      console.log('handleAuthentication - Starting authentication process');
-      console.log('handleAuthentication - Current address:', currentAddress);
+      if (!currentAddress || !currentIsConnected) {
+        return;
+      }
+
+      // Check if MetaMask is locked
+      const isLocked = await checkMetaMaskLockStatus();
+      if (isLocked) {
+        dispatch(
+          setError('Please unlock your wallet to continue authentication')
+        );
+        alert('Please unlock your wallet to continue.');
+        return;
+      }
+
+      // If user is already authenticated with the current address, skip
+      if (
+        currentUser &&
+        currentUser.walletAddress.toLowerCase() === currentAddress.toLowerCase()
+      ) {
+        return;
+      }
 
       try {
+        isAuthenticatingRef.current = true;
+        dispatch(setLoading(true));
+
+        // Check if we have a valid token in localStorage
+        if (validateExistingToken(currentAddress)) {
+          // If token is valid, load user profile and return
+          const profileLoaded = await loadUserProfile();
+          if (profileLoaded) {
+            return;
+          }
+          // If profile loading failed, proceed with full authentication
+        }
+
+        // If we have a referral code from widget, make a request to capture it in middleware first
+        // This only happens when referralCode is explicitly passed (widget flow)
+        // Normal app flow relies on URL parameters being captured automatically
+        if (
+          referralCode &&
+          typeof window !== 'undefined' &&
+          window.location.pathname.includes('/embed/')
+        ) {
+          try {
+            const captureUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/users/me?amb=${referralCode}`;
+
+            // Make a dummy request to trigger referral middleware (widget-only)
+            await fetch(captureUrl, {
+              method: 'GET',
+              credentials: 'include', // Include cookies
+            }).catch(() => null);
+          } catch (error) {
+            // Silently handle errors
+            console.log(error);
+          }
+        }
+
+        // Get nonce from backend
+        const nonceResponse = await authService.getNonce(currentAddress);
+
         // Create verification token using MD5 hash of wallet address + nonce
         const walletAddress = currentAddress.toLowerCase();
         const nonce = nonceResponse.nonce;
@@ -181,47 +200,44 @@ export const useWeb3Auth = () => {
           `${walletAddress}-${nonce}`
         ).toString();
 
-        console.log('handleAuthentication - Verification token generated');
-
         // Verify with backend
         const response = await authService.verifySignature(
           walletAddress,
           verificationToken,
-          nonce
+          nonce,
+          referralCode // Pass referral code to the backend
         );
-        dispatch(setUser(response.user));
-        console.log('handleAuthentication - Authentication successful');
-      } catch (verificationError: any) {
-        console.error(
-          'handleAuthentication - Error during verification:',
-          verificationError
-        );
-        throw verificationError;
+        //if response.user is not null, set the user
+        if (response.user) {
+          dispatch(setUser(response.user));
+        }
+      } catch (error: any) {
+        dispatch(setError(error?.message || 'Authentication failed'));
+        // Only logout if we're not in the middle of authenticating
+        if (!isAuthenticatingRef.current) {
+          handleLogout();
+        }
+      } finally {
+        dispatch(setLoading(false));
+        isAuthenticatingRef.current = false;
       }
-    } catch (error: any) {
-      console.error('Authentication error:', error);
-      dispatch(setError(error?.message || 'Authentication failed'));
-      // Only logout if we're not in the middle of authenticating
-      if (!isAuthenticatingRef.current) {
-        handleLogout();
-      }
-    } finally {
-      dispatch(setLoading(false));
-      isAuthenticatingRef.current = false;
-    }
-  }, [
-    dispatch,
-    handleLogout,
-    validateExistingToken,
-    loadUserProfile,
-    checkMetaMaskLockStatus,
-  ]);
+    },
+    [
+      dispatch,
+      handleLogout,
+      validateExistingToken,
+      loadUserProfile,
+      checkMetaMaskLockStatus,
+    ]
+  );
 
   // Handle initial connection and address changes
   useEffect(() => {
     if (isConnected && address && !isAuthenticatingRef.current) {
       // Add a small delay to ensure wallet is fully connected
       const timer = setTimeout(() => {
+        // Auto-authentication doesn't use referral code
+        // Referral code is only used for manual authentication from widget
         handleAuthentication();
       }, 500);
       return () => clearTimeout(timer);
@@ -231,17 +247,20 @@ export const useWeb3Auth = () => {
   // Handle disconnection
   useEffect(() => {
     if (isDisconnected && !isAuthenticatingRef.current) {
-      web3modal.disconnect();
+      appkit.disconnect();
       handleLogout();
     }
   }, [isDisconnected, handleLogout]);
 
   // Expose a manual authentication method for UI buttons
-  const manualAuthenticate = useCallback(() => {
-    if (isConnected && address) {
-      handleAuthentication();
-    }
-  }, [isConnected, address, handleAuthentication]);
+  const manualAuthenticate = useCallback(
+    (referralCode?: string) => {
+      if (isConnected && address) {
+        handleAuthentication(referralCode);
+      }
+    },
+    [isConnected, address, handleAuthentication]
+  );
 
   return {
     isConnected,

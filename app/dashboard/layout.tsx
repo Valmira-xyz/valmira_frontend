@@ -2,11 +2,11 @@
 
 import type React from 'react';
 
+import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
 import { DashboardSidebar } from '@/components/layout/dashboard-sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { motion } from 'framer-motion';
 export default function DashboardLayout({
   children,
 }: {

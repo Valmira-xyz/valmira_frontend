@@ -28,7 +28,7 @@ class AuthService {
     }
   }
 
-  private getAuthHeader() {
+  public getAuthHeader() {
     return this.token ? { Authorization: `Bearer ${this.token}` } : {};
   }
 
@@ -43,16 +43,20 @@ class AuthService {
       return response.data.data;
     } catch (error) {
       console.error('Failed to get nonce:', error);
-      throw new Error('Failed to get nonce');
+      throw error;
     }
   }
 
   async verifySignature(
     walletAddress: string,
     verificationToken: string,
-    nonce: string
+    nonce: string,
+    referralCode?: string
   ): Promise<VerifyResponse> {
     console.log('==== verifySignature service called ====');
+    if (referralCode) {
+      console.log(`With referral code: ${referralCode}`);
+    }
     try {
       const response = await axios.post<ApiResponse<VerifyResponse>>(
         `${BACKEND_URL}/users/verify-signature`,
@@ -60,6 +64,7 @@ class AuthService {
           walletAddress,
           verificationToken,
           nonce,
+          referralCode, // Add referral code to the request
         },
         {
           withCredentials: true,
@@ -85,7 +90,7 @@ class AuthService {
       };
     } catch (error) {
       console.error('Failed to verify authentication:', error);
-      throw new Error('Failed to verify authentication');
+      throw error;
     }
   }
 
@@ -105,7 +110,7 @@ class AuthService {
       return response.data.data.user;
     } catch (error) {
       console.error('Failed to register:', error);
-      throw new Error('Registration failed');
+      throw error;
     }
   }
 
@@ -113,7 +118,7 @@ class AuthService {
     console.log('==== getProfile service called ====');
     try {
       const response = await axios.get<ApiResponse<{ user: User }>>(
-        `${BACKEND_URL}/users/profile`,
+        `${BACKEND_URL}/users/me`,
         {
           headers: this.getAuthHeader(),
           withCredentials: true,
@@ -122,15 +127,15 @@ class AuthService {
       return response.data.data.user;
     } catch (error) {
       console.error('Failed to get profile:', error);
-      throw new Error('Failed to get profile');
+      throw error;
     }
   }
 
   async updateProfile(data: Partial<User>): Promise<User> {
     console.log('==== updateProfile service called ====');
     try {
-      const response = await axios.put<ApiResponse<{ user: User }>>(
-        `${BACKEND_URL}/users/profile`,
+      const response = await axios.patch<ApiResponse<{ user: User }>>(
+        `${BACKEND_URL}/users/me`,
         data,
         {
           headers: this.getAuthHeader(),
@@ -140,7 +145,7 @@ class AuthService {
       return response.data.data.user;
     } catch (error) {
       console.error('Failed to update profile:', error);
-      throw new Error('Failed to update profile');
+      throw error;
     }
   }
 

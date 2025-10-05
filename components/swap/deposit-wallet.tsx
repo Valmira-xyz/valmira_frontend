@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 export function DepositWallet() {
   return (
-    <Card className="border">
+    <Card className="border dark:bg-[hsl(var(--card-dark-bg))]">
       <CardContent className="p-4">
         <div className="space-y-4">
           <div className="flex items-center justify-between">

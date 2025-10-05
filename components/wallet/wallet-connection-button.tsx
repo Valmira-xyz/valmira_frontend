@@ -6,7 +6,7 @@ import { Button, ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AuthResponse } from '@/types';
 
-import { web3modal } from '../providers';
+import { appkit } from '../providers';
 
 interface WalletConnectionButtonProps {
   variant?: ButtonProps['variant'];
@@ -24,7 +24,7 @@ export function WalletConnectionButton({
   return (
     <Button
       variant={variant}
-      onClick={() => web3modal.open()}
+      onClick={() => appkit?.open()}
       className={cn('', className)}
     >
       <Wallet className="h-4 w-4" />

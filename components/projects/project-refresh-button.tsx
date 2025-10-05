@@ -14,9 +14,7 @@ interface ProjectRefreshButtonProps {
   onRefresh?: () => Promise<void>;
 }
 
-export function ProjectRefreshButton({
-  projectId,
-}: ProjectRefreshButtonProps) {
+export function ProjectRefreshButton({ projectId }: ProjectRefreshButtonProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
   const dispatch = useDispatch();
@@ -58,18 +56,19 @@ export function ProjectRefreshButton({
           fetchProjectStats({ projectId, timeRange: { start, end } }) as any
         );
 
-
         // Show success toast
         toast({
           title: 'Data refreshed',
           description: 'Project data has been updated successfully.',
           duration: 3000,
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Refresh error:', error);
         toast({
-          title: 'Refresh failed',
-          description: 'Failed to refresh project data. Please try again.',
+          title: error.response?.data?.errorType || 'Refresh failed',
+          description:
+            error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+            'Failed to refresh project data. Please try again.',
           variant: 'destructive',
           duration: 5000,
         });

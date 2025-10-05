@@ -15,7 +15,7 @@ export interface BotResponse {
   isEnabled: boolean;
   projectId: string;
   userId: string;
-  bnbBalance: number;
+  nativeBalance: number;
   estimatedFee: number;
   subWalletIds: any[];
   botType: BotType;
@@ -38,32 +38,33 @@ export interface BotResponse {
   generatedVolume?: number;
   generatedHolders?: number;
   // Volume bot specific properties
-  minBnbAmount?: number;
-  maxBnbAmount?: number;
+  minNativeAmount?: number;
+  maxNativeAmount?: number;
   timeSpanBetweenTransactions?: number;
+  chainName?: string;
 }
 
 // Add new interfaces for snipe operations
 export interface SnipeSimulationResult {
   success: boolean;
   data: {
-    totalBnbNeeded: number;
+    totalNativeForSwap: number;
     depositWalletRequirements: {
-      currentBnb: number;
+      currentNative: number;
       currentToken: number;
-      bnbNeeded: number;
-      bnbForLiquidity?: number;
-      bnbForTip: number;
-      bnbForDistribution: number;
+      depositWalletNativeInsufficient: number;
+      nativeForDistribution: number;
+      nativeForLiquidity?: number;
+      nativeForTip: number;
       tokenAmountRequired: number;
       gasCost: number;
     };
     subWalletRequirements: {
       address: string;
-      bnbBalance: number;
+      nativeBalance: number;
+      nativeFinalInsufficient: number;
+      nativeToSpend: number;
       tokenAmount: number;
-      bnbToSpend: number;
-      bnbNeeded: number;
     }[];
     estimatedGasCosts: {
       tipTransactionGas: number;
@@ -74,11 +75,11 @@ export interface SnipeSimulationResult {
     };
     poolSimulation: {
       initialReserves: {
-        bnb: number;
+        native: number;
         token: number;
       };
       finalReserves: {
-        bnb: number;
+        native: number;
         token: number;
       };
       priceImpact: number;
@@ -98,15 +99,74 @@ export interface ExecuteSnipeResult {
 }
 
 export interface VolumeBotConfig {
-  minBNBAmount: number;
-  maxBNBAmount: number;
+  minNativeAmount: number;
+  maxNativeAmount: number;
   timeSpan: number;
+  chainName: string;
 }
 
 export interface ConfigureVolumeBotParams {
   projectId: string;
   botId: string;
   config: VolumeBotConfig;
+}
+
+export interface HolderBotConfig {
+  targetHolders: number;
+  botId: string;
+  projectId: string;
+  tokenAddress: string;
+  chainName: string;
+}
+
+export interface ConfigureHolderBotParams {
+  projectId: string;
+  botId: string;
+  config: HolderBotConfig;
+}
+
+export interface TrendingBotConfig {
+  minNativeAmount: number;
+  maxNativeAmount: number;
+  upwardSellRateMin: number;
+  upwardSellRateMax: number;
+  downwardSellRateMin: number;
+  downwardSellRateMax: number;
+  timeSpanBetweenTransactions: number;
+  trend: 'upward' | 'downward';
+  targetMinutes: number;
+}
+
+export interface ConfigureTrendingBotParams {
+  projectId: string;
+  botId: string;
+  config: TrendingBotConfig;
+}
+
+export interface DistributionBotConfig {
+  status: 'Active' | 'Inactive';
+  distributionStyle: {
+    type: 'random' | 'equal';
+    randomAmount?: {
+      min: number;
+      max: number;
+    };
+    equalAmount?: number;
+  };
+  timeSpanBetweenTransactions: number;
+  totalDistributions: number;
+}
+
+export interface ConfigureDistributionBotParams {
+  projectId: string;
+  botId: string;
+  config: DistributionBotConfig;
+}
+
+export interface UpdatePackEnabledParams {
+  packId: string;
+  enabled: boolean;
+  chainName: string;
 }
 
 const BACKEND_URL = config.apiUrl;
@@ -156,14 +216,19 @@ export class BotService {
    * Get all bots for a project
    */
   static async getProjectBots(projectId: string): Promise<BotResponse[]> {
-    const response = await api.get<ApiResponse<BotResponse[]>>(
-      `${BACKEND_URL}/bots/project/${projectId}`,
-      getAuthHeaders()
-    );
-    if (!response.data.data) {
-      return [];
+    try {
+      const response = await api.get<ApiResponse<BotResponse[]>>(
+        `${BACKEND_URL}/bots/project/${projectId}`,
+        getAuthHeaders()
+      );
+      if (!response.data.data) {
+        return [];
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error getting project bots:', error);
+      throw error;
     }
-    return response.data.data;
   }
 
   /**
@@ -173,27 +238,33 @@ export class BotService {
     projectId: string,
     addonType: BotType
   ): Promise<BotResponse> {
-    const response = await api.put<ApiResponse<BotResponse>>(
-      `${BACKEND_URL}/bots/project/${projectId}/addons/${addonType}/enable`,
-      {},
-      getAuthHeaders()
-    );
-    if (!response.data.data) {
-      throw new Error('No data returned from enable addon bot API');
+    try {
+      const response = await api.put<ApiResponse<BotResponse>>(
+        `${BACKEND_URL}/bots/project/${projectId}/addons/${addonType}/enable`,
+        {},
+        getAuthHeaders()
+      );
+      if (!response.data.data) {
+        throw new Error('No data returned from enable addon bot API');
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error enabling addon bot:', error);
+      throw error;
     }
-    return response.data.data;
   }
 
   static async startHolderBot(
     botId: string,
     projectId: string,
     tokenAddress: string,
-    tokenDecimals: number
+    tokenDecimals: number,
+    chainName: string
   ) {
     try {
       const response = await api.post<ApiResponse<BotResponse>>(
         `${BACKEND_URL}/bots/holder-bot/start`,
-        { botId, projectId, tokenAddress, tokenDecimals },
+        { botId, projectId, tokenAddress, tokenDecimals, chainName },
         getAuthHeaders()
       );
       return response.data.data;
@@ -221,6 +292,34 @@ export class BotService {
   /**
    * Estimate fees for sniping operation
    */
+  static async sendPassiveSnipeRequest(params: {
+    botId: string;
+    walletCount: number;
+    tokenAmount: number;
+    tokenAddress: string;
+    pairAddress: string;
+    symbol: string;
+    chainName: string;
+    expirationTime: number;
+    priceThreshold: number;
+    maxSlippage: number;
+  }): Promise<any> {
+    try {
+      const response = await api.post<any>(
+        `${BACKEND_URL}/snipe/passive-snipe`,
+        params,
+        getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error sending passive snipe request:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Estimate fees for sniping operation
+   */
   static async estimateSnipeFees(params: {
     projectId: string;
     botId: string;
@@ -228,29 +327,66 @@ export class BotService {
     subWallets: string[];
     tokenAmounts2Buy: number[];
     tokenAddress: string;
+    chainName: string;
     signature?: {
       v: number;
       r: string;
       s: string;
     } | null;
   }): Promise<SnipeSimulationResult> {
-    const response = await api.post<SnipeSimulationResult>(
-      `${BACKEND_URL}/snipe/estimateFees`,
-      params,
-      getAuthHeaders()
-    );
-    return response.data;
+    try {
+      const response = await api.post<SnipeSimulationResult>(
+        `${BACKEND_URL}/snipe/estimateFees`,
+        params,
+        getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error estimating snipe fees:', error);
+      throw error;
+    }
   }
 
   /**
-   * Distribute BNB to sub-wallets
+   * All in one snipe operation
    */
-  static async distributeBnb(params: {
+  static async allInOneSnipe(params: {
+    projectId: string;
+    botId: string;
+    depositWallet: string;
+    subWallets: string[];
+    tokenAmounts2Buy: number[];
+    tokenAddress: string;
+    chainName: string;
+    signature?: {
+      v: number;
+      r: string;
+      s: string;
+    } | null;
+  }): Promise<any> {
+    try {
+      const response = await api.post<any>(
+        `${BACKEND_URL}/snipe/all-in-one-snipe`,
+        params,
+        getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error all in one snipe:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Distribute Native to sub-wallets
+   */
+  static async distributeNative(params: {
     depositWallet: string;
     subWallets: string[];
     amounts: number[];
     projectId: string;
     botId: string;
+    chainName: string;
   }): Promise<{
     success: {
       success: boolean;
@@ -258,14 +394,19 @@ export class BotService {
     };
     message: string;
   }> {
-    const response = await api.post<{
-      success: {
-        success: boolean;
-        error?: string;
-      };
-      message: string;
-    }>(`${BACKEND_URL}/snipe/distribute`, params, getAuthHeaders());
-    return response.data;
+    try {
+      const response = await api.post<{
+        success: {
+          success: boolean;
+          error?: string;
+        };
+        message: string;
+      }>(`${BACKEND_URL}/snipe/distribute`, params, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      console.error('Error distributing Native:', error);
+      throw error;
+    }
   }
 
   /**
@@ -278,13 +419,24 @@ export class BotService {
     subWallets: string[];
     tokenAmounts2Buy: number[];
     tokenAddress: string;
+    chainName: string;
+    signature?: {
+      v: number;
+      r: string;
+      s: string;
+    } | null;
   }): Promise<ExecuteSnipeResult> {
-    const response = await api.post<ExecuteSnipeResult>(
-      `${BACKEND_URL}/snipe/simulate`,
-      params,
-      getAuthHeaders()
-    );
-    return response.data;
+    try {
+      const response = await api.post<ExecuteSnipeResult>(
+        `${BACKEND_URL}/snipe/simulate`,
+        params,
+        getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error simulating snipe:', error);
+      throw error;
+    }
   }
 
   /**
@@ -297,6 +449,7 @@ export class BotService {
     subWallets: string[];
     tokenAmounts2Buy: number[];
     tokenAddress: string;
+    chainName: string;
   }): Promise<ExecuteSnipeResult> {
     const response = await api.post<ExecuteSnipeResult>(
       `${BACKEND_URL}/snipe/execute`,
@@ -317,12 +470,8 @@ export class BotService {
     sellPercentage: number;
     slippageTolerance: number;
     targetWalletAddress?: string;
-  }): Promise<{
-    errorDetails: string;
-    success: boolean;
-    error?: string;
-    errorCode?: string;
-  }> {
+    chainName: string;
+  }): Promise<any> {
     try {
       const response = await api.post<{
         success: boolean;
@@ -330,34 +479,36 @@ export class BotService {
         errorCode?: string;
         errorDetails?: string;
       }>(`${BACKEND_URL}/snipe/singleSell`, params, getAuthHeaders());
-      if (!response.data.success) {
-        return {
-          success: false,
-          error:
-            response.data.error ||
-            'An unexpected error occurred. Please try again or contact support.',
-          errorCode: response.data.errorCode || 'UNKNOWN_ERROR',
-          errorDetails:
-            response.data.errorDetails || 'No additional details provided.',
-        };
-      }
-      return {
-        ...response.data,
-        errorDetails:
-          response.data.errorDetails || 'No additional details provided.',
-      };
+      return response.data;
+      // if (!response.data.success) {
+      //   return {
+      //     success: false,
+      //     error:
+      //       response.data.error ||
+      //       'An unexpected error occurred. Please try again or contact support.',
+      //     errorCode: response.data.errorCode || 'UNKNOWN_ERROR',
+      //     errorDetails:
+      //       response.data.errorDetails || 'No additional details provided.',
+      //   };
+      // }
+      // return {
+      //   ...response.data,
+      //   errorDetails:
+      //     response.data.errorDetails || 'No additional details provided.',
+      // };
     } catch (error) {
       console.error('Error executing single wallet sell:', error);
-      return {
-        success: false,
-        error:
-          'An unexpected error occurred. Please try again or contact support.',
-        errorCode: 'UNKNOWN_ERROR',
-        errorDetails:
-          typeof error === 'object' && error !== null && 'message' in error
-            ? (error as Error).message
-            : 'Unknown error occurred.',
-      };
+      throw error;
+      // return {
+      //   success: false,
+      //   error:
+      //     'An unexpected error occurred. Please try again or contact support.',
+      //   errorCode: 'UNKNOWN_ERROR',
+      //   errorDetails:
+      //     typeof error === 'object' && error !== null && 'message' in error
+      //       ? (error as Error).message
+      //       : 'Unknown error occurred.',
+      // };
     }
   }
 
@@ -371,14 +522,9 @@ export class BotService {
     tokenAddress: string;
     slippageTolerance: number;
     targetWalletAddress?: string;
-    bnbSpendRate?: number;
-  }): Promise<{
-    walletAddress: string;
-    errorDetails: string;
-    success: boolean;
-    error?: string;
-    errorCode?: string;
-  }> {
+    nativeSpendRate?: number;
+    chainName: string;
+  }): Promise<any> {
     try {
       const response = await api.post<{
         success: boolean;
@@ -386,36 +532,38 @@ export class BotService {
         errorCode?: string;
         errorDetails?: string;
       }>(`${BACKEND_URL}/snipe/singleBuy`, params, getAuthHeaders());
-      if (!response.data.success) {
-        return {
-          walletAddress: params.walletAddress,
-          success: false,
-          error:
-            response.data.error ||
-            'An unexpected error occurred. Please try again or contact support.',
-          errorCode: response.data.errorCode || 'UNKNOWN_ERROR',
-          errorDetails:
-            response.data.errorDetails || 'No additional details provided.',
-        };
-      }
-      return {
-        walletAddress: params.walletAddress,
-        ...response.data,
-        errorDetails: response.data.error || 'No additional details provided.',
-      };
+      return response.data;
+      // if (!response.data.success) {
+      //   return {
+      //     walletAddress: params.walletAddress,
+      //     success: false,
+      //     error:
+      //       response.data.error ||
+      //       'An unexpected error occurred. Please try again or contact support.',
+      //     errorCode: response.data.errorCode || 'UNKNOWN_ERROR',
+      //     errorDetails:
+      //       response.data.errorDetails || 'No additional details provided.',
+      //   };
+      // }
+      // return {
+      //   walletAddress: params.walletAddress,
+      //   ...response.data,
+      //   errorDetails: response.data.error || 'No additional details provided.',
+      // };
     } catch (error) {
       console.error('Error executing single wallet buy:', error);
-      return {
-        walletAddress: params.walletAddress,
-        success: false,
-        error:
-          'An unexpected error occurred. Please try again or contact support.',
-        errorCode: 'UNKNOWN_ERROR',
-        errorDetails:
-          typeof error === 'object' && error !== null && 'message' in error
-            ? (error as Error).message
-            : 'Unknown error occurred.',
-      };
+      throw error;
+      // return {
+      //   walletAddress: params.walletAddress,
+      //   success: false,
+      //   error:
+      //     'An unexpected error occurred. Please try again or contact support.',
+      //   errorCode: 'UNKNOWN_ERROR',
+      //   errorDetails:
+      //     typeof error === 'object' && error !== null && 'message' in error
+      //       ? (error as Error).message
+      //       : 'Unknown error occurred.',
+      // };
     }
   }
 
@@ -430,13 +578,19 @@ export class BotService {
     sellPercentages: number[];
     slippageTolerance: number;
     targetWalletAddress?: string;
+    chainName: string;
   }): Promise<{ success: boolean; error?: string }> {
-    const response = await api.post<{ success: boolean; error?: string }>(
-      `${BACKEND_URL}/snipe/multiSell`,
-      params,
-      getAuthHeaders()
-    );
-    return response.data;
+    try {
+      const response = await api.post<{ success: boolean; error?: string }>(
+        `${BACKEND_URL}/snipe/multiSell`,
+        params,
+        getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error executing multi wallet sell:', error);
+      throw error;
+    }
   }
 
   /**
@@ -448,25 +602,32 @@ export class BotService {
     walletAddresses: string[];
     tokenAddress: string;
     slippageTolerance: number;
-    bnbSpendRates?: number[];
+    nativeSpendRates?: number[];
     targetWalletAddress?: string;
+    chainName: string;
   }): Promise<{ success: boolean; error?: string }> {
-    const response = await api.post<{ success: boolean; error?: string }>(
-      `${BACKEND_URL}/snipe/multiBuy`,
-      params,
-      getAuthHeaders()
-    );
-    return response.data;
+    try {
+      const response = await api.post<{ success: boolean; error?: string }>(
+        `${BACKEND_URL}/snipe/multiBuy`,
+        params,
+        getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error executing multi wallet buy:', error);
+      throw error;
+    }
   }
 
   /**
-   * Collect BNB from selected wallets to a target wallet
+   * Collect Native Currency from selected wallets to a target wallet
    */
-  static async collectBnb(params: {
+  static async collectNative(params: {
     botId: string;
     walletAddresses: string[];
     targetWallet: string;
     projectId: string;
+    chainName: string;
   }): Promise<{
     success: boolean;
     walletResults?: {
@@ -479,22 +640,27 @@ export class BotService {
     totalSuccessful?: number;
     error?: string;
   }> {
-    const response = await api.post<{
-      success: boolean;
-      data: {
+    try {
+      const response = await api.post<{
         success: boolean;
-        walletResults?: {
-          address: string;
+        data: {
           success: boolean;
-          hash?: string;
+          walletResults?: {
+            address: string;
+            success: boolean;
+            hash?: string;
+            error?: string;
+          }[];
+          failedWallets?: number;
+          totalSuccessful?: number;
           error?: string;
-        }[];
-        failedWallets?: number;
-        totalSuccessful?: number;
-        error?: string;
-      };
-    }>(`${BACKEND_URL}/snipe/bnbCollect`, params, getAuthHeaders());
-    return response.data.data;
+        };
+      }>(`${BACKEND_URL}/snipe/nativeCollect`, params, getAuthHeaders());
+      return response.data.data;
+    } catch (error) {
+      console.error('Error collecting native currency:', error);
+      throw error;
+    }
   }
 
   /**
@@ -510,50 +676,63 @@ export class BotService {
       enabled: boolean;
     }[];
   }): Promise<{ success: boolean; error?: string }> {
-    const response = await api.post<{ success: boolean; error?: string }>(
-      `${BACKEND_URL}/snipe/configure-auto-sell/${params.botId}`,
-      {
-        projectId: params.projectId,
-        wallets: params.wallets,
-      },
-      getAuthHeaders()
-    );
-    return response.data;
+    try {
+      const response = await api.post<{ success: boolean; error?: string }>(
+        `${BACKEND_URL}/snipe/configure-auto-sell/${params.botId}`,
+        {
+          projectId: params.projectId,
+          wallets: params.wallets,
+        },
+        getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error configuring auto sell:', error);
+      throw error;
+    }
   }
 
   /**
    * Get auto sell parameters for a specific bot
    */
   static async getAutoSellParameters(botId: string) {
-    const response = await api.get<{
-      success: boolean;
-      data?: {
-        botId: string;
-        projectId: string;
-        userId: string;
-        status: string;
-        statusReason?: string;
-        wallets: {
-          address: string;
-          sellPrice: string;
-          stopLoss: string;
-          enabled: boolean;
-        }[];
-        countsOfActivaveWallets: number;
-        isEnabled: boolean;
-        depositWalletId: string;
-        subWalletIds: string[];
-        bnbBalance: number;
-        estimatedFee: number;
-        botType: string;
-        totalTokenBalance: number;
-        createdAt: string;
-        updatedAt: string;
-      };
-      error?: string;
-    }>(`${BACKEND_URL}/snipe/auto-sell-parameters/${botId}`, getAuthHeaders());
+    try {
+      const response = await api.get<{
+        success: boolean;
+        data?: {
+          botId: string;
+          projectId: string;
+          userId: string;
+          status: string;
+          statusReason?: string;
+          wallets: {
+            address: string;
+            sellPrice: string;
+            stopLoss: string;
+            enabled: boolean;
+          }[];
+          countsOfActivaveWallets: number;
+          isEnabled: boolean;
+          depositWalletId: string;
+          subWalletIds: string[];
+          nativeBalance: number;
+          estimatedFee: number;
+          botType: string;
+          totalTokenBalance: number;
+          createdAt: string;
+          updatedAt: string;
+        };
+        error?: string;
+      }>(
+        `${BACKEND_URL}/snipe/auto-sell-parameters/${botId}`,
+        getAuthHeaders()
+      );
 
-    return response.data;
+      return response.data;
+    } catch (error) {
+      console.error('Error getting auto sell parameters:', error);
+      throw error;
+    }
   }
 
   /**
@@ -562,14 +741,108 @@ export class BotService {
   static async configureVolumeBot(
     params: ConfigureVolumeBotParams
   ): Promise<ApiResponse<BotResponse>> {
-    const response = await api.put<ApiResponse<BotResponse>>(
-      `${BACKEND_URL}/bots/${params.botId}/volume-config`,
-      params.config,
-      getAuthHeaders()
-    );
-    if (!response.data) {
-      throw new Error('No data returned from configure volume bot API');
+    try {
+      const response = await api.put<ApiResponse<BotResponse>>(
+        `${BACKEND_URL}/bots/${params.botId}/volume-config`,
+        params.config,
+        getAuthHeaders()
+      );
+      if (!response.data) {
+        throw new Error('No data returned from configure volume bot API');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error configuring volume bot:', error);
+      throw error;
     }
-    return response.data;
+  }
+
+  /**
+   * Configure Holder Bot parameters
+   */
+  static async configureHolderBot(
+    params: ConfigureHolderBotParams
+  ): Promise<ApiResponse<BotResponse>> {
+    try {
+      const response = await api.put<ApiResponse<BotResponse>>(
+        `${BACKEND_URL}/bots/${params.botId}/holder-config`,
+        params.config,
+        getAuthHeaders()
+      );
+      if (!response.data) {
+        throw new Error('No data returned from configure holder bot API');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error configuring holder bot:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Configure Trending Bot parameters
+   */
+  static async configureTrendingBot(
+    botId: string,
+    config: TrendingBotConfig
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await api.put<ApiResponse<BotResponse>>(
+        `${BACKEND_URL}/bots/${botId}/trending-config`,
+        config,
+        getAuthHeaders()
+      );
+      if (!response.data) {
+        throw new Error('No data returned from configure trending bot API');
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error configuring trending bot:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Configure Distribution Bot parameters
+   */
+  static async configureDistributionBot(
+    params: ConfigureDistributionBotParams
+  ): Promise<ApiResponse<BotResponse>> {
+    try {
+      const response = await api.put<ApiResponse<BotResponse>>(
+        `${BACKEND_URL}/bots/${params.botId}/distribution-config`,
+        params.config,
+        getAuthHeaders()
+      );
+      if (!response.data) {
+        throw new Error('No data returned from configure distribution bot API');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error configuring distribution bot:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update pack enabled status
+   */
+  static async updatePackEnabled(
+    params: UpdatePackEnabledParams
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.patch<ApiResponse<any>>(
+        `${BACKEND_URL}/projects/${params.packId}/pack-enabled`,
+        { enabled: params.enabled, chainName: params.chainName },
+        getAuthHeaders()
+      );
+      if (!response.data) {
+        throw new Error('No data returned from update pack enabled API');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error updating pack enabled status:', error);
+      throw error;
+    }
   }
 }

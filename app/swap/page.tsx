@@ -1,12 +1,22 @@
 'use client';
 
+import { useEffect } from 'react';
+
+import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+
 import { BuySellForm } from '@/components/swap/buysell-form';
 import { DepositWallet } from '@/components/swap/deposit-wallet';
 import { SwapForm } from '@/components/swap/swap-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { motion } from 'framer-motion'; 
 
 export default function SwapPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to home page since swap is coming soon
+    router.replace('/');
+  }, [router]);
   return (
     <motion.div
       className="p-4 md:p-6 space-y-10"
@@ -15,7 +25,7 @@ export default function SwapPage() {
       transition={{ duration: 0.5 }}
     >
       <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-bold">Cross-chain Swapping</h1>
+        <h1 className="text-xl font-bold font-tt">Cross-chain Swapping</h1>
         <p className="text-sm text-muted-foreground">
           Seamless user experience to get the funds for your market making and
           liquidity provisioning
@@ -39,7 +49,6 @@ export default function SwapPage() {
             </TabsTrigger>
           </TabsList>
 
-          
           <TabsContent value="swap" className="mt-6">
             <motion.div
               initial={{ opacity: 0, y: 10 }}

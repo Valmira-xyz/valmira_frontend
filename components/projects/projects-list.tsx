@@ -5,28 +5,14 @@ import type { DateRange } from 'react-day-picker';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { CreateProjectButton } from './create-project-button';
-import { ChevronDown, Download, Search, FolderX } from 'lucide-react';
+import { subWeeks } from 'date-fns';
+import { motion } from 'framer-motion';
+import { Download, FolderX, Search } from 'lucide-react';
 
 import { ProjectSummaryCard } from '@/components/projects/project-summary-card';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/ui/date-range-picker1';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
-import {
-  fetchProjects,
-  fetchPublicProjects,
-} from '@/store/slices/projectSlice';
-import type { RootState } from '@/store/store';
-import type { ProjectWithAddons } from '@/types';
-import { subWeeks } from 'date-fns';
-import { motion } from 'framer-motion';
-import { Spinner } from '@/components/ui/spinner';
 import {
   Select,
   SelectContent,
@@ -34,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  fetchProjects,
+  fetchPublicProjects,
+} from '@/store/slices/projectSlice';
+import type { RootState } from '@/store/store';
+import type { ProjectWithAddons } from '@/types';
 
 interface ProjectsListProps {
   limit?: number;
@@ -59,6 +53,7 @@ export function ProjectsList({
   const [currentPage, setCurrentPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('All Bots');
+  const [isPageLoading, setIsPageLoading] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subWeeks(new Date(), 1), // one week ago
     to: new Date(), // now
@@ -73,7 +68,6 @@ export function ProjectsList({
   // Debounced fetch function to prevent multiple API calls
   const loadProjects = useCallback(async () => {
     // Skip if a fetch is already in progress or if parameters haven't changed
-    console.log(`fetchInProgress.current: ${fetchInProgress.current}`);
     if (fetchInProgress.current) {
       console.log('Fetch already in progress, skipping duplicate request');
       return;
@@ -91,14 +85,12 @@ export function ProjectsList({
 
     try {
       fetchInProgress.current = true;
-      console.log(
-        `Loading projects: isPublic=${isPublic}, page=${currentPage}, size=${pageSize}`
-      );
 
       // Update last fetch parameters
       lastFetchParams.current = { isPublic, currentPage, pageSize };
 
       if (isPublic) {
+        console.log('🤖 [ProjectsList] fetching public projects');
         await dispatch(
           fetchPublicProjects({
             pageIndex: currentPage,
@@ -106,6 +98,7 @@ export function ProjectsList({
           }) as any
         );
       } else {
+        console.log('🤖 [ProjectsList] fetching private projects');
         await dispatch(fetchProjects() as any);
       }
 
@@ -256,11 +249,13 @@ export function ProjectsList({
         title: 'Export Successful',
         description: 'Your projects data has been exported as CSV',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Export failed:', error);
       toast({
-        title: 'Export Failed',
-        description: 'An error occurred while exporting data',
+        title: error.response?.data?.errorType || 'Export Failed',
+        description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+          'An error occurred while exporting data',
         variant: 'destructive',
       });
     }
@@ -269,15 +264,24 @@ export function ProjectsList({
   // Pagination handlers with debounce
   const handlePreviousPage = useCallback(() => {
     if (currentPage > 0) {
+      setIsPageLoading(true);
       setCurrentPage((prev) => Math.max(0, prev - 1));
     }
   }, [currentPage]);
 
   const handleNextPage = useCallback(() => {
     if (!loading && displayedProjects.length >= pageSize) {
+      setIsPageLoading(true);
       setCurrentPage((prev) => prev + 1);
     }
   }, [loading, displayedProjects?.length, pageSize]);
+
+  // Reset page loading state when data is loaded
+  useEffect(() => {
+    if (!loading) {
+      setIsPageLoading(false);
+    }
+  }, [loading]);
 
   return (
     <motion.div
@@ -343,7 +347,12 @@ export function ProjectsList({
         </div>
 
         {/* Project Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 px-4 md:px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 px-4 md:px-6 relative">
+          {(loading || isPageLoading) && !isFirstRender.current && (
+            <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center">
+              <Spinner size="lg" />
+            </div>
+          )}
           {displayedProjects.map((project) => (
             <ProjectSummaryCard key={project._id} project={project} />
           ))}
@@ -361,13 +370,16 @@ export function ProjectsList({
                 <FolderX className="h-12 w-12 text-muted-foreground mb-4" />
                 <p className="text-muted-foreground mb-4">No projects found</p>
                 <p className="text-center">
-                  Create your first project by clicking the button "Create New Project"
+                  Create your first project by clicking the button "Create New
+                  Project"
                 </p>
               </>
             ) : (
               <>
                 <FolderX className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">No more projects to display</p>
+                <p className="text-muted-foreground mb-4">
+                  No more projects to display
+                </p>
               </>
             )}
           </div>
@@ -381,20 +393,28 @@ export function ProjectsList({
               onClick={handlePreviousPage}
               disabled={currentPage === 0 || loading}
             >
+              {loading && currentPage > 0 ? (
+                <Spinner size="sm" hasText={false} className="mr-2" />
+              ) : null}
               Previous
             </Button>
             <span className="mx-2">Page {currentPage + 1}</span>
             <Button
               variant="outline"
               onClick={handleNextPage}
-              disabled={displayedProjects.length < pageSize || loading || displayedProjects.length === 0}
+              disabled={
+                displayedProjects.length < pageSize ||
+                loading ||
+                displayedProjects.length === 0
+              }
             >
+              {loading && displayedProjects.length >= pageSize ? (
+                <Spinner size="sm" hasText={false} className="mr-2" />
+              ) : null}
               Next
             </Button>
           </div>
         )}
-
-       
       </div>
     </motion.div>
   );

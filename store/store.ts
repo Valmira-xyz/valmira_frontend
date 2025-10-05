@@ -6,15 +6,14 @@ import { projectApi } from './api/project';
 import authReducer from './slices/authSlice';
 import botReducer from './slices/botSlice';
 import projectReducer from './slices/projectSlice';
-import splashAuthReducer from './slices/splashAuthSlice';
 import walletReducer from './slices/walletSlice';
+
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     projects: projectReducer,
     wallets: walletReducer,
     bots: botReducer,
-    splashAuth: splashAuthReducer,
 
     [projectApi.reducerPath]: projectApi.reducer,
   },

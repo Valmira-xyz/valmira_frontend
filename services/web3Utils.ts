@@ -1,6 +1,12 @@
+import Big from 'big.js';
+import Decimal from 'decimal.js';
 import { ethers } from 'ethers';
 
 import MemeTemplateJson from '@/lib/deploy-token/abi/MemeTemplate.json';
+import { PoolInfo, WalletBalance } from '@/types';
+
+import { store } from '../store/store';
+Big.RM = Big.roundDown;
 
 const ERC20_ABI = MemeTemplateJson.abi;
 
@@ -13,6 +19,11 @@ const ROUTER_ABI = [
   'function removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB)',
   'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] amounts)',
   'function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] amounts)',
+  'function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] amounts)',
+  'function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] amounts)',
+  'function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) external pure returns (uint amountOut)',
+  'function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) external pure returns (uint amountIn)',
+  'function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external',
 ];
 
 // PancakeSwap V2 Factory ABI (minimal)
@@ -33,115 +44,198 @@ const PAIR_ABI = [
   'function transfer(address to, uint value) external returns (bool)',
 ];
 
-// PancakeSwap V2 addresses
-const PANCAKESWAP_ADDRESSES: Record<
-  Network,
-  { router: string; factory: string }
-> = {
-  mainnet: {
-    router: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
-    factory: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
-  },
-  testnet: {
-    router: '0xD99D1c33F9fC3444f8101754aBC46c52416550D1',
-    factory: '0x6725F303b657a9451d8BA641348b6761A6CC7a17',
-  },
-};
-
-// Network type definition
-type Network = 'mainnet' | 'testnet';
-
-// Common token addresses on BSC
-const BSC_TOKENS: Record<Network, Record<string, string>> = {
-  mainnet: {
-    WBNB: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
-    BUSD: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56',
-    USDT: '0x55d398326f99059fF775485246999027B3197955',
-    USDC: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
-  },
-  testnet: {
-    WBNB: '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd',
-    BUSD: '0xeD24FC36d5Ee211Ea25A80239Fb8C4Cfd80f12Ee',
-    USDT: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd',
-    USDC: '0x64544969ed7EBf5f083679233325356EbE738930',
-  },
-};
-
-// Initialize provider based on network
-const network = (process.env.NETWORK || 'mainnet') as Network;
-const rpcUrl =
-  process.env.NEXT_PUBLIC_BSC_RPC_URL ||
-  (network === 'mainnet'
-    ? 'https://bsc-dataseed.binance.org/'
-    : 'https://data-seed-prebsc-1-s1.binance.org:8545/');
-
-const provider = new ethers.JsonRpcProvider(rpcUrl);
-
-interface WalletBalance {
-  address: string;
-  bnbBalance: number;
-  tokenAmount: number;
+// Chain-specific configuration
+interface ChainConfig {
+  rpcUrl: string;
+  nativeCurrency: string;
+  factoryAddress: string;
+  routerAddress: string;
+  disperseAddress: string;
+  stablecoins: string[];
+  wrappedNativeCurrency: string;
 }
 
-interface PoolInfo {
-  bnbReserve: number;
-  tokenReserve: number;
-  tokenAddress: string;
-  bnbAddress: string;
-}
-
-// Define stablecoins by network
-const STABLECOINS: Record<Network, string[]> = {
-  mainnet: [
-    BSC_TOKENS.mainnet.BUSD,
-    BSC_TOKENS.mainnet.USDT,
-    BSC_TOKENS.mainnet.USDC,
-  ],
-  testnet: [
-    BSC_TOKENS.testnet.BUSD,
-    BSC_TOKENS.testnet.USDT,
-    BSC_TOKENS.testnet.USDC,
-  ],
+const CHAIN_CONFIGS: Record<string, ChainConfig> = {
+  BSC_MAINNET: {
+    rpcUrl:
+      process.env.NEXT_PUBLIC_BSC_RPC_URL ||
+      'https://bsc-dataseed.binance.org/',
+    nativeCurrency: 'BNB',
+    factoryAddress: '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73', // PancakeSwap V2
+    routerAddress: '0x10ED43C718714eb63d5aA57B78B54704E256024E', // PancakeSwap V2
+    disperseAddress: '0xD152f549545093347A162Dce210e7293f1452150', // To be implemented for BSC
+    stablecoins: [
+      '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', // BUSD
+      '0x55d398326f99059fF775485246999027B3197955', // USDT
+      '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', // USDC
+    ],
+    wrappedNativeCurrency: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', // WBNB
+  },
+  ETH_MAINNET: {
+    rpcUrl:
+      process.env.NEXT_PUBLIC_ETH_RPC_URL ||
+      'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
+    nativeCurrency: 'ETH',
+    factoryAddress: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f', // Uniswap V2
+    routerAddress: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap V2
+    disperseAddress: '0xD152f549545093347A162Dce210e7293f1452150', // To be implemented for Ethereum
+    stablecoins: [
+      '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+      '0xdAC17F958D2ee523a2206206994597C13D831ec7', // USDT
+      '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
+    ],
+    wrappedNativeCurrency: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+  },
+  SOL_MAINNET: {
+    rpcUrl: process.env.SOL_RPC_URL || 'https://api.mainnet-beta.solana.com',
+    nativeCurrency: 'SOL',
+    factoryAddress: '', // Not applicable for Solana
+    routerAddress: '', // Not applicable for Solana
+    disperseAddress: '', // Not applicable for Solana
+    stablecoins: [], // To be implemented for Solana
+    wrappedNativeCurrency: '', // To be implemented for Solana
+  },
+  SOMNIA_TESTNET: {
+    rpcUrl:
+      process.env.NEXT_PUBLIC_SOMNIA_RPC_URL ||
+      'https://dream-rpc.somnia.network/',
+    nativeCurrency: 'STT',
+    factoryAddress: '', // To be deployed on Somnia Testnet
+    routerAddress: '', // To be deployed on Somnia Testnet
+    disperseAddress: '', // To be deployed on Somnia Testnet
+    stablecoins: [], // To be configured for Somnia Testnet
+    wrappedNativeCurrency: '', // WSTT - To be deployed on Somnia Testnet
+  },
 };
 
-// Cache for BNB price to avoid multiple API calls
-let bnbPriceCache: { price: number; timestamp: number } | null = null;
+function getProvider(chainName: string): ethers.JsonRpcProvider {
+  const rpcUrl =
+    chainName === 'BSC_MAINNET'
+      ? process.env.NEXT_PUBLIC_BSC_RPC_URL
+      : chainName === 'ETH_MAINNET'
+        ? process.env.NEXT_PUBLIC_ETH_RPC_URL
+        : chainName === 'SOMNIA_TESTNET'
+          ? process.env.NEXT_PUBLIC_SOMNIA_RPC_URL ||
+            'https://dream-rpc.somnia.network/'
+          : '';
+
+  return new ethers.JsonRpcProvider(rpcUrl);
+}
+
+export function formatValue(value: number | string, decimals = 2): string {
+  const decimalValue = new Decimal(value);
+  return decimalValue.toDecimalPlaces(decimals, Decimal.ROUND_DOWN).toString();
+}
 
 /**
- * Gets the current BNB price in USD from Binance API
- * @returns The current BNB price in USD
+ * Fetches the native currency balance for a given wallet address
+ * @param provider - The ethers provider
+ * @param address - The wallet address to check
+ * @returns The native currency balance in ethers (as a number)
  */
-async function getBnbPriceInUsd(): Promise<number> {
+export const getNativeBalance = async (
+  address: string,
+  chainName: string = 'BSC_MAINNET'
+): Promise<number> => {
+  const nativeCurrency =
+    chainName === 'BSC_MAINNET'
+      ? 'BNB'
+      : chainName === 'ETH_MAINNET'
+        ? 'ETH'
+        : chainName === 'SOMNIA_TESTNET'
+          ? 'STT'
+          : 'SOL';
+
   try {
-    // Return cached price if it's less than 5 minutes old
-    if (bnbPriceCache && Date.now() - bnbPriceCache.timestamp < 5 * 60 * 1000) {
-      return bnbPriceCache.price;
-    }
-
-    // Fetch from Binance API
-    const response = await fetch(
-      'https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT'
-    );
-    const data = await response.json();
-    const price = parseFloat(data.price);
-
-    // Update cache
-    bnbPriceCache = { price, timestamp: Date.now() };
-    return price;
+    console.log('[getNativeBalance] address, chainName', address, chainName);
+    const provider = getProvider(chainName);
+    const balanceWei = await provider.getBalance(address);
+    return parseFloat(ethers.formatEther(balanceWei));
   } catch (error) {
-    console.error('Failed to get BNB price:', error);
-    // Return last cached price if available, otherwise a fallback price
-    return bnbPriceCache?.price || 200; // Fallback to reasonable estimate if API fails
+    console.error(`Error fetching ${nativeCurrency} balance:`, error);
+    throw new Error(`Failed to fetch native currency balance: ${error}`);
   }
-}
+};
+
+/**
+ * Transfers native currency from the signer's wallet to the target address
+ * @param signer - The ethers signer
+ * @param toAddress - The recipient wallet address
+ * @param amount - The amount of native currency to transfer in ether
+ * @returns The transaction receipt
+ */
+export const transferNativeCurrency = async (
+  signer: ethers.Signer,
+  toAddress: string,
+  amount: number
+): Promise<ethers.TransactionReceipt | null> => {
+  try {
+    // Convert amount from ether to wei
+    const amountWei = ethers.parseEther(amount.toString());
+
+    // Create transaction object
+    const tx = {
+      to: toAddress,
+      value: amountWei,
+    };
+
+    // Send the transaction
+    const transaction = await signer.sendTransaction(tx);
+
+    // Wait for the transaction to be mined
+    const receipt = await transaction.wait();
+    return receipt;
+  } catch (error) {
+    console.error('Error transferring: ', error);
+    throw new Error(`Failed to transfer: ${error}`);
+  }
+};
+
+/**
+ * Check if the user has sufficient native currency balance for a transfer
+ * @param provider - The ethers provider
+ * @param address - The wallet address to check
+ * @param amount - The amount of native currency to check against
+ * @returns Boolean indicating if the balance is sufficient
+ */
+export const hasSufficientBalance = async (
+  address: string,
+  amount: number,
+  chainName: string = 'BSC_MAINNET'
+): Promise<boolean> => {
+  const nativeCurrency =
+    chainName === 'BSC_MAINNET'
+      ? 'BNB'
+      : chainName === 'ETH_MAINNET'
+        ? 'ETH'
+        : chainName === 'SOMNIA_TESTNET'
+          ? 'STT'
+          : 'SOL';
+
+  try {
+    const provider = getProvider(chainName);
+    const balanceWei = await provider.getBalance(address);
+    const balanceEther = parseFloat(ethers.formatEther(balanceWei));
+    // Leave a small amount for gas
+    const gasBuffer = 0.00002; // 0.005 native currency buffer for gas
+    return balanceEther >= amount + gasBuffer;
+  } catch (error) {
+    console.error(`Error checking ${nativeCurrency} balance:`, error);
+    throw new Error(`Failed to check ${nativeCurrency} balance: ${error}`);
+  }
+};
 
 /**
  * Gets token decimals
  * @param tokenAddress The token contract address
  * @returns Token decimals
  */
-export async function getTokenDecimals(tokenAddress: string): Promise<number> {
+export async function getTokenDecimals(
+  tokenAddress: string,
+  chainName: string
+): Promise<number> {
   try {
+    const provider = getProvider(chainName);
     const tokenContract = new ethers.Contract(
       tokenAddress,
       ERC20_ABI,
@@ -158,30 +252,35 @@ export async function getTokenDecimals(tokenAddress: string): Promise<number> {
 }
 
 /**
- * Gets BNB and token balances for an array of wallet addresses
+ * Gets native currency and token balances for an array of wallet addresses
  * @param walletAddresses Array of wallet addresses
  * @param tokenAddress The token contract address
  * @returns Array of wallet balances with formatted numbers
  */
 export async function getWalletBalances(
   walletAddresses: string[],
-  tokenAddress: string
+  tokenAddress: string,
+  chainName?: string
 ): Promise<WalletBalance[]> {
   try {
+    const provider = getProvider(chainName || 'BSC_MAINNET');
     const tokenContract = new ethers.Contract(
       tokenAddress,
       ERC20_ABI,
       provider
     );
-    const tokenDecimals = await getTokenDecimals(tokenAddress);
+    const tokenDecimals = await getTokenDecimals(
+      tokenAddress,
+      chainName || 'BSC_MAINNET'
+    );
     const results: WalletBalance[] = [];
 
     // Process wallets in smaller batches to avoid RPC rate limits (reduced from 3 to 2)
-    for (let i = 0; i < walletAddresses.length; i += 2) {
-      const walletBatch = walletAddresses.slice(i, i + 2);
+    for (let i = 0; i < walletAddresses.length; i += 5) {
+      const walletBatch = walletAddresses.slice(i, i + 5);
       const balancePromises = [];
 
-      // Create promises for both BNB and token balances
+      // Create promises for both native and token balances
       for (const wallet of walletBatch) {
         balancePromises.push(
           provider.getBalance(wallet),
@@ -194,13 +293,13 @@ export async function getWalletBalances(
 
       // Process results for this batch
       for (let j = 0; j < walletBatch.length; j++) {
-        const bnbBalanceRaw = batchResults[j * 2];
+        const nativeBalanceRaw = batchResults[j * 2];
         const tokenBalanceRaw = batchResults[j * 2 + 1];
 
         results.push({
           address: walletBatch[j],
-          bnbBalance: Number(ethers.formatEther(bnbBalanceRaw)),
-          tokenAmount: Number(
+          nativeBalance: Number(ethers.formatEther(nativeBalanceRaw)),
+          tokenBalance: Number(
             ethers.formatUnits(tokenBalanceRaw, tokenDecimals)
           ),
         });
@@ -242,38 +341,46 @@ export function formatBalance(balance: string, decimals: number): string {
   return `${wholePart}.${fractionalPart}`;
 }
 
-export async function getTokenOwner(tokenAddress: string): Promise<string> {
+export async function getTokenOwner(
+  tokenAddress: string,
+  chainName: string = 'BSC_MAINNET'
+): Promise<string> {
+  const provider = getProvider(chainName);
   const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
   return await tokenContract.owner();
 }
 
 export async function isTokenTradingEnabled(
-  tokenAddress: string
+  tokenAddress: string,
+  chainName: string = 'BSC_MAINNET'
 ): Promise<boolean> {
+  const provider = getProvider(chainName);
   const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
   return await tokenContract.swapEnabled();
 }
 
 /**
- * Gets the current pool reserves for a token/BNB pair
+ * Gets the current pool reserves for a token/native currency pair
  * @param tokenAddress The token contract address
  * @returns Pool information including reserves
  */
 export async function getPoolInfo(
-  tokenAddress: string
+  tokenAddress: string,
+  chainName: string = 'BSC_MAINNET'
 ): Promise<PoolInfo | null> {
   try {
-    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
-    const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+    const provider = getProvider(chainName);
+    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
+    const factoryAddress = CHAIN_CONFIGS[chainName].factoryAddress;
 
     const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
     const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
 
-    // Get WBNB address
-    const wbnbAddress = await router.WETH();
+    // Get W native currency address
+    const wNativeAddress = await router.WETH();
 
     // Get pair address
-    const pairAddress = await factory.getPair(tokenAddress, wbnbAddress);
+    const pairAddress = await factory.getPair(tokenAddress, wNativeAddress);
 
     // If pair doesn't exist, return null
     if (pairAddress === ethers.ZeroAddress) {
@@ -281,24 +388,27 @@ export async function getPoolInfo(
     }
 
     const pair = new ethers.Contract(pairAddress, PAIR_ABI, provider);
-    const [token0, token1] = await Promise.all([pair.token0(), pair.token1()]);
+    const [token0] = await Promise.all([pair.token0(), pair.token1()]);
 
     // Get reserves
     const [reserve0, reserve1] = await pair.getReserves();
 
     // Determine which token is which in the pair
-    const [bnbReserve, tokenReserve] =
-      token0.toLowerCase() === wbnbAddress.toLowerCase()
+    const [nativeReserve, tokenReserve] =
+      token0.toLowerCase() === wNativeAddress.toLowerCase()
         ? [reserve0, reserve1]
         : [reserve1, reserve0];
 
     return {
-      bnbReserve: Number(ethers.formatEther(bnbReserve)),
+      nativeReserve: Number(ethers.formatEther(nativeReserve)),
       tokenReserve: Number(
-        ethers.formatUnits(tokenReserve, await getTokenDecimals(tokenAddress))
+        ethers.formatUnits(
+          tokenReserve,
+          await getTokenDecimals(tokenAddress, chainName)
+        )
       ),
       tokenAddress,
-      bnbAddress: wbnbAddress,
+      nativeAddress: wNativeAddress,
     };
   } catch (error) {
     console.error('Failed to get pool info:', error);
@@ -361,7 +471,8 @@ export async function hasTokenAllowance(
   ownerAddress: string,
   spenderAddress: string,
   amount: string,
-  signer: ethers.Signer
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
 ): Promise<boolean> {
   try {
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
@@ -371,7 +482,7 @@ export async function hasTokenAllowance(
     );
     return (
       allowance >=
-      ethers.parseUnits(amount, await getTokenDecimals(tokenAddress))
+      safeParseUnits(amount, await getTokenDecimals(tokenAddress, chainName))
     );
   } catch (error) {
     console.error('Failed to check token allowance:', error);
@@ -391,12 +502,13 @@ export async function approveTokens(
   tokenAddress: string,
   spenderAddress: string,
   amount: string,
-  signer: ethers.Signer
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
 ): Promise<ethers.TransactionReceipt> {
   try {
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
-    const decimals = await getTokenDecimals(tokenAddress);
-    const amountInWei = ethers.parseUnits(amount, decimals);
+    const decimals = await getTokenDecimals(tokenAddress, chainName);
+    const amountInWei = safeParseUnits(amount, decimals);
 
     // Approve the tokens
     const tx = await tokenContract.approve(spenderAddress, amountInWei);
@@ -411,46 +523,52 @@ export async function approveTokens(
  * Adds liquidity to PancakeSwap
  * @param tokenAddress The token contract address
  * @param tokenAmount The amount of tokens to add
- * @param bnbAmount The amount of BNB to add
+ * @param nativeAmount The amount of native currency to add
  * @param signer The ethers signer
  * @returns Transaction receipt
  */
 export async function addLiquidity(
   tokenAddress: string,
   tokenAmount: string,
-  bnbAmount: string,
-  signer: ethers.Signer
+  nativeAmount: string,
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
 ): Promise<ethers.TransactionReceipt> {
   try {
-    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
+    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
     const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
-    const tokenDecimals = await getTokenDecimals(tokenAddress);
+    const tokenDecimals = await getTokenDecimals(tokenAddress, chainName);
 
+    console.log(`tokenDecimals: ${tokenDecimals}`);
     // Convert amounts to wei
-    const tokenAmountInWei = ethers.parseUnits(tokenAmount, tokenDecimals);
-    const bnbAmountInWei = ethers.parseEther(bnbAmount);
+    const tokenAmountInWei = safeParseUnits(tokenAmount, tokenDecimals);
+    const nativeAmountInWei = safeParseEther(nativeAmount);
 
     // Set slippage tolerance (e.g., 5%)
     const slippageTolerance = 0.05;
     const minTokenAmount =
       (tokenAmountInWei * BigInt(Math.floor((1 - slippageTolerance) * 1000))) /
       BigInt(1000);
-    const minBnbAmount =
-      (bnbAmountInWei * BigInt(Math.floor((1 - slippageTolerance) * 1000))) /
+    const minNativeAmount =
+      (nativeAmountInWei * BigInt(Math.floor((1 - slippageTolerance) * 1000))) /
       BigInt(1000);
 
     // Set deadline to 20 minutes from now
     const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+
+    console.log(
+      `addLiquidity, tokenAddress: ${tokenAddress}, tokenAmountInWei: ${tokenAmountInWei}, minTokenAmount: ${minTokenAmount}, minNativeAmount: ${minNativeAmount}, signer: ${signer}`
+    );
 
     // Add liquidity
     const tx = await router.addLiquidityETH(
       tokenAddress,
       tokenAmountInWei,
       minTokenAmount,
-      minBnbAmount,
+      minNativeAmount,
       await signer.getAddress(),
       deadline,
-      { value: bnbAmountInWei }
+      { value: nativeAmountInWei }
     );
 
     return await tx.wait();
@@ -468,20 +586,22 @@ export async function addLiquidity(
  */
 export async function getLPTokenBalance(
   walletAddress: string,
-  tokenAddress: string
+  tokenAddress: string,
+  chainName: string = 'BSC_MAINNET'
 ): Promise<number> {
   try {
+    const provider = getProvider(chainName);
     // Get the factory address
-    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
-    const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
+    const factoryAddress = CHAIN_CONFIGS[chainName].factoryAddress;
     const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
 
-    // Get WBNB address
+    // Get W native currency address
     const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
-    const wbnbAddress = await router.WETH();
+    const wNativeAddress = await router.WETH();
 
     // Get the pair address
-    const pairAddress = await factory.getPair(tokenAddress, wbnbAddress);
+    const pairAddress = await factory.getPair(tokenAddress, wNativeAddress);
 
     // If pair doesn't exist, return 0
     if (pairAddress === ethers.ZeroAddress) {
@@ -509,27 +629,28 @@ export async function getLPTokenBalance(
  */
 export async function burnLiquidity(
   signer: ethers.Signer,
-  tokenAddress: string
+  tokenAddress: string,
+  chainName: string = 'BSC_MAINNET'
 ): Promise<{
   success: boolean;
   error?: string;
   tokenAmount?: number;
-  bnbAmount?: number;
+  nativeAmount?: number;
 }> {
   try {
     const walletAddress = await signer.getAddress();
 
     // Get the factory and router addresses
-    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
-    const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
+    const factoryAddress = CHAIN_CONFIGS[chainName].factoryAddress;
     const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, signer);
     const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
 
-    // Get WBNB address
-    const wbnbAddress = await router.WETH();
+    // Get W native currency address
+    const wNativeAddress = await router.WETH();
 
     // Get the pair address
-    const pairAddress = await factory.getPair(tokenAddress, wbnbAddress);
+    const pairAddress = await factory.getPair(tokenAddress, wNativeAddress);
 
     // If pair doesn't exist, return error
     if (pairAddress === ethers.ZeroAddress) {
@@ -582,25 +703,21 @@ export async function burnLiquidity(
 export async function removeLiquidity(
   signer: ethers.Signer,
   tokenAddress: string,
-  percentage: number = 100 // Default to 100% (remove all)
+  percentage: number = 100, // Default to 100% (remove all)
+  chainName: string = 'BSC_MAINNET'
 ): Promise<{
   success: boolean;
   error?: string;
   tokenAmount?: number;
-  bnbAmount?: number;
+  nativeAmount?: number;
 }> {
   try {
     const walletAddress = await signer.getAddress();
-    const network =
-      process.env.NEXT_PUBLIC_NETWORK_ENV === 'testnet' ? 'testnet' : 'mainnet';
-    const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
-    const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
+    const factoryAddress = CHAIN_CONFIGS[chainName].factoryAddress;
 
-    // Hardcoded WBNB addresses to avoid WETH() call issues
-    const wbnbAddress =
-      network === 'mainnet'
-        ? '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c' // Mainnet WBNB
-        : '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd'; // Testnet WBNB
+    // Hardcoded W native currency addresses to avoid WETH() call issues
+    const wNativeAddress = CHAIN_CONFIGS[chainName].wrappedNativeCurrency;
 
     // Initialize contracts with provider first to avoid connection issues
     const provider = signer.provider;
@@ -612,7 +729,6 @@ export async function removeLiquidity(
     const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
 
     // Connect signer to contracts for transactions
-    const factoryWithSigner = factory.connect(signer);
     const routerWithSigner = router.connect(signer);
 
     // Get the pair address
@@ -621,7 +737,7 @@ export async function removeLiquidity(
       // Use explicit typing for the call to avoid linter errors
       pairAddress = (await factory.getPair(
         tokenAddress,
-        wbnbAddress
+        wNativeAddress
       )) as string;
     } catch (error) {
       console.error('Error getting pair address:', error);
@@ -661,47 +777,117 @@ export async function removeLiquidity(
     const token0 = (await (pairContract as any).token0()) as string;
 
     // Determine which token is which in the pair
-    const isBnbToken0 = token0.toLowerCase() === wbnbAddress.toLowerCase();
-    const bnbReserve = isBnbToken0 ? reserves[0] : reserves[1];
-    const tokenReserve = isBnbToken0 ? reserves[1] : reserves[0];
+    const isNativeToken0 =
+      token0.toLowerCase() === wNativeAddress.toLowerCase();
+    const nativeReserve = isNativeToken0 ? reserves[0] : reserves[1];
+    const tokenReserve = isNativeToken0 ? reserves[1] : reserves[0];
 
     const totalSupply = (await (pairContract as any).totalSupply()) as bigint;
 
     // Calculate expected returns
-    const expectedBnb = (bnbReserve * amountToRemove) / totalSupply;
+    const expectedNative = (nativeReserve * amountToRemove) / totalSupply;
     const expectedTokens = (tokenReserve * amountToRemove) / totalSupply;
 
     // Approve router to spend LP tokens
+    console.log('Approving LP tokens for removal...', {
+      routerAddress,
+      amountToRemove: amountToRemove.toString(),
+    });
     const approveTx = await (pairContract as any).approve(
       routerAddress,
       amountToRemove
     );
-    await approveTx.wait();
+
+    console.log('Approval transaction sent, waiting for confirmation...');
+    try {
+      // Add timeout to prevent hanging
+      const receipt = await Promise.race([
+        approveTx.wait(),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Approval confirmation timeout')),
+            60000
+          )
+        ),
+      ]);
+      console.log('LP token approval successful:', receipt?.status);
+    } catch (error) {
+      console.error('Approval wait failed:', error);
+      // Check if transaction was actually confirmed despite the error
+      try {
+        const currentAllowance = await (pairContract as any).allowance(
+          walletAddress,
+          routerAddress
+        );
+        console.log(
+          'Current allowance after error:',
+          currentAllowance.toString()
+        );
+        if (currentAllowance >= amountToRemove) {
+          console.log(
+            'Approval was successful despite wait error, continuing...'
+          );
+        } else {
+          return { success: false, error: 'Token approval failed' };
+        }
+      } catch (allowanceError) {
+        console.error('Failed to check allowance:', allowanceError);
+        return { success: false, error: 'Token approval failed' };
+      }
+    }
 
     // Calculate minimum amounts (with 5% slippage)
-    const minBnb = (expectedBnb * BigInt(95)) / BigInt(100);
+    const minNative = (expectedNative * BigInt(95)) / BigInt(100);
     const minTokens = (expectedTokens * BigInt(95)) / BigInt(100);
 
     // Current timestamp + 20 minutes
     const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
 
+    console.log('Removing liquidity with parameters:', {
+      tokenAddress,
+      wNativeAddress,
+      amountToRemove: amountToRemove.toString(),
+      minTokens: minTokens.toString(),
+      minNative: minNative.toString(),
+      walletAddress,
+      deadline,
+      percentage,
+    });
+
     // Remove liquidity - Try with non-ETH method directly as the primary approach
     let receipt;
     try {
-      console.log('Removing liquidity using removeLiquidity method');
+      console.log('Attempting removeLiquidity (standard method)...');
       // Use explicit any typing to bypass TypeScript checks since we know the method exists
       const removeTx = await (routerWithSigner as any).removeLiquidity(
         tokenAddress,
-        wbnbAddress,
+        wNativeAddress,
         amountToRemove,
         minTokens,
-        minBnb,
+        minNative,
         walletAddress,
         deadline,
         { gasLimit: 800000 }
       );
 
-      receipt = await removeTx.wait();
+      console.log(
+        'Remove liquidity transaction sent, waiting for confirmation...'
+      );
+      try {
+        receipt = await Promise.race([
+          removeTx.wait(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error('Remove liquidity confirmation timeout')),
+              60000
+            )
+          ),
+        ]);
+        console.log('Remove liquidity transaction confirmed:', receipt?.status);
+      } catch (waitError) {
+        console.error('Remove liquidity wait failed:', waitError);
+        throw waitError;
+      }
     } catch (routerError) {
       console.error(
         'Error in removeLiquidity, trying ETH specific method:',
@@ -709,18 +895,42 @@ export async function removeLiquidity(
       );
 
       try {
+        console.log('Attempting removeLiquidityETH (ETH method)...');
         // Try with ETH method as fallback
         const removeTx = await (routerWithSigner as any).removeLiquidityETH(
           tokenAddress,
           amountToRemove,
           minTokens,
-          minBnb,
+          minNative,
           walletAddress,
           deadline,
           { gasLimit: 800000 }
         );
 
-        receipt = await removeTx.wait();
+        console.log(
+          'Remove liquidity ETH transaction sent, waiting for confirmation...'
+        );
+        try {
+          receipt = await Promise.race([
+            removeTx.wait(),
+            new Promise((_, reject) =>
+              setTimeout(
+                () =>
+                  reject(
+                    new Error('Remove liquidity ETH confirmation timeout')
+                  ),
+                60000
+              )
+            ),
+          ]);
+          console.log(
+            'Remove liquidity ETH transaction confirmed:',
+            receipt?.status
+          );
+        } catch (waitError) {
+          console.error('Remove liquidity ETH wait failed:', waitError);
+          throw waitError;
+        }
       } catch (ethError) {
         console.error('Both removal methods failed:', ethError);
         return {
@@ -732,12 +942,23 @@ export async function removeLiquidity(
       }
     }
 
-    if (!receipt || !receipt.status) {
-      return { success: false, error: 'Remove liquidity transaction failed' };
+    if (!receipt) {
+      console.error('No transaction receipt received');
+      return { success: false, error: 'No transaction receipt received' };
     }
 
-    // Convert to human-readable numbers with 18 decimals for BNB
-    const bnbAmount = Number(ethers.formatUnits(expectedBnb, 18));
+    if (receipt.status !== 1) {
+      console.error('Transaction failed with status:', receipt.status);
+      return {
+        success: false,
+        error: `Transaction failed with status: ${receipt.status}`,
+      };
+    }
+
+    console.log('Transaction successful, calculating returned amounts...');
+
+    // Convert to human-readable numbers with 18 decimals for native currency
+    const nativeAmount = Number(ethers.formatUnits(expectedNative, 18));
 
     // Get token decimals with error handling
     const tokenContract = new ethers.Contract(
@@ -756,9 +977,15 @@ export async function removeLiquidity(
       ethers.formatUnits(expectedTokens, tokenDecimals)
     );
 
+    console.log('Liquidity removal successful:', {
+      nativeAmount,
+      tokenAmount,
+      tokenDecimals,
+    });
+
     return {
       success: true,
-      bnbAmount,
+      nativeAmount,
       tokenAmount,
       error: undefined,
     };
@@ -782,17 +1009,23 @@ export async function removeLiquidity(
  */
 export async function getTokenPrice(
   tokenAddress: string,
-  pairAddress?: string
+  pairAddress?: string,
+  chainName: string = 'BSC_MAINNET'
 ): Promise<number | null> {
   try {
-    // Get BNB price in USD for converting BNB pairs to USD value
-    const bnbPrice = await getBnbPriceInUsd();
-    console.debug('Current BNB price in USD:', bnbPrice);
+    // Get native currency price from Redux store
+    const state = store.getState();
+    const nativeCurrencyPrice =
+      state.projects.nativeCurrencyPrice[
+        chainName as keyof typeof state.projects.nativeCurrencyPrice
+      ];
+    console.debug('Current native currency price in USD:', nativeCurrencyPrice);
 
+    const provider = getProvider(chainName);
     // If no pair address is specified, try to find the pair
     if (!pairAddress) {
-      const routerAddress = PANCAKESWAP_ADDRESSES[network].router;
-      const factoryAddress = PANCAKESWAP_ADDRESSES[network].factory;
+      const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
+      const factoryAddress = CHAIN_CONFIGS[chainName].factoryAddress;
       const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
       const factory = new ethers.Contract(
         factoryAddress,
@@ -800,13 +1033,13 @@ export async function getTokenPrice(
         provider
       );
 
-      // Try to find pair with WBNB first
-      const wbnbAddress = await router.WETH();
-      pairAddress = await factory.getPair(tokenAddress, wbnbAddress);
+      // Try to find pair with W native currency first
+      const wNativeAddress = await router.WETH();
+      pairAddress = await factory.getPair(tokenAddress, wNativeAddress);
 
-      // If no WBNB pair, try to find pair with stablecoins
+      // If no W native currency pair, try to find pair with stablecoins
       if (pairAddress === ethers.ZeroAddress) {
-        for (const stablecoin of STABLECOINS[network]) {
+        for (const stablecoin of CHAIN_CONFIGS[chainName].stablecoins) {
           pairAddress = await factory.getPair(tokenAddress, stablecoin);
           if (pairAddress !== ethers.ZeroAddress) break;
         }
@@ -843,14 +1076,15 @@ export async function getTokenPrice(
     const [tokenDecimals, pairedTokenDecimals] = await Promise.all([
       tokenContract.decimals(),
       getTokenDecimals(
-        token0.toLowerCase() === tokenAddress.toLowerCase() ? token1 : token0
+        token0.toLowerCase() === tokenAddress.toLowerCase() ? token1 : token0,
+        chainName
       ),
     ]);
 
     // Check if paired token is a stablecoin
     const pairedTokenAddress =
       token0.toLowerCase() === tokenAddress.toLowerCase() ? token1 : token0;
-    const isPairedWithStablecoin = STABLECOINS[network].some(
+    const isPairedWithStablecoin = CHAIN_CONFIGS[chainName].stablecoins.some(
       (stablecoin) =>
         stablecoin.toLowerCase() === pairedTokenAddress.toLowerCase()
     );
@@ -883,13 +1117,16 @@ export async function getTokenPrice(
         price = reserve1Adjusted / reserve0Adjusted;
       } else if (
         pairedTokenAddress.toLowerCase() ===
-        BSC_TOKENS[network].WBNB.toLowerCase()
+        CHAIN_CONFIGS[chainName].wrappedNativeCurrency.toLowerCase()
       ) {
-        // Token/WBNB pair (WBNB is token1)
-        price = (reserve1Adjusted / reserve0Adjusted) * bnbPrice;
+        // Token/W native currency pair (W native currency is token1)
+        price = (reserve1Adjusted / reserve0Adjusted) * nativeCurrencyPrice;
       } else {
         // Token/Other pair - try to find the other token's price
-        const otherTokenPrice = await getTokenPrice(pairedTokenAddress);
+        const otherTokenPrice = await getTokenPrice(
+          pairedTokenAddress,
+          chainName
+        );
         price = otherTokenPrice
           ? (reserve1Adjusted / reserve0Adjusted) * otherTokenPrice
           : null;
@@ -901,13 +1138,16 @@ export async function getTokenPrice(
         price = reserve0Adjusted / reserve1Adjusted;
       } else if (
         pairedTokenAddress.toLowerCase() ===
-        BSC_TOKENS[network].WBNB.toLowerCase()
+        CHAIN_CONFIGS[chainName].wrappedNativeCurrency.toLowerCase()
       ) {
-        // WBNB/Token pair (WBNB is token0)
-        price = (reserve0Adjusted / reserve1Adjusted) * bnbPrice;
+        // W native currency/Token pair (W native currency is token0)
+        price = (reserve0Adjusted / reserve1Adjusted) * nativeCurrencyPrice;
       } else {
         // Other/Token pair - try to find the other token's price
-        const otherTokenPrice = await getTokenPrice(pairedTokenAddress);
+        const otherTokenPrice = await getTokenPrice(
+          pairedTokenAddress,
+          chainName
+        );
         price = otherTokenPrice
           ? (reserve0Adjusted / reserve1Adjusted) * otherTokenPrice
           : null;
@@ -930,5 +1170,182 @@ export async function getTokenPrice(
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     return null;
+  }
+}
+
+/**
+ * Buys tokens with native currency (BNB/ETH)
+ * @param signer The ethers signer
+ * @param tokenAddress The token address to buy
+ * @param amountIn The amount of native currency to spend
+ * @param slippageTolerance The maximum allowed slippage (default: 5%)
+ * @returns Transaction receipt
+ */
+export async function buyTokens(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  amountIn: string,
+  slippageTolerance: number = 5,
+  chainName: string = 'BSC_MAINNET'
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
+    const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
+    const wNativeAddress = CHAIN_CONFIGS[chainName].wrappedNativeCurrency;
+
+    // Convert amount to wei
+    const amountInWei = safeParseEther(amountIn);
+
+    // Calculate minimum amount out with slippage
+    const path = [wNativeAddress, tokenAddress];
+    const amounts = await router.getAmountsOut(amountInWei, path);
+    const amountOutMin =
+      (amounts[1] * BigInt(Math.floor((100 - slippageTolerance) * 1000))) /
+      BigInt(100000);
+
+    // Set deadline to 20 minutes from now
+    const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+
+    // Execute swap
+    const tx = await router.swapExactETHForTokens(
+      amountOutMin,
+      path,
+      await signer.getAddress(),
+      deadline,
+      { value: amountInWei, gasLimit: 500000 }
+    );
+
+    return await tx.wait();
+  } catch (error) {
+    console.error('Failed to buy tokens:', error);
+    throw error;
+  }
+}
+
+/**
+ * Sells tokens for native currency (BNB/ETH)
+ * @param signer The ethers signer
+ * @param tokenAddress The token address to sell
+ * @param amountIn The amount of tokens to sell
+ * @param slippageTolerance The maximum allowed slippage (default: 5%)
+ * @returns Transaction receipt
+ */
+export async function sellTokens(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  amountIn: string,
+  slippageTolerance: number = 5,
+  chainName: string = 'BSC_MAINNET'
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
+    const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
+    const wNativeAddress = CHAIN_CONFIGS[chainName].wrappedNativeCurrency;
+
+    // Get token contract and decimals
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    const decimals = await tokenContract.decimals();
+
+    // Convert amount to wei
+    const amountInWei = safeParseUnits(amountIn, Number(decimals));
+    console.log('amountInWei', amountInWei);
+
+    // Check allowance
+    const allowance = await tokenContract.allowance(
+      await signer.getAddress(),
+      routerAddress
+    );
+    if (allowance < amountInWei) {
+      const approveTx = await tokenContract.approve(
+        routerAddress,
+        ethers.MaxUint256
+      );
+      await approveTx.wait();
+    }
+
+    // Calculate minimum amount out with slippage
+    const path = [tokenAddress, wNativeAddress];
+    const amounts = await router.getAmountsOut(amountInWei, path);
+    const amountOutMin =
+      (amounts[1] * BigInt(Math.floor((100 - slippageTolerance) * 1000))) /
+      BigInt(100000);
+
+    // Set deadline to 20 minutes from now
+    const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+
+    // Log for debugging
+    console.log({
+      amountInWei: amountInWei.toString(),
+      amountOutMin: amountOutMin.toString(),
+      path,
+    });
+
+    // Use the supporting fee on transfer function
+    const tx = await router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+      amountInWei?.toString(),
+      amountOutMin,
+      path,
+      await signer.getAddress(),
+      deadline
+    );
+
+    return await tx.wait();
+  } catch (error) {
+    console.error('Failed to sell tokens:', error);
+    throw error;
+  }
+}
+
+export function safeParseEther(value: string | number): bigint {
+  return safeParseUnits(value, 18);
+}
+
+export function safeParseUnits(
+  value: string | number,
+  decimals: number | string | bigint = 18
+): bigint {
+  try {
+    // Ensure decimals is a number, handle BigInt conversion
+    let decimalsNum: number;
+    if (typeof decimals === 'string') {
+      decimalsNum = parseInt(decimals, 10);
+    } else if (typeof decimals === 'bigint') {
+      decimalsNum = Number(decimals); // Convert BigInt to number
+    } else {
+      decimalsNum = decimals;
+    }
+
+    console.log('safeParseUnits decimals', {
+      originalDecimals: decimals,
+      decimalsNum,
+      decimalsType: typeof decimals,
+    });
+
+    // Validate decimals
+    if (isNaN(decimalsNum) || decimalsNum < 0 || decimalsNum > 18) {
+      console.log('Invalid decimals value, using default 18', {
+        originalDecimals: decimals,
+        fallbackDecimals: 18,
+      });
+      return safeParseUnits(value, 18);
+    }
+
+    console.log(`[safeParseUnits] input: ${value}`);
+
+    // Use Decimal.js for precise rounding down
+    const decimalValue = new Decimal(value);
+    const strValue = decimalValue
+      .toDecimalPlaces(decimalsNum, Decimal.ROUND_DOWN)
+      .toString();
+
+    console.log(`[safeParseUnits] normalized: ${strValue}`);
+
+    return ethers.parseUnits(strValue, decimalsNum);
+  } catch (error) {
+    console.log('Failed to parse ether value, using fallback', {
+      value,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return BigInt(1); // fallback to 1 wei
   }
 }

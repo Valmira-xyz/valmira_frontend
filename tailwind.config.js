@@ -14,10 +14,10 @@ module.exports = {
       padding: '2rem',
       screens: {
         '2xl': '1400px',
-        'xl': '1200px',
-        'lg': '1024px',
-        'md': '834px',
-        'sm': '640px',
+        xl: '1200px',
+        lg: '1024px',
+        md: '834px',
+        sm: '640px',
       },
     },
     extend: {
@@ -92,6 +92,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Poppins', 'Inter', 'sans-serif'],
+        tt: ['var(--font-tt-autonomous)'],
       },
     },
   },

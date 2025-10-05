@@ -44,10 +44,7 @@ export function CreateProjectButton({
       >
         <Plus className="h-4 w-4" /> {buttonText}
       </Button>
-      <CreateProjectModal
-        isOpen={isDialogOpen}
-        onClose={handleDialogToggle}
-      />
+      <CreateProjectModal isOpen={isDialogOpen} onClose={handleDialogToggle} />
     </>
   );
 }

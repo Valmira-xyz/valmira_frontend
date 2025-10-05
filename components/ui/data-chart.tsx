@@ -1,7 +1,25 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { type DateRange } from 'react-day-picker';
+
+import { Spinner } from './spinner';
+import {
+  addDays,
+  addHours,
+  differenceInDays,
+  endOfDay,
+  format,
+  isWithinInterval,
+  parseISO,
+  startOfDay,
+  subDays,
+  subMonths,
+  subWeeks,
+} from 'date-fns';
+import { motion } from 'framer-motion';
+import { ChartArea, ChartColumnBig, ChartSpline } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import {
   Area,
   AreaChart,
@@ -15,16 +33,19 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatNumber } from '@/lib/utils';
-import { DateRangePicker } from '@/components/date-range-picker';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { subDays, subWeeks, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval, format, differenceInDays, addHours, addDays, isSameDay, isBefore, isAfter, differenceInMilliseconds } from 'date-fns';
-import { ChartColumnBig, ChartArea, ChartSpline } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { motion } from 'framer-motion';
-import { Spinner } from './spinner';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatNumber } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 export interface DataChartProps {
   title: string;
@@ -62,15 +83,19 @@ export function DataChart({
   showHeaderInVertical = false,
   className,
   isLoading = false,
-  emptyStateMessage = "No data available",
+  emptyStateMessage = 'No data available',
   emptyStateIcon,
   dateRange,
   onDateRangeChange,
 }: DataChartProps) {
   const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>('bar');
 
+  // console.log(`=== ${title} data-chart rendered data ===`, data);
   const selectedDateButton = useMemo(() => {
-    const diffInDays = differenceInDays(dateRange?.to ?? new Date(), dateRange?.from ?? subDays(new Date(), 1));
+    const diffInDays = differenceInDays(
+      dateRange?.to ?? new Date(),
+      dateRange?.from ?? subDays(new Date(), 1)
+    );
     if (diffInDays > 7) return '1M';
     if (diffInDays == 1) return '1D';
     return '1W';
@@ -78,17 +103,43 @@ export function DataChart({
 
   const actualYKey = yKey || dataKey || 'value';
 
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   // Filter data based on date range
   const filteredData = useMemo(() => {
+    if (!data) return [];
     return data.filter((item) => {
       if (!item[xKey]) return true;
       try {
-        const itemDate = parseISO(item[xKey]);
+        let itemDate: Date;
+        const dateValue = item[xKey];
+        
+        // Handle different date formats
+        if (typeof dateValue === 'number') {
+          // Unix timestamp (milliseconds)
+          itemDate = new Date(dateValue);
+        } else if (typeof dateValue === 'string') {
+          // ISO string or other string format
+          itemDate = parseISO(dateValue);
+        } else {
+          console.warn('Unsupported date format:', dateValue);
+          return false;
+        }
+
+        // Validate the date
+        if (isNaN(itemDate.getTime())) {
+          console.warn('Invalid date:', dateValue);
+          return false;
+        }
+
         const start = startOfDay(dateRange?.from ?? subDays(new Date(), 1));
-        const end = dateRange?.to ? endOfDay(dateRange.to) : endOfDay(new Date());
+        const end = dateRange?.to
+          ? endOfDay(dateRange.to)
+          : endOfDay(new Date());
         return isWithinInterval(itemDate, { start, end });
       } catch (error) {
-        console.error('Error parsing date:', error);
+        console.error('Error parsing date:', error, 'Date value:', item[xKey]);
         return false;
       }
     });
@@ -97,28 +148,27 @@ export function DataChart({
   // Add these helper functions at the top of the file
   const getTimeIntervals = (range: DateRange | undefined, button: string) => {
     const now = new Date();
-    let intervals: Date[] = [];
-    let interval: number;
-
+    const intervals: Date[] = [];
+    // let interval : number;
     if (range?.from) {
       const diffInDays = differenceInDays(range.to || now, range.from);
       if (diffInDays <= 1) {
         // 1D range with 2-hour intervals
-        interval = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+        // interval = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
         const start = startOfDay(range.from);
         for (let i = 0; i <= 24; i += 2) {
           intervals.push(addHours(start, i));
         }
       } else if (diffInDays <= 7) {
         // 1W range with 1-day intervals
-        interval = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+        // interval = 24 * 60 * 60 * 1000; // 1 day in milliseconds
         const start = startOfDay(range.from);
         for (let i = 0; i <= diffInDays; i++) {
           intervals.push(addDays(start, i));
         }
       } else {
         // 1M range with 1-day intervals
-        interval = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+        // interval = 24 * 60 * 60 * 1000; // 1 day in milliseconds
         const start = startOfDay(range.from);
         for (let i = 0; i <= diffInDays; i++) {
           intervals.push(addDays(start, i));
@@ -126,55 +176,90 @@ export function DataChart({
       }
     } else {
       switch (button) {
-        case '1D':
+        case '1D': {
           // 1D with 2-hour intervals
-          interval = 2 * 60 * 60 * 1000;
+          // interval = 2 * 60 * 60 * 1000;
           const start = startOfDay(subDays(now, 1));
           for (let i = 0; i <= 24; i += 2) {
             intervals.push(addHours(start, i));
           }
           break;
-        case '1W':
+        }
+        case '1W': {
           // 1W with 1-day intervals
-          interval = 24 * 60 * 60 * 1000;
+          // interval = 24 * 60 * 60 * 1000;
           const weekStart = startOfDay(subWeeks(now, 1));
           for (let i = 0; i <= 7; i++) {
             intervals.push(addDays(weekStart, i));
           }
           break;
-        case '1M':
+        }
+        case '1M': {
           // 1M with 1-day intervals
-          interval = 24 * 60 * 60 * 1000;
+          // interval = 24 * 60 * 60 * 1000;
           const monthStart = startOfDay(subMonths(now, 1));
           for (let i = 0; i <= 30; i++) {
             intervals.push(addDays(monthStart, i));
           }
           break;
+        }
       }
     }
 
     return intervals;
   };
 
-  const interpolateData = (data: any[], intervals: Date[], xKey: string, yKey: string) => {
+  const interpolateData = (
+    data: any[],
+    intervals: Date[],
+    xKey: string,
+    yKey: string
+  ) => {
     // If there's no data at all, return empty array
     if (!data || data.length === 0) {
       return [];
     }
 
-    return intervals.map(interval => {
+    return intervals.map((interval) => {
       // Find data points within this interval
-      const intervalData = data.filter(item => {
+      const intervalData = data.filter((item) => {
         try {
-          const itemDate = parseISO(item[xKey]);
-          if (selectedDateButton === '1D' || (dateRange?.from && differenceInDays(dateRange.to || new Date(), dateRange.from) <= 1)) {
+          let itemDate: Date;
+          const dateValue = item[xKey];
+          
+          // Handle different date formats
+          if (typeof dateValue === 'number') {
+            // Unix timestamp (milliseconds)
+            itemDate = new Date(dateValue);
+          } else if (typeof dateValue === 'string') {
+            // ISO string or other string format
+            itemDate = parseISO(dateValue);
+          } else {
+            return false;
+          }
+
+          // Validate the date
+          if (isNaN(itemDate.getTime())) {
+            return false;
+          }
+          if (
+            selectedDateButton === '1D' ||
+            (dateRange?.from &&
+              differenceInDays(dateRange.to || new Date(), dateRange.from) <= 1)
+          ) {
             // For 1D view, check if the hour matches
-            return format(itemDate, 'yyyy-MM-dd HH') === format(interval, 'yyyy-MM-dd HH');
+            return (
+              format(itemDate, 'yyyy-MM-dd HH') ===
+              format(interval, 'yyyy-MM-dd HH')
+            );
           } else {
             // For 1W and 1M views, check if the day matches
-            return format(itemDate, 'yyyy-MM-dd') === format(interval, 'yyyy-MM-dd');
+            return (
+              format(itemDate, 'yyyy-MM-dd') === format(interval, 'yyyy-MM-dd')
+            );
           }
         } catch (error) {
+          console.log(error);
           return false;
         }
       });
@@ -189,7 +274,7 @@ export function DataChart({
           }, 0);
           return {
             [xKey]: format(interval, 'yyyy-MM-dd HH:mm:ss'),
-            [yKey]: sum
+            [yKey]: sum,
           };
         } else {
           // For line and area charts, use the average value
@@ -200,7 +285,7 @@ export function DataChart({
           const average = sum / intervalData.length;
           return {
             [xKey]: format(interval, 'yyyy-MM-dd HH:mm:ss'),
-            [yKey]: average
+            [yKey]: average,
           };
         }
       }
@@ -208,7 +293,7 @@ export function DataChart({
       // If no data points found, return 0
       return {
         [xKey]: format(interval, 'yyyy-MM-dd HH:mm:ss'),
-        [yKey]: 0
+        [yKey]: 0,
       };
     });
   };
@@ -218,12 +303,14 @@ export function DataChart({
     return interpolateData(filteredData, intervals, xKey, actualYKey);
   }, [filteredData, dateRange, selectedDateButton, xKey, actualYKey]);
 
+  // console.log('groupedData', groupedData);
+
   const xAxisTicks = useMemo(() => {
     if (selectedDateButton === '1M' && groupedData.length > 0) {
       // Show every 2nd date
       return groupedData
         .filter((_, idx) => idx % 2 === 0)
-        .map(item => item[xKey]);
+        .map((item) => item[xKey]);
     }
     // For other ranges, let recharts auto-calculate
     return undefined;
@@ -249,19 +336,25 @@ export function DataChart({
 
     onDateRangeChange?.({
       from: start,
-      to: now
+      to: now,
     });
   };
 
   const formatXAxis = (date: string) => {
     try {
       const parsedDate = parseISO(date);
-      if (selectedDateButton === '1D' || (dateRange?.from && differenceInDays(dateRange.to || new Date(), dateRange.from) <= 1)) {
+      if (
+        selectedDateButton === '1D' ||
+        (dateRange?.from &&
+          differenceInDays(dateRange.to || new Date(), dateRange.from) <= 1)
+      ) {
         return format(parsedDate, 'HH:mm');
       } else {
         return format(parsedDate, 'MMM d');
       }
     } catch (error) {
+      console.log(error);
+
       return date;
     }
   };
@@ -269,54 +362,47 @@ export function DataChart({
   const formatTooltipDate = (date: string) => {
     try {
       const parsedDate = parseISO(date);
-      if (selectedDateButton === '1D' || (dateRange?.from && differenceInDays(dateRange.to || new Date(), dateRange.from) <= 1)) {
+      if (
+        selectedDateButton === '1D' ||
+        (dateRange?.from &&
+          differenceInDays(dateRange.to || new Date(), dateRange.from) <= 1)
+      ) {
         return format(parsedDate, 'HH:mm, MMM d');
       } else {
         return format(parsedDate, 'MMM d, yyyy');
       }
     } catch (error) {
+      console.log(error);
+
       return date;
     }
   };
 
   const renderChart = () => {
-    console.log(`rendering real chart`);
-    console.log(`\n =============== groupedData ===============\n${JSON.stringify(groupedData, null, 2)}`);
-
     // Calculate min and max values for y-axis
-    const maxValue = Math.max(...groupedData.map(item => item[actualYKey]));
+    const maxValue = Math.max(...groupedData.map((item) => item[actualYKey]));
     const yAxisDomain = [0, Math.max(maxValue * 1.1, 0.0001)]; // Add 10% padding and ensure non-zero max
 
     const formatYAxis = (value: number) => {
       let digits = 0;
-       
-      if (maxValue > 1 && maxValue <= 20) 
-        digits = 1
-      else if (maxValue <= 1 && maxValue > 0.1)
-        digits = 2
-      else if (maxValue <= 0.1 && maxValue > 0.01)
-        digits = 3
-      else if (maxValue <= 0.01 && maxValue > 0.001)
-        digits = 4
-      else if (maxValue <= 0.001 && maxValue > 0.0001)
-        digits = 5
-        
-      return value.toFixed(digits).replace(/\.?0+$/, '');  // Format to 3 decimal places
+
+      if (maxValue > 1 && maxValue <= 20) digits = 1;
+      else if (maxValue <= 1 && maxValue > 0.1) digits = 2;
+      else if (maxValue <= 0.1 && maxValue > 0.01) digits = 3;
+      else if (maxValue <= 0.01 && maxValue > 0.001) digits = 4;
+      else if (maxValue <= 0.001 && maxValue > 0.0001) digits = 5;
+
+      return value.toFixed(digits).replace(/\.?0+$/, ''); // Format to 3 decimal places
     };
 
     const tooltipFormatter = (value: number) => {
       let digits = 0;
-       
-      if (maxValue > 1 && maxValue <= 20) 
-        digits = 1
-      else if (maxValue <= 1 && maxValue > 0.1)
-        digits = 2
-      else if (maxValue <= 0.1 && maxValue > 0.01)
-        digits = 3
-      else if (maxValue <= 0.01 && maxValue > 0.001)
-        digits = 4
-      else if (maxValue <= 0.001 && maxValue > 0.0001)
-        digits = 5
+
+      if (maxValue > 1 && maxValue <= 20) digits = 1;
+      else if (maxValue <= 1 && maxValue > 0.1) digits = 2;
+      else if (maxValue <= 0.1 && maxValue > 0.01) digits = 3;
+      else if (maxValue <= 0.01 && maxValue > 0.001) digits = 4;
+      else if (maxValue <= 0.001 && maxValue > 0.0001) digits = 5;
       return [formatNumber(value, digits), 'Value'];
     };
 
@@ -330,21 +416,36 @@ export function DataChart({
         <ResponsiveContainer width="100%" height="100%">
           <LineChart {...commonProps}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey={xKey} 
+            <XAxis
+              dataKey={xKey}
               tickFormatter={formatXAxis}
               tick={{ fontSize: 12 }}
               ticks={xAxisTicks}
             />
-            <YAxis 
+            <YAxis
               tickFormatter={formatYAxis}
               domain={yAxisDomain}
-              ticks={[0, yAxisDomain[1] * 0.25, yAxisDomain[1] * 0.5, yAxisDomain[1] * 0.75, yAxisDomain[1]]}
+              ticks={[
+                0,
+                yAxisDomain[1] * 0.25,
+                yAxisDomain[1] * 0.5,
+                yAxisDomain[1] * 0.75,
+                yAxisDomain[1],
+              ]}
               allowDecimals={true}
             />
-            <Tooltip 
+            <Tooltip
               formatter={(value: number) => tooltipFormatter(value)}
               labelFormatter={formatTooltipDate}
+              contentStyle={{
+                background: isDark ? 'rgba(30,41,59,0.95)' : '#fff',
+                color: isDark ? '#fff' : '#222',
+                borderRadius: 8,
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                padding: '8px 12px',
+              }}
+              labelStyle={{ color: isDark ? '#fff' : '#222' }}
             />
             <Line
               type="monotone"
@@ -362,23 +463,44 @@ export function DataChart({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart {...commonProps}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey={xKey} 
+            <XAxis
+              dataKey={xKey}
               tickFormatter={formatXAxis}
               tick={{ fontSize: 12 }}
               ticks={xAxisTicks}
             />
-            <YAxis 
+            <YAxis
               tickFormatter={formatYAxis}
               domain={yAxisDomain}
-              ticks={[0, yAxisDomain[1] * 0.25, yAxisDomain[1] * 0.5, yAxisDomain[1] * 0.75, yAxisDomain[1]]}
+              ticks={[
+                0,
+                yAxisDomain[1] * 0.25,
+                yAxisDomain[1] * 0.5,
+                yAxisDomain[1] * 0.75,
+                yAxisDomain[1],
+              ]}
               allowDecimals={true}
             />
-            <Tooltip 
+            <Tooltip
               formatter={(value: number) => tooltipFormatter(value)}
               labelFormatter={formatTooltipDate}
+              contentStyle={{
+                background: isDark ? 'rgba(30,41,59,0.95)' : '#fff',
+                color: isDark ? '#fff' : '#222',
+                borderRadius: 8,
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                padding: '8px 12px',
+              }}
+              labelStyle={{ color: isDark ? '#fff' : '#222' }}
             />
-            <Bar dataKey={actualYKey} fill={color} />
+            <Bar
+              dataKey={actualYKey}
+              fill={color}
+              radius={selectedDateButton === '1W' ? [8, 8, 0, 0] : [6, 6, 0, 0]}
+              // activeBar={false}
+              background={false}
+            />
           </BarChart>
         </ResponsiveContainer>
       );
@@ -389,23 +511,43 @@ export function DataChart({
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart {...commonProps}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey={xKey} 
+          <XAxis
+            dataKey={xKey}
             tickFormatter={formatXAxis}
             tick={{ fontSize: 12 }}
             ticks={xAxisTicks}
           />
-          <YAxis 
+          <YAxis
             tickFormatter={formatYAxis}
             domain={yAxisDomain}
-            ticks={[0, yAxisDomain[1] * 0.25, yAxisDomain[1] * 0.5, yAxisDomain[1] * 0.75, yAxisDomain[1]]}
+            ticks={[
+              0,
+              yAxisDomain[1] * 0.25,
+              yAxisDomain[1] * 0.5,
+              yAxisDomain[1] * 0.75,
+              yAxisDomain[1],
+            ]}
             allowDecimals={true}
           />
-          <Tooltip 
+          <Tooltip
             formatter={(value: number) => tooltipFormatter(value)}
             labelFormatter={formatTooltipDate}
+            contentStyle={{
+              background: isDark ? 'rgba(30,41,59,0.95)' : '#fff',
+              color: isDark ? '#fff' : '#222',
+              borderRadius: 8,
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              padding: '8px 12px',
+            }}
+            labelStyle={{ color: isDark ? '#fff' : '#222' }}
           />
-          <Area type="monotone" dataKey={actualYKey} fill={color} stroke={color} />
+          <Area
+            type="monotone"
+            dataKey={actualYKey}
+            fill={color}
+            stroke={color}
+          />
         </AreaChart>
       </ResponsiveContainer>
     );
@@ -413,7 +555,6 @@ export function DataChart({
 
   // Render loading skeleton
   const renderLoadingSkeleton = () => {
-    console.log(`rendering loading skeleton`);
     return (
       <div className="w-full h-full flex flex-col relative">
         {/* Centered loading indicator */}
@@ -423,34 +564,34 @@ export function DataChart({
         </div> */}
 
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <Spinner size="lg"/>
+          <Spinner size="lg" />
         </div>
         {/* Chart skeleton with shimmer effect */}
         <div className="w-full h-[80%] flex items-end justify-between opacity-50">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex-1 flex flex-col items-center">
               <div className="w-full relative overflow-hidden rounded-t">
-                <div 
+                <div
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer"
-                  style={{ 
+                  style={{
                     backgroundSize: '200% 100%',
-                    animation: 'shimmer 1.5s infinite'
+                    animation: 'shimmer 1.5s infinite',
                   }}
                 />
-                <Skeleton 
-                  className="w-full" 
-                  style={{ 
+                <Skeleton
+                  className="w-full"
+                  style={{
                     height: `${Math.random() * 60 + 20}%`,
                     backgroundColor: 'hsl(var(--muted))',
-                    opacity: 0.8
-                  }} 
+                    opacity: 0.8,
+                  }}
                 />
               </div>
               <Skeleton className="h-3 w-10 mt-2" />
             </div>
           ))}
         </div>
-        
+
         {/* Y-axis labels skeleton */}
         <div className="w-full h-[20%] flex items-center justify-between mt-4 opacity-50">
           <Skeleton className="h-4 w-16" />
@@ -475,7 +616,6 @@ export function DataChart({
 
   // Render empty state
   const renderEmptyState = () => {
-    console.log(`rendering empty state`);
     return (
       <div className="w-full h-full flex flex-col items-center justify-center py-12 space-y-4">
         {emptyStateIcon ? (
@@ -492,8 +632,8 @@ export function DataChart({
           </div>
         )}
         <p className="text-muted-foreground text-center">
-          {dateRange?.from || selectedDateButton !== '1M' 
-            ? "No data available for the selected date range" 
+          {dateRange?.from || selectedDateButton !== '1M'
+            ? 'No data available for the selected date range'
             : emptyStateMessage}
         </p>
       </div>
@@ -502,17 +642,23 @@ export function DataChart({
 
   return (
     <motion.div
-      className={cn("w-full", className)}
+      className={cn('w-full', className)}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className={cn("w-full", className)}>
-        <CardHeader className={cn(
-          showHeaderInVertical ? "gap-4" : "flex flex-col lg:flex-row flex-wrap items-start lg:items-center justify-between gap-4 pb-2"
-        )}>
+      <Card className={cn('w-full', className)}>
+        <CardHeader
+          className={cn(
+            showHeaderInVertical
+              ? 'gap-4'
+              : 'flex flex-col lg:flex-row flex-wrap items-start lg:items-center justify-between gap-4 pb-2'
+          )}
+        >
           <div className="flex flex-col gap-2">
-            <CardTitle>{title}</CardTitle>
+            <CardTitle className="font-bold font-tt  text-xl">
+              {title}
+            </CardTitle>
             {description && <CardDescription>{description}</CardDescription>}
           </div>
           <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
@@ -538,7 +684,9 @@ export function DataChart({
             {showChartTypeSelector && (
               <Tabs
                 value={chartType}
-                onValueChange={(v) => setChartType(v as 'line' | 'bar' | 'area')}
+                onValueChange={(v) =>
+                  setChartType(v as 'line' | 'bar' | 'area')
+                }
                 className="w-fit"
               >
                 <TabsList className="grid w-[150px] grid-cols-3">
@@ -550,21 +698,17 @@ export function DataChart({
             )}
           </div>
         </CardHeader>
-        
+
         <CardContent className="p-4">
           <div style={{ height }}>
-            {isLoading ? (
-              renderLoadingSkeleton()
-            ) : (
-              groupedData.length === 0 ? (
-                renderEmptyState()
-              ) : (
-                renderChart()
-              )
-            )}
+            {isLoading
+              ? renderLoadingSkeleton()
+              : groupedData.length === 0
+                ? renderEmptyState()
+                : renderChart()}
           </div>
         </CardContent>
       </Card>
     </motion.div>
   );
-} 
+}

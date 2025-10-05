@@ -56,7 +56,7 @@ export function BuySellForm() {
   };
 
   return (
-    <Card className="border">
+    <Card className="border dark:bg-[hsl(var(--card-dark-bg))]">
       <CardContent className="p-4">
         <div className="space-y-6">
           {/* From Section */}
@@ -93,17 +93,18 @@ export function BuySellForm() {
               <span className="text-sm">Rate</span>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">  
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
                     <Info className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-4 mb-1">
                     <Info className="h-6 w-6 self-start" />
-                    <div className='flex flex-col'>
+                    <div className="flex flex-col">
                       <span className="font-medium">Rate</span>
                       <span className="text-xs text-muted-foreground">
-                        The current exchange rate between the two selected tokens.
+                        The current exchange rate between the two selected
+                        tokens.
                       </span>
                     </div>
                   </div>
@@ -133,12 +134,12 @@ export function BuySellForm() {
                 <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-2 mb-1">
                     <Info className="h-5 w-5 self-start" />
-                    <div className='flex flex-col'>
+                    <div className="flex flex-col">
                       <span className="font-medium">Buy/Sell tool</span>
                       <span className="text-xs text-muted-foreground">
-                      {isBuying
-                      ? 'This tool enables you to buy crypto with fiat currency'
-                      : 'This tool enables you to sell crypto for fiat currency'}
+                        {isBuying
+                          ? 'This tool enables you to buy crypto with fiat currency'
+                          : 'This tool enables you to sell crypto for fiat currency'}
                       </span>
                     </div>
                   </div>
@@ -189,7 +190,7 @@ export function BuySellForm() {
                   <TooltipContent className="w-[280px] p-3" align="center">
                     <div className="flex items-center gap-4 mb-1">
                       <Info className="h-6 w-6 self-start" />
-                      <div className='flex flex-col'>
+                      <div className="flex flex-col">
                         <span className="font-medium">Provider Fee</span>
                         <span className="text-xs text-muted-foreground">
                           The fee charged by the provider for the transaction.
@@ -220,10 +221,11 @@ export function BuySellForm() {
                 <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-4 mb-1">
                     <Info className="h-6 w-6 self-start" />
-                    <div className='flex flex-col'>
+                    <div className="flex flex-col">
                       <span className="font-medium">Summary</span>
                       <span className="text-xs text-muted-foreground">
-                        An overview of your swap details, including amounts, rates and fees.
+                        An overview of your swap details, including amounts,
+                        rates and fees.
                       </span>
                     </div>
                   </div>
@@ -267,10 +269,11 @@ export function BuySellForm() {
                 <TooltipContent className="w-[280px] p-3" align="center">
                   <div className="flex items-center gap-4 mb-1">
                     <Info className="h-8 w-8 self-start" />
-                    <div className='flex flex-col'>
+                    <div className="flex flex-col">
                       <span className="font-medium">Important!</span>
                       <span className="text-xs text-muted-foreground">
-                        Always verify the crypto you're buying. Check for audits and community feedback.
+                        Always verify the crypto you're buying. Check for audits
+                        and community feedback.
                       </span>
                     </div>
                   </div>

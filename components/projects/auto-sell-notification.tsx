@@ -78,14 +78,7 @@ export function AutoSellNotification({ projectId }: AutoSellNotificationProps) {
         return;
       }
 
-      if (data.activity.type !== 'bot') {
-        console.warn(
-          `❌ [WebSocket] Not a bot activity in ACTIVITY_LOG_ADDED event: ${data.activity.type}`
-        );
-        return;
-      }
-
-      if (data.activity.botType !== 'AutoSellBot') {
+      if (data.activity.botType !== 'AutoSell') {
         console.warn(
           `❌ [WebSocket] Not an AutoSellBot in ACTIVITY_LOG_ADDED event: ${data.activity.botType}`
         );
@@ -105,8 +98,7 @@ export function AutoSellNotification({ projectId }: AutoSellNotificationProps) {
       if (
         data.projectId === projectId &&
         data.activity &&
-        data.activity.type === 'bot' &&
-        data.activity.botType === 'AutoSellBot'
+        data.activity.botType === 'AutoSell'
       ) {
         // Create a new notification object
         const newNotification = {
@@ -241,7 +233,7 @@ export function AutoSellNotification({ projectId }: AutoSellNotificationProps) {
               No notifications
             </div>
           ) : (
-            notifications.map((notification) => (
+            notifications.map((notification: any) => (
               <DropdownMenuItem
                 key={notification.id}
                 className={`flex flex-col items-start p-3 relative ${notification.read ? 'opacity-70' : 'font-medium'}`}

@@ -37,10 +37,14 @@ export default tseslint.config(
     ignores: [
       'dist',
       'node_modules',
+      '.next',
       'coverage',
       '.husky',
       'cdk.out',
       'src/web-ui-kit/',
+      'next.config.mjs',
+      'tailwind.config.js',
+      'public/tokenboost.js',
     ],
   },
 

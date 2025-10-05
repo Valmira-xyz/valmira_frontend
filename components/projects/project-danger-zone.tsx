@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux';
 
-import { AlertTriangle, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { AlertTriangle, Loader2, Trash2 } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
 
 import {
   AlertDialog,
@@ -41,6 +41,7 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
   const [open, setOpen] = useState(false);
   const dispatch = useDispatch();
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
   const { user } = useSelector((state: RootState) => state.auth);
 
@@ -78,19 +79,25 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
     try {
       setIsDeleting(true);
       await dispatch(deleteProject(project?._id) as any);
+
+      // Emit custom event to notify sidebar about project deletion
+      window.dispatchEvent(new CustomEvent('projectsChanged'));
+
       toast({
         title: 'Project Deleted',
         description: 'Project has been successfully deleted.',
       });
-      // Navigate back to projects list
-      router.push('/projects');
-    } catch (error) {
+      // Navigate back to public-projects list
+      router.push('/public-projects');
+      
+    } catch (error: any) {
       toast({
-        title: 'Error',
-        description: 'Failed to delete project. Please try again.',
+        title: error.response?.data?.errorType || 'Error',
+        description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+          'Failed to delete project. Please try again.',
         variant: 'destructive',
       });
-      console.error('Error deleting project:', error);
     } finally {
       // Reset form
       setTokenNameInput('');
@@ -123,7 +130,8 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
                 if (!isProjectOwner) {
                   toast({
                     title: 'Permission Denied',
-                    description: 'Only the project owner can destroy this project.',
+                    description:
+                      'Only the project owner can destroy this project.',
                     variant: 'destructive',
                   });
                   return;
@@ -131,7 +139,17 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
                 setOpen(true);
               }}
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Stop/Destroy Project
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting Project...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Stop/Destroy Project
+                </>
+              )}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent className="sm:max-w-[425px]">
@@ -171,35 +189,25 @@ export function ProjectDangerZone({ project }: { project: ProjectWithAddons }) {
               </div>
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setOpen(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel
+                onClick={() => {
+                  setOpen(false);
+                  setIsValid(false);
+                  setConfirmationPhrase('');
+                  setTokenNameInput('');
+                }}
+              >
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => isProjectOwner && handleDestroyProject()}
                 disabled={!isValid || isDeleting}
-                className="bg-destructive hover:bg-destructive/90"
+                className="bg-destructive hover:bg-destructive/90 text-white"
               >
                 {isDeleting ? (
                   <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Deleting...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting Project...
                   </>
                 ) : (
                   'Yes, destroy project'

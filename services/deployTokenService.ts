@@ -12,7 +12,8 @@ import {
   VerificationParams,
 } from '@/types';
 
-const CONTRACT_SERVER_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/contracts`;
+const CONTRACT_SERVER_URL = `${process.env.NEXT_PUBLIC_CONTRACT_SERVER_URL}/contracts`;
+// const CONTRACT_SERVER_URL = `https://valmira.blockvalidtest.com/api/contracts`;
 
 // Rate limiting configuration
 const RATE_LIMIT_DELAY = 1000; // 1 second

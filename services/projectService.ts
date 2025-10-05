@@ -6,15 +6,15 @@ import type { ApiResponse, MigrationResponse, Project } from '@/types';
 const BACKEND_URL = config.apiUrl;
 
 // Rate limiting configuration
-const RATE_LIMIT_DELAY = 2000; // Increase to 5 seconds between requests (was 2000)
+const RATE_LIMIT_DELAY = 1000; // Increase to 5 seconds between requests (was 2000)
 const BATCH_DELAY = 10000; // Increase to 10 seconds between batches (was 5000)
-const MAX_CONCURRENT_REQUESTS = 5; // Reduce to 1 concurrent request (was 2)
+const MAX_CONCURRENT_REQUESTS = 5; // Increase to 5 concurrent request (was 2)
 const ENDPOINT_COOLDOWNS = new Map<string, number>();
 const ENDPOINT_SPECIFIC_DELAYS = new Map<string, number>([
-  ['bnb-price', 15000], // 15 seconds for BNB price (was 10000)
-  ['metrics/global', 20000], // 20 seconds for global metrics (was 15000)
-  ['project-stats', 5000], // 5 seconds for project stats (was 3000)
-  ['projects/public', 8000], // 8 seconds specifically for public projects
+  ['native-price', 10000], // 15 seconds for native currency price (was 10000)
+  ['metrics/global', 5000], // 20 seconds for global metrics (was 15000)
+  ['project-stats', 1000], // 5 seconds for project stats (was 3000)
+  ['projects/public', 2000], // 8 seconds specifically for public projects
 ]);
 
 let lastRequestTime = 0;
@@ -23,13 +23,13 @@ const requestQueue: Array<() => Promise<any>> = [];
 let queueProcessorRunning = false;
 
 // Retry configuration
-const MAX_RETRIES = 5; // Increased from 3
+const MAX_RETRIES = 1; // Increased from 3
 const RETRY_DELAY = 3000; // 3 seconds before retry (was 2000)
 const MAX_RETRY_DELAY = 30000; // Maximum retry delay of 30 seconds
 
 // Helper function to get endpoint from URL
 const getEndpointKey = (url: string): string => {
-  if (url.includes('bnb-price')) return 'bnb-price';
+  if (url.includes('native-price')) return 'native-price';
   if (url.includes('metrics/global')) return 'metrics/global';
   if (url.includes('project-stats')) return 'project-stats';
   if (url.includes('projects/public')) return 'projects/public';
@@ -166,7 +166,10 @@ const retryWithBackoff = async <T>(
     }
 
     if (retries === 0) {
-      console.error('Max retries reached. Throwing error:', error);
+      console.error(
+        'Max retries reached. Throwing error:',
+        error.response?.data?.message || error.message
+      );
       throw error;
     }
 
@@ -205,7 +208,8 @@ export type ActivityAction =
   | 'Token Sold'
   | 'Single Wallet Sell'
   | 'Fees Estimated'
-  | 'Snipe Simulated';
+  | 'Snipe Simulated'
+  | 'Token Distribution Completed';
 
 export interface ActivityLog {
   timestamp: Date;
@@ -214,7 +218,7 @@ export interface ActivityLog {
   volume: number;
   impact: number;
   tokenAmount?: number;
-  bnbAmount?: number;
+  nativeAmount?: number;
 }
 
 export interface BotPerformanceHistory {
@@ -286,7 +290,6 @@ export interface TimeSeriesDataPoint {
 
 export const projectService = {
   getProjects: async (): Promise<Project[]> => {
-    console.log('==== getProjects service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects`);
       return await retryWithBackoff(async () => {
@@ -304,16 +307,16 @@ export const projectService = {
 
   getPublicProjects: async (
     pageIndex: number = 0,
-    maxPageCount: number = 10
+    maxPageCount: number = 10,
+    isProject: boolean = true
   ): Promise<Project[]> => {
-    console.log('==== getPublicProjects service called ====');
     try {
       await waitForRateLimit(
-        `${BACKEND_URL}/projects/public?pageIndex=${pageIndex}&maxPageCount=${maxPageCount}`
+        `${BACKEND_URL}/projects/public?pageIndex=${pageIndex}&maxPageCount=${maxPageCount}&isProject=${isProject}`
       );
       return await retryWithBackoff(async () => {
         const response = await axios.get<ApiResponse<{ projects: Project[] }>>(
-          `${BACKEND_URL}/projects/public?pageIndex=${pageIndex}&maxPageCount=${maxPageCount}`
+          `${BACKEND_URL}/projects/public?pageIndex=${pageIndex}&maxPageCount=${maxPageCount}&isProject=${isProject}`
         );
         return response.data.data.projects;
       });
@@ -324,7 +327,6 @@ export const projectService = {
   },
 
   getProject: async (projectId: string): Promise<Project> => {
-    console.log('==== getProject service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects/${projectId}`);
       return await retryWithBackoff(async () => {
@@ -340,7 +342,6 @@ export const projectService = {
   },
 
   createProject: async (projectData: Partial<Project>): Promise<Project> => {
-    console.log('==== createProject service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects`);
       return await retryWithBackoff(async () => {
@@ -361,7 +362,6 @@ export const projectService = {
     projectId: string,
     status: 'active' | 'inactive'
   ): Promise<Project> => {
-    console.log('==== updateProjectStatus service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects/${projectId}/status`);
       return await retryWithBackoff(async () => {
@@ -379,7 +379,6 @@ export const projectService = {
   },
 
   deleteProject: async (projectId: string): Promise<void> => {
-    console.log('==== deleteProject service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects/${projectId}`);
       await retryWithBackoff(async () => {
@@ -395,7 +394,6 @@ export const projectService = {
   },
 
   getVolumeData: async (projectId: string): Promise<any> => {
-    console.log('==== getVolumeData service called ====');
     try {
       await waitForRateLimit(`${BACKEND_URL}/projects/${projectId}/volume`);
       return await retryWithBackoff(async () => {
@@ -415,7 +413,6 @@ export const projectService = {
     projectId: string,
     timeRange: { start: Date; end: Date }
   ): Promise<ActivityLog[]> => {
-    console.log('==== getRecentActivity service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/project-stats/${projectId}/activity`
@@ -438,12 +435,35 @@ export const projectService = {
     }
   },
 
+  getGlobalRecentActivity: async (
+    startDate: Date,
+    endDate: Date
+  ): Promise<any[]> => {
+    try {
+      await waitForRateLimit(`${BACKEND_URL}/project-stats/global-activity`);
+      return await retryWithBackoff(async () => {
+        const response = await axios.get<ApiResponse<any[]>>(
+          `${BACKEND_URL}/project-stats/global-activity`,
+          {
+            params: {
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+            },
+          }
+        );
+        return response.data.data;
+      });
+    } catch (error) {
+      console.error('Error fetching global recent activity:', error);
+      throw error;
+    }
+  },
+
   getBotPerformanceHistory: async (
     projectId: string,
     startDate: Date,
     endDate: Date
   ): Promise<ApiResponse<BotPerformanceHistory[]>> => {
-    console.log('==== getBotPerformanceHistory service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/project-stats/${projectId}/bot-performance`
@@ -453,8 +473,8 @@ export const projectService = {
           `${BACKEND_URL}/project-stats/${projectId}/bot-performance`,
           {
             params: {
-              startDate: startDate.toISOString().split('T')[0],
-              endDate: endDate.toISOString().split('T')[0],
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
             },
           }
         );
@@ -466,11 +486,36 @@ export const projectService = {
     }
   },
 
+  getGlobalBotPerformanceHistory: async (
+    startDate: Date,
+    endDate: Date
+  ): Promise<any[]> => {
+    try {
+      await waitForRateLimit(
+        `${BACKEND_URL}/project-stats/global-bot-performance`
+      );
+      return await retryWithBackoff(async () => {
+        const response = await axios.get<ApiResponse<any[]>>(
+          `${BACKEND_URL}/project-stats/global-bot-performance`,
+          {
+            params: {
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+            },
+          }
+        );
+        return response.data.data;
+      });
+    } catch (error) {
+      console.error('Error fetching global bot performance history:', error);
+      throw error;
+    }
+  },
+
   getProjectStats: async (
     projectId: string,
     timeRange?: { start: Date; end: Date }
   ): Promise<ProjectStatistics> => {
-    console.log('==== getProjectStats service called ====');
     try {
       // First, get the basic stats
       const queryParams = timeRange
@@ -497,7 +542,6 @@ export const projectService = {
     projectId: string,
     timeRange: { start: Date; end: Date }
   ): Promise<TimeSeriesDataPoint[]> => {
-    console.log('==== getProfitTrending service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/project-stats/${projectId}/profit-trending`
@@ -520,11 +564,36 @@ export const projectService = {
     }
   },
 
+  getGlobalProfitTrending: async (
+    startDate: Date,
+    endDate: Date
+  ): Promise<any[]> => {
+    try {
+      await waitForRateLimit(
+        `${BACKEND_URL}/project-stats/global-profit-trending`
+      );
+      const response = await retryWithBackoff(async () => {
+        return await axios.get<ApiResponse<any[]>>(
+          `${BACKEND_URL}/project-stats/global-profit-trending`,
+          {
+            params: {
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+            },
+          }
+        );
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching profit trending data:', error);
+      throw error;
+    }
+  },
+
   getVolumeTrending: async (
     projectId: string,
     timeRange: { start: Date; end: Date }
   ): Promise<TimeSeriesDataPoint[]> => {
-    console.log('==== getVolumeTrending service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/project-stats/${projectId}/volume-trending`
@@ -547,6 +616,56 @@ export const projectService = {
     }
   },
 
+  getGlobalVolumeTrending: async (
+    startDate: Date,
+    endDate: Date
+  ): Promise<any[]> => {
+    try {
+      await waitForRateLimit(
+        `${BACKEND_URL}/project-stats/global-volume-trending`
+      );
+      const response = await retryWithBackoff(async () => {
+        return await axios.get<ApiResponse<any[]>>(
+          `${BACKEND_URL}/project-stats/global-volume-trending`,
+          {
+            params: {
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+            },
+          }
+        );
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching volume trending data:', error);
+      throw error;
+    }
+  },
+
+  getGlobalProjectStats: async (
+    startDate: Date,
+    endDate: Date
+  ): Promise<any[]> => {
+    try {
+      await waitForRateLimit(`${BACKEND_URL}/project-stats/global-projects`);
+      const response = await retryWithBackoff(async () => {
+        return await axios.get<ApiResponse<any[]>>(
+          `${BACKEND_URL}/project-stats/global-projects`,
+          {
+            params: {
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+            },
+          }
+        );
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching global project stats:', error);
+      throw error;
+    }
+  },
+
   /**
    * Add an activity log entry for a project
    * @param projectId - The ID of the project
@@ -556,7 +675,6 @@ export const projectService = {
     projectId: string,
     activity: ActivityLog
   ): Promise<void> => {
-    console.log('==== addActivityLog service called ====');
     try {
       await axios.post(
         `${BACKEND_URL}/project-stats/${projectId}/activity`,
@@ -575,18 +693,21 @@ export const projectService = {
   logLPAddition: async (
     projectId: string,
     tokenAmount: number,
-    bnbAmount: number
-    ): Promise<void> => {
-    console.log('==== logLPAddition service called ====');
-    const bnbPrice = await projectService.fetchBnbPrice();
+    nativeAmount: number,
+    chainName: string
+  ): Promise<void> => {
+    console.log('logLPAddition', projectId, tokenAmount, nativeAmount, chainName);
+    return;
+    const nativePrice =
+      await projectService.fetchNativeCurrencyPrice(chainName);
     return projectService.addActivityLog(projectId, {
       timestamp: new Date(),
       botName: 'SnipeBot',
       action: 'Add LP',
-      volume: bnbAmount * bnbPrice, // Convert to USD value
+      volume: nativeAmount * nativePrice, // Convert to USD value
       impact: 0, // Calculate impact if needed
       tokenAmount,
-      bnbAmount,
+      nativeAmount,
     });
   },
 
@@ -596,18 +717,19 @@ export const projectService = {
   logLPRemoval: async (
     projectId: string,
     tokenAmount: number,
-    bnbAmount: number
+    nativeAmount: number,
+    chainName: string = 'BSC_MAINNET'
   ): Promise<void> => {
-    console.log('==== logLPRemoval service called ====');
-    const bnbPrice = await projectService.fetchBnbPrice();
+    const nativePrice =
+      await projectService.fetchNativeCurrencyPrice(chainName);
     return projectService.addActivityLog(projectId, {
       timestamp: new Date(),
       botName: 'SnipeBot',
       action: 'Remove LP',
-      volume: bnbAmount * bnbPrice, // Convert to USD value
+      volume: nativeAmount * nativePrice, // Convert to USD value
       impact: 0, // Calculate impact if needed
       tokenAmount,
-      bnbAmount,
+      nativeAmount,
     });
   },
 
@@ -616,7 +738,6 @@ export const projectService = {
    * @returns GlobalMetrics object with platform-wide metrics
    */
   getGlobalMetrics: async (): Promise<GlobalMetrics> => {
-    console.log('==== getGlobalMetrics service called ====');
     try {
       return await retryWithBackoff(
         async () => {
@@ -634,8 +755,9 @@ export const projectService = {
     }
   },
 
-  fetchBnbPrice: async (): Promise<number> => {
-    console.log('==== fetchBnbPrice service called ====');
+  fetchNativeCurrencyPrice: async (
+    chainName: string = 'BSC_MAINNET'
+  ): Promise<number> => {
     try {
       return await retryWithBackoff(
         async () => {
@@ -646,7 +768,7 @@ export const projectService = {
               symbol: string;
               currency: string;
             };
-          }>(`${BACKEND_URL}/web3/bnb-price`);
+          }>(`${BACKEND_URL}/web3/native-price/${chainName}`);
 
           if (response.data.success && response.data.data.price) {
             return response.data.data.price;
@@ -654,10 +776,10 @@ export const projectService = {
           return 300; // Fallback value
         },
         MAX_RETRIES,
-        'bnb-price'
+        `native-price-${chainName}`
       );
     } catch (error) {
-      console.error('Failed to fetch BNB price:', error);
+      console.error('Failed to fetch native currency price:', error);
       return 300; // Fallback value on error
     }
   },
@@ -670,7 +792,6 @@ export const projectService = {
   migrateSnipingWallets: async (
     projectId: string
   ): Promise<MigrationResponse> => {
-    console.log('==== migrateSnipingWallets service called ====');
     try {
       await waitForRateLimit(
         `${BACKEND_URL}/projects/${projectId}/migrate-sniping-wallets`

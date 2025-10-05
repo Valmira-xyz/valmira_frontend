@@ -1,24 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { Copy, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/components/ui/use-toast';
 import { BotService } from '@/services/botService';
-import { projectService } from '@/services/projectService';
-import { getWalletBalances } from '@/services/web3Utils';
 import websocketService, { WebSocketEvents } from '@/services/websocketService';
 import { toggleBot, updateVolumeGeneration } from '@/store/slices/botSlice';
 import { fetchProject, fetchProjects } from '@/store/slices/projectSlice';
@@ -26,7 +23,12 @@ import { AppDispatch, RootState } from '@/store/store';
 import { Project } from '@/types';
 
 // Utility function for parsing error messages
-const parseErrorMessage = (message: string, details: string) => {
+const parseErrorMessage = (
+  message: string,
+  details: string,
+  nativeCurrency: string
+) => {
+  console.log('parsing error message - native currency : ', nativeCurrency);
   if (message.includes('insufficient funds')) {
     const addressMatch = details.match(/address (\w+)/);
     const availableMatch = details.match(/have (\d+)/);
@@ -41,7 +43,7 @@ const parseErrorMessage = (message: string, details: string) => {
 
     return {
       title: 'Insufficient Funds',
-      message: `Your wallet ${address} has insufficient funds. Available: ${available.toFixed(6)} BNB, Required: ${required.toFixed(6)} BNB. Please add at least ${additionalNeeded.toFixed(6)} BNB to proceed.`,
+      message: `Your wallet ${address} has insufficient funds. Available: ${available.toFixed(6)} ${nativeCurrency}, Required: ${required.toFixed(6)} ${nativeCurrency}. Please add at least ${additionalNeeded.toFixed(6)} ${nativeCurrency} to proceed.`,
     };
   }
 
@@ -52,6 +54,7 @@ const parseErrorMessage = (message: string, details: string) => {
 interface VolumeBotWizardDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onConfigurationSuccess?: () => void;
 }
 
 interface ExtendedProject extends Project {
@@ -62,7 +65,7 @@ interface ExtendedProject extends Project {
       depositWalletId: {
         publicKey: string;
       };
-      bnbBalance?: number;
+      nativeBalance?: number;
       generatedVolume?: number;
     };
     [key: string]: any;
@@ -72,21 +75,20 @@ interface ExtendedProject extends Project {
   symbol: string;
   isImported?: boolean;
   explorerUrl?: string;
+  chainName: string;
 }
 
 export function VolumeBotWizardDialog({
   open,
   onOpenChange,
+  onConfigurationSuccess,
 }: VolumeBotWizardDialogProps) {
   const { id: projectId } = useParams() as { id: string };
-  const { currentProject, loading: isProjectLoading } = useSelector(
-    (state: RootState) => state.projects
-  );
+  const { currentProject } = useSelector((state: RootState) => state.projects);
   const dispatch = useDispatch<AppDispatch>();
 
   // Initialize project state
   const [project, setProject] = useState<ExtendedProject | null>(null);
-  const [isLoadingProject, setIsLoadingProject] = useState(false);
   const { toast } = useToast();
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionSuccess, setExecutionSuccess] = useState(false);
@@ -94,31 +96,21 @@ export function VolumeBotWizardDialog({
   // Update local project state when currentProject changes
   useEffect(() => {
     if (!currentProject) return;
-
     setProject(currentProject as ExtendedProject);
   }, [currentProject]);
 
-  // Fetch detailed project data when dialog opens
-  useEffect(() => {
-    if (open && projectId) {
-      fetchAndFillDetailedProejct(projectId);
-    }
-  }, [open, projectId]);
-
   // Volume Bot Settings
-  const [minBNBAmount, setMinBNBAmount] = useState(0.0001);
-  const [maxBNBAmount, setMaxBNBAmount] = useState(0.0002);
-  const [timeSpan, setTimeSpan] = useState(60000); // in milliseconds
+  const [minNativeAmount, setMinNativeAmount] = useState(0.0001);
+  const [maxNativeAmount, setMaxNativeAmount] = useState(0.0002);
+  const [timeSpan, setTimeSpan] = useState(3); // in seconds
   const [isLoading, setIsLoading] = useState(false);
-  const [bnbBalance, setBnbBalance] = useState(0);
-  const [errorState, setErrorState] = useState<
-    | {
-        message: string;
-        details: string;
-      }
-    | undefined
-  >(undefined);
 
+  const nativeCurrency =
+    project?.chainName === 'BSC_MAINNET'
+      ? 'BNB'
+      : project?.chainName === 'ETH_MAINNET'
+        ? 'ETH'
+        : 'SOL';
   const loadBotConfiguration = async () => {
     if (!project) return;
     setIsLoading(true);
@@ -127,26 +119,23 @@ export function VolumeBotWizardDialog({
         project.addons.VolumeBot._id as string
       );
 
-      console.log(`bot detail => ${JSON.stringify(botDetails, null, 2)}`);
-
       // Set the saved configuration values if available
       if (botDetails) {
-        setMinBNBAmount(botDetails.minBnbAmount || 0.0001);
-        setMaxBNBAmount(botDetails.maxBnbAmount || 0.0002);
-        setTimeSpan((botDetails.timeSpanBetweenTransactions || 60000) / 1000);
-        const balance = await getWalletBalances(
-          [project.addons.VolumeBot.depositWalletId.publicKey],
-          project.tokenAddress
+        setMinNativeAmount(botDetails.minNativeAmount || 0.0001);
+        setMaxNativeAmount(botDetails.maxNativeAmount || 0.0002);
+        setTimeSpan(
+          botDetails.timeSpanBetweenTransactions
+            ? botDetails.timeSpanBetweenTransactions / 1000 // for converting milliseconds to seconds
+            : 3
         );
-        if (balance && balance[0]) {
-          setBnbBalance(balance[0].bnbBalance);
-        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading volume bot configuration:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load bot configuration',
+        title: error.response?.data?.errorType || 'Error',
+        description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+          'Failed to load bot configuration',
         variant: 'destructive',
       });
     } finally {
@@ -179,14 +168,48 @@ export function VolumeBotWizardDialog({
       console.log('Received volume generation update:', data);
       if (data.error) {
         console.error('Volume generation error:', data.error);
+
+        // Get native currency from currentProject instead of project state
+        const errorNativeCurrency =
+          currentProject?.chainName === 'BSC_MAINNET'
+            ? 'BNB'
+            : currentProject?.chainName === 'ETH_MAINNET'
+              ? 'ETH'
+              : 'SOL';
+
         const { title, message } = parseErrorMessage(
           data.error.message,
-          data.error.details
+          data.error.details,
+          errorNativeCurrency
         );
-        setErrorState({
-          message: data.error.message,
-          details: data.error.details,
+
+        // Update local state to disable the bot
+        setProject((prevProject) => {
+          if (!prevProject) return null;
+          return {
+            ...prevProject,
+            addons: {
+              ...prevProject.addons,
+              VolumeBot: {
+                ...prevProject.addons.VolumeBot,
+                isEnabled: false,
+              },
+            },
+          };
         });
+
+        // Update Redux state to disable the bot
+        dispatch(
+          toggleBot({
+            projectId,
+            botId: data.botId,
+            enabled: false,
+          })
+        );
+
+        // Refresh project data
+        dispatch(fetchProject(projectId));
+
         toast({
           title,
           description: message,
@@ -202,22 +225,6 @@ export function VolumeBotWizardDialog({
               generatedVolume: data.generatedVolume,
             })
           );
-
-          // Update BNB balance after volume generation
-          if (project?.addons?.VolumeBot?.depositWalletId?.publicKey) {
-            getWalletBalances(
-              [project.addons.VolumeBot.depositWalletId.publicKey],
-              project.tokenAddress
-            )
-              .then((balances) => {
-                if (balances && balances[0]) {
-                  setBnbBalance(balances[0].bnbBalance);
-                }
-              })
-              .catch((error) => {
-                console.error('Error updating BNB balance:', error);
-              });
-          }
 
           toast({
             title: 'Volume Generated',
@@ -236,11 +243,12 @@ export function VolumeBotWizardDialog({
         WebSocketEvents.VOLUME_GENERATION_UPDATED,
         handleVolumeGenerationUpdate
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('WebSocket connection error:', error);
       toast({
-        title: 'Connection Error',
+        title: error.response?.data?.errorType || 'Connection Error',
         description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
           'Failed to establish WebSocket connection. Please try again.',
         variant: 'destructive',
       });
@@ -259,53 +267,16 @@ export function VolumeBotWizardDialog({
     };
   }, [projectId, open, dispatch, toast]);
 
-  // Add error display component
-  const ErrorDisplay = () => {
-    if (!errorState) return null;
-
-    const { title, message } = parseErrorMessage(
-      errorState.message,
-      errorState.details
-    );
-
-    return (
-      <div className="mt-4 p-4 bg-gray-200 rounded-lg">
-        <h4 className="text-destructive font-semibold mb-2">{title}</h4>
-        <p className="text-sm text-destructive leading-relaxed">{message}</p>
-      </div>
-    );
-  };
-
-  const fetchAndFillDetailedProejct = async (projectId: string) => {
-    try {
-      setIsLoadingProject(true);
-      const project = await projectService.getProject(projectId);
-      setProject(project as ExtendedProject);
-    } catch (error) {
-      console.error('Error fetching project:', error);
+  const handleExecute = async () => {
+    if (timeSpan < 3) {
       toast({
         title: 'Error',
-        description: 'Failed to load project data',
+        description: 'Time span must be at least 3 seconds',
         variant: 'destructive',
       });
-    } finally {
-      setIsLoadingProject(false);
+      return;
     }
-  };
 
-  const handleCopyAddress = async () => {
-    if (project?.addons?.VolumeBot?.depositWalletId?.publicKey) {
-      await navigator.clipboard.writeText(
-        project.addons.VolumeBot.depositWalletId.publicKey
-      );
-      toast({
-        title: 'Success',
-        description: 'Wallet address copied to clipboard',
-      });
-    }
-  };
-
-  const handleExecute = async () => {
     if (!project?.addons?.VolumeBot?._id) {
       toast({
         title: 'Error',
@@ -325,9 +296,10 @@ export function VolumeBotWizardDialog({
         projectId: project._id,
         botId: project.addons.VolumeBot._id,
         config: {
-          minBNBAmount,
-          maxBNBAmount,
+          minNativeAmount,
+          maxNativeAmount,
           timeSpan: timeSpan * 1000,
+          chainName: project?.chainName ?? 'BSC_MAINNET',
         },
       });
 
@@ -345,17 +317,26 @@ export function VolumeBotWizardDialog({
           description:
             'Volume Bot configuration applied and started successfully',
         });
-        setTimeout(() => {
-          fetchAndFillDetailedProejct(projectId);
-        }, 2000);
+
+        // Call the success callback to enable the toggle
+        onConfigurationSuccess?.();
+
+        // Close the modal after successful configuration
+        onOpenChange(false);
+
+        // setTimeout(() => {
+        //   fetchAndFillDetailedProejct(projectId);
+        // }, 2000);
       } else {
         setIsExecuting(false);
         throw new Error(result.message || 'Configuration failed');
       }
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to configure Volume Bot',
+        title: error.response?.data?.errorType || 'Error',
+        description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+          'Failed to configure Volume Bot',
         variant: 'destructive',
       });
     } finally {
@@ -376,7 +357,23 @@ export function VolumeBotWizardDialog({
     setIsExecuting(true);
 
     try {
-      // Disable the bot through Redux
+      // Update local state first
+      setProject((prevProject) => {
+        if (!prevProject) return null;
+        return {
+          ...prevProject,
+          addons: {
+            ...prevProject.addons,
+            VolumeBot: {
+              ...prevProject.addons.VolumeBot,
+              isEnabled: false,
+              depositWalletId: prevProject.addons.VolumeBot.depositWalletId,
+            },
+          },
+        };
+      });
+
+      // Then update Redux state
       await dispatch(
         toggleBot({
           projectId: project._id,
@@ -385,17 +382,19 @@ export function VolumeBotWizardDialog({
         })
       ).unwrap();
 
+      // Wait for Redux state to be updated
+      await dispatch(fetchProject(projectId));
+
       toast({
         title: 'Success',
         description: 'Volume Bot stopped successfully',
       });
-      setTimeout(() => {
-        fetchAndFillDetailedProejct(projectId);
-      }, 2000);
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to stop Volume Bot',
+        title: error.response?.data?.errorType || 'Error',
+        description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+          'Failed to stop Volume Bot',
         variant: 'destructive',
       });
     } finally {
@@ -403,90 +402,28 @@ export function VolumeBotWizardDialog({
     }
   };
 
-  function abbreviateAddress(publicKey?: string): string {
-    if (!publicKey) return '---';
-    return publicKey.slice(0, 4) + '...' + publicKey.slice(-4);
-  }
-
   return (
     <Dialog
       open={open}
       onOpenChange={() => {
         onOpenChange(false);
         setIsExecuting(false);
-        setErrorState(undefined);
       }}
     >
       <DialogContent className="max-w-2xl">
         <Card className="border-none shadow-none">
-          <CardHeader className="px-0 pt-0 pb-4">
-            <CardTitle>Volume Bot Configuration</CardTitle>
-            <CardDescription>
-              Configure automated trading parameters to generate volume for your
-              token.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Wallet Information Section */}
-            <div className="bg-secondary/30 p-4 rounded-lg space-y-4">
-              <div className="flex justify-between items-center">
-                <Label className="text-sm font-medium">Deposit Wallet</Label>
-                <div className="flex items-center gap-2">
-                  <div className="text-sm font-mono bg-secondary/20 p-2 rounded">
-                    {abbreviateAddress(
-                      project?.addons?.VolumeBot?.depositWalletId?.publicKey
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleCopyAddress}
-                    className="h-8 w-8"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <a
-                    href={`https://bscscan.com/address/${project?.addons?.VolumeBot?.depositWalletId?.publicKey}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm text-muted-foreground">
-                    BNB Balance
-                  </Label>
-                  <p className="text-lg font-semibold">
-                    {bnbBalance?.toFixed(6) || '0.000000'} BNB
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">
-                    Generated Volume
-                  </Label>
-                  <p className="text-lg font-semibold">
-                    $
-                    {project?.addons?.VolumeBot?.generatedVolume?.toFixed(4) ||
-                      '0.0000'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Min BNB Amount */}
+          <DialogTitle>Volume Bot Configuration</DialogTitle>
+          <DialogDescription className="space-y-4 mt-10">
+            {/* Min native currency Amount */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label>Min BNB Amount</Label>
+                <Label>Min {nativeCurrency} Amount</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    value={minBNBAmount}
+                    value={minNativeAmount}
                     onChange={(e) =>
-                      setMinBNBAmount(parseFloat(e.target.value))
+                      setMinNativeAmount(parseFloat(e.target.value))
                     }
                     min={0.0001}
                     max={1.0}
@@ -494,33 +431,30 @@ export function VolumeBotWizardDialog({
                     className="w-24 h-8 px-2 rounded-md border border-input bg-background text-sm"
                     disabled={isLoading || isExecuting}
                   />
-                  <span className="text-sm font-medium">BNB</span>
+                  <span className="text-sm font-medium">{nativeCurrency}</span>
                 </div>
               </div>
               <Slider
-                value={[minBNBAmount]}
-                onValueChange={(value) => setMinBNBAmount(value[0])}
+                value={[minNativeAmount]}
+                onValueChange={(value) => setMinNativeAmount(value[0])}
                 min={0.0001}
                 max={1.0}
                 step={0.0001}
                 className="w-full"
                 disabled={isLoading || isExecuting}
               />
-              <p className="text-sm text-muted-foreground">
-                Minimum amount of BNB to use for each market making transaction
-              </p>
             </div>
 
-            {/* Max BNB Amount */}
+            {/* Max native currency Amount */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label>Max BNB Amount</Label>
+                <Label>Max {nativeCurrency} Amount</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    value={maxBNBAmount}
+                    value={maxNativeAmount}
                     onChange={(e) =>
-                      setMaxBNBAmount(parseFloat(e.target.value))
+                      setMaxNativeAmount(parseFloat(e.target.value))
                     }
                     min={0.0002}
                     max={2.0}
@@ -528,35 +462,30 @@ export function VolumeBotWizardDialog({
                     className="w-24 h-8 px-2 rounded-md border border-input bg-background text-sm"
                     disabled={isLoading || isExecuting}
                   />
-                  <span className="text-sm font-medium">BNB</span>
+                  <span className="text-sm font-medium">{nativeCurrency}</span>
                 </div>
               </div>
               <Slider
-                value={[maxBNBAmount]}
-                onValueChange={(value) => setMaxBNBAmount(value[0])}
+                value={[maxNativeAmount]}
+                onValueChange={(value) => setMaxNativeAmount(value[0])}
                 min={0.0002}
                 max={2.0}
                 step={0.0002}
                 className="w-full"
                 disabled={isLoading || isExecuting}
               />
-              <p className="text-sm text-muted-foreground">
-                Maximum amount of BNB to use for each market making transaction
-              </p>
             </div>
 
             {/* Time Span Between Transactions */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label>Time Span Between Transactions</Label>
+                <Label>Time Span Between Transactions (min 5s)</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     value={timeSpan}
-                    onChange={(e) =>
-                      setTimeSpan(parseFloat(e.target.value))
-                    }
-                    min={0.1}
+                    onChange={(e) => setTimeSpan(parseFloat(e.target.value))}
+                    min={3}
                     max={600}
                     step={0.1}
                     className="w-24 h-8 px-2 rounded-md border border-input bg-background text-sm"
@@ -568,20 +497,17 @@ export function VolumeBotWizardDialog({
               <Slider
                 value={[timeSpan]}
                 onValueChange={(value) => setTimeSpan(value[0])}
-                min={0.1}
+                min={3}
                 max={600}
                 step={1}
                 className="w-full"
                 disabled={isLoading || isExecuting}
               />
-              <p className="text-sm text-muted-foreground">
-                Time interval between market making transactions
-              </p>
             </div>
 
             {/* Action Buttons */}
             <div className="pt-4 space-y-2">
-              {project?.addons?.VolumeBot?.isEnabled || errorState ? (
+              {project?.addons?.VolumeBot?.isEnabled ? (
                 <Button
                   className="w-full"
                   onClick={handleStop}
@@ -599,7 +525,16 @@ export function VolumeBotWizardDialog({
                   className="w-full"
                   onClick={handleExecute}
                   disabled={
-                    isExecuting || isLoading || !project?.addons?.VolumeBot?._id
+                    isExecuting ||
+                    isLoading ||
+                    !project?.addons?.VolumeBot?._id ||
+                    minNativeAmount === 0 ||
+                    !minNativeAmount ||
+                    maxNativeAmount === 0 ||
+                    !maxNativeAmount ||
+                    timeSpan === 0 ||
+                    !timeSpan ||
+                    timeSpan < 5
                   }
                 >
                   {isLoading ? (
@@ -620,9 +555,8 @@ export function VolumeBotWizardDialog({
                 </Button>
               )}
             </div>
-          </CardContent>
+          </DialogDescription>
         </Card>
-        {errorState && <ErrorDisplay />}
       </DialogContent>
     </Dialog>
   );

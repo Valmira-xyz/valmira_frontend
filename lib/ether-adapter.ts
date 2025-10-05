@@ -5,6 +5,7 @@ import {
   FallbackProvider,
   JsonRpcProvider,
   JsonRpcSigner,
+  Wallet,
 } from 'ethers';
 import { usePublicClient, useWalletClient } from 'wagmi';
 
@@ -83,4 +84,5 @@ export function useEthersSigner({
     () => (walletClient ? walletClientToSigner(walletClient) : undefined),
     [walletClient]
   );
+
 }

@@ -4,7 +4,13 @@ import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { BotResponse, BotService } from '@/services/botService';
 
 // Define types
-export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot' | 'AutoSellBot';
+export type BotType =
+  | 'SnipeBot'
+  | 'VolumeBot'
+  | 'HolderBot'
+  | 'AutoSellBot'
+  | 'DistributionBot'
+  | 'TrendingBot';
 export type LiquidationSnipeBotStatus =
   | 'ready_to_simulation'
   | 'simulating'
@@ -40,7 +46,7 @@ export interface AutoSellConfig {
 
 export interface BotWallet {
   address: string;
-  bnbBalance: number;
+  nativeBalance: number;
   tokenBalance: number;
   sellPrice: number;
   enabled: boolean;
@@ -58,7 +64,7 @@ export interface BotConfig {
   maxBundleSize?: number;
   wallets?: BotWallet[];
   depositWalletId?: string;
-  bnbBalance?: number;
+  nativeBalance?: number;
   tokenBalance?: number;
   generatedVolume?: number;
   generatedHolders?: number;
@@ -212,7 +218,7 @@ const botSlice = createSlice({
           enabled: data.isEnabled,
           status: (data.status as BotStatus) || 'Inactive',
           depositWalletId: data.depositWalletId?._id,
-          bnbBalance: data.bnbBalance || 0,
+          nativeBalance: data.nativeBalance || 0,
           tokenBalance: data.tokenBalance || 0,
           generatedVolume: data.generatedVolume || 0,
           generatedHolders: data.generatedHolders || 0,
@@ -245,7 +251,7 @@ const botSlice = createSlice({
             enabled: bot.isEnabled,
             status: (bot.status as BotStatus) || 'Inactive',
             depositWalletId: bot.depositWalletId?._id,
-            bnbBalance: bot.bnbBalance || 0,
+            nativeBalance: bot.nativeBalance || 0,
             tokenBalance: bot.tokenBalance || 0,
             generatedVolume: bot.generatedVolume || 0,
             generatedHolders: bot.generatedHolders || 0,

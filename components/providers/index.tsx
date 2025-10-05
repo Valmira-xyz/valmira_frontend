@@ -5,15 +5,16 @@ import { Provider as ReduxProvider } from 'react-redux';
 import { ThemeProvider } from 'next-themes';
 import { WagmiConfig } from 'wagmi';
 
+import { Toaster } from '@/components/ui/toaster';
 import { wagmiConfig } from '@/lib/wagmi';
 import { store } from '@/store/store';
 
 interface ProvidersProps {
   children: React.ReactNode;
-  cookies: string | null;
+  _cookies: string | null;
 }
 
-export function Providers({ children, cookies }: ProvidersProps) {
+export function Providers({ children, _cookies }: ProvidersProps) {
   return (
     <ReduxProvider store={store}>
       <WagmiConfig config={wagmiConfig}>
@@ -24,6 +25,7 @@ export function Providers({ children, cookies }: ProvidersProps) {
           disableTransitionOnChange
         >
           {children}
+          <Toaster />
         </ThemeProvider>
       </WagmiConfig>
     </ReduxProvider>

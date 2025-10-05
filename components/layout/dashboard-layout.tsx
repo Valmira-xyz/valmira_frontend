@@ -15,8 +15,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const isSplashPage = pathname === '/splash';
 
+  const isEmbedPage = pathname.startsWith('/embed');
+
   // For splash page, just render children
-  if (isSplashPage) {
+  if (isSplashPage || isEmbedPage) {
     return <>{children}</>;
   }
 

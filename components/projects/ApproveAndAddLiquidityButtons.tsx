@@ -12,27 +12,37 @@ import {
   approveTokens,
   hasTokenAllowance,
 } from '@/services/web3Utils';
+import Decimal from 'decimal.js';
 
 interface ApproveAndAddLiquidityButtonsProps {
   tokenAddress: string;
   tokenAmount: string;
-  bnbAmount: string;
+  nativeAmount: string;
   signer: ethers.Signer | null;
   onSuccess?: () => void;
+  chainName: string;
 }
 
 export function ApproveAndAddLiquidityButtons({
   tokenAddress,
   tokenAmount,
-  bnbAmount,
+  nativeAmount,
   signer,
   onSuccess,
+  chainName,
 }: ApproveAndAddLiquidityButtonsProps) {
   const [isApproved, setIsApproved] = useState(false);
   const [isCheckingApproval, setIsCheckingApproval] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isAddingLiquidity, setIsAddingLiquidity] = useState(false);
   const { toast } = useToast();
+
+  const nativeCurrency =
+    chainName === 'BSC_MAINNET'
+      ? 'BNB'
+      : chainName === 'ETH_MAINNET'
+        ? 'ETH'
+        : 'SOL';
 
   // Network-specific router addresses
   const routerAddress =
@@ -76,6 +86,11 @@ export function ApproveAndAddLiquidityButtons({
     }
   };
 
+  const formatValue = (value: number | string, decimals = 2): string => {
+    const decimalValue = new Decimal(value);
+    return decimalValue.toDecimalPlaces(decimals, Decimal.ROUND_DOWN).toString();
+  }
+
   // Function to approve tokens
   const handleApprove = async () => {
     if (
@@ -93,6 +108,7 @@ export function ApproveAndAddLiquidityButtons({
     }
 
     try {
+      console.log(`approveTokens, tokenAddress: ${tokenAddress}, routerAddress: ${routerAddress}, tokenAmount: ${tokenAmount}, signer: ${signer}`);
       setIsApproving(true);
       await approveTokens(tokenAddress, routerAddress, tokenAmount, signer);
       setIsApproved(true);
@@ -119,14 +135,13 @@ export function ApproveAndAddLiquidityButtons({
       !signer ||
       !tokenAddress ||
       !tokenAmount ||
-      !bnbAmount ||
+      !nativeAmount ||
       parseFloat(tokenAmount) <= 0 ||
-      parseFloat(bnbAmount) <= 0
+      parseFloat(nativeAmount) <= 0
     ) {
       toast({
         title: 'Error',
-        description:
-          'Please enter valid token and BNB amounts and connect your wallet',
+        description: `Please enter valid token and ${nativeCurrency} amounts and connect your wallet`,
         variant: 'destructive',
       });
       return;
@@ -143,7 +158,13 @@ export function ApproveAndAddLiquidityButtons({
 
     try {
       setIsAddingLiquidity(true);
-      await addLiquidity(tokenAddress, tokenAmount, bnbAmount, signer);
+      await addLiquidity(
+        tokenAddress,
+        formatValue(tokenAmount, 9),
+        formatValue(nativeAmount, 9),
+        signer,
+        chainName || 'BSC_MAINNET'
+      );
       toast({
         title: 'Success',
         description: 'Liquidity added successfully',
@@ -171,9 +192,9 @@ export function ApproveAndAddLiquidityButtons({
     !signer ||
     !tokenAddress ||
     !tokenAmount ||
-    !bnbAmount ||
+    !nativeAmount ||
     parseFloat(tokenAmount) <= 0 ||
-    parseFloat(bnbAmount) <= 0;
+    parseFloat(nativeAmount) <= 0;
 
   return (
     <div className="w-full sm:w-auto grid grid-cols-2 gap-2">

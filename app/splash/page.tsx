@@ -1,92 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect } from 'react';
 
-import Cookies from 'js-cookie';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-
-import { setTrialAuthenticated } from '@/store/slices/splashAuthSlice';
-import { RootState } from '@/store/store';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function SplashPage() {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const dispatch = useDispatch();
   const router = useRouter();
-  const isTrialAuthenticated = useSelector(
-    (state: RootState) => state.splashAuth.isTrialAuthenticated
-  );
+  const searchParams = useSearchParams();
+
+  // Get referral code from URL if present
+  const referralCode = searchParams.get('amb');
 
   useEffect(() => {
-    // Check if already authenticated via cookie (for the current session)
-    const isAuthCookie = Cookies.get('isTrialAuthenticated');
-    if (isAuthCookie === 'true' && !isTrialAuthenticated) {
-      dispatch(setTrialAuthenticated(true));
-    }
+    // Automatically redirect to home page, preserving referral code
+    const homeUrl = referralCode ? `/?amb=${referralCode}` : '/';
+    router.push(homeUrl);
+  }, [router, referralCode]);
 
-    if (isTrialAuthenticated) {
-      router.push('/');
-    }
-  }, [isTrialAuthenticated, router, dispatch]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const correctPassword = process.env.NEXT_PUBLIC_TRIAL_PERIOD_PASSWORD;
-
-    if (password === correctPassword) {
-      setError('');
-      // Set session cookie (no expiration date = session cookie)
-      Cookies.set('isTrialAuthenticated', 'true');
-      dispatch(setTrialAuthenticated(true));
-      router.push('/');
-    } else {
-      setError('Incorrect password');
-    }
-  };
-
+  // Show a simple loading state while redirecting
   return (
     <div className="flex items-center justify-center min-h-screen w-full bg-black">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-lg border border-gray-200">
-        <div className="flex justify-center">
-          <Image
-            src={'/sidebar/logo.svg'}
-            alt="Valmira Logo"
-            width={300}
-            height={120}
-            priority
-          />
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <div>
-            <label htmlFor="password" className="sr-only">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black"
-              placeholder="Enter password"
-              required
-            />
-            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              className="w-full px-4 py-2 text-white bg-black rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            >
-              Enter
-            </button>
-          </div>
-        </form>
+      <div className="text-white text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+        <p>Redirecting...</p>
       </div>
     </div>
   );

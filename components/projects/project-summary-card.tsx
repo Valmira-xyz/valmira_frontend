@@ -1,7 +1,7 @@
 'use client';
 
 import type { MouseEvent } from 'react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Clock, ExternalLink, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -17,11 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  formatNumber,
-  generateAvatarColor,
-  getBadgeVariant,
-} from '@/lib/utils';
+import { generateAvatarColor, getBadgeVariant } from '@/lib/utils';
 import type { ProjectWithAddons } from '@/types';
 
 interface ProjectSummaryCardProps {
@@ -75,7 +71,7 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
       tradingVolume: 0,
       activeBots: 0,
     });
-    
+
     // Animate to actual values after a short delay
     const timer = setTimeout(() => {
       setAnimatedMetrics({
@@ -120,7 +116,14 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               <CardTitle className="text-md">{project.name}</CardTitle>
 
               <div className="text-sm text-muted-foreground flex items-center">
-                <span>
+                {project?.chainName && (
+                  <img
+                    src={`/blockchain-icons/${project.chainName}.svg`}
+                    alt={project.chainName}
+                    className="h-4 w-4"
+                  />
+                )}
+                <span className="ml-2">
                   {project.tokenAddress
                     ? `${project.tokenAddress.slice(0, 6)}...${project.tokenAddress.slice(-4)}`
                     : 'No Address'}
@@ -133,7 +136,7 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <a
-                      href={`https://etherscan.io/address/${project.tokenAddress}`}
+                      href={`https://${project?.chainName === 'BSC_MAINNET' ? 'bscscan.com' : project?.chainName === 'ETH_MAINNET' ? 'etherscan.io' : 'solscan.io'}/token/${project.tokenAddress}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={handleExplorerClick}
@@ -161,13 +164,13 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               Cumulative Profit
             </p>
             <p className="text-xl font-bold text-primary">
-              <NumberFlow 
-                value={animatedMetrics.cumulativeProfit} 
-                format={{ 
-                  style: 'currency', 
+              <NumberFlow
+                value={animatedMetrics.cumulativeProfit}
+                format={{
+                  style: 'currency',
                   currency: 'USD',
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
+                  maximumFractionDigits: 2,
                 }}
               />
             </p>
@@ -180,13 +183,13 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               Cumulative Volume
             </p>
             <p className="text-xl font-bold">
-              <NumberFlow 
-                value={animatedMetrics.tradingVolume} 
-                format={{ 
-                  style: 'currency', 
+              <NumberFlow
+                value={animatedMetrics.tradingVolume}
+                format={{
+                  style: 'currency',
                   currency: 'USD',
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
+                  maximumFractionDigits: 2,
                 }}
               />
             </p>
@@ -201,11 +204,11 @@ export function ProjectSummaryCard({ project }: ProjectSummaryCardProps) {
               Active Bots
             </p>
             <p className="text-xl font-bold">
-              <NumberFlow 
+              <NumberFlow
                 value={animatedMetrics.activeBots}
                 format={{
                   minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
+                  maximumFractionDigits: 0,
                 }}
               />
             </p>

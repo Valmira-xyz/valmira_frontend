@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import Link from 'next/link';
 
@@ -9,16 +9,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDispatch, useSelector } from '@/hooks/use-redux';
 import { fetchProjects } from '@/store/slices/projectSlice';
+import { RootState } from '@/store/store';
 import type { Project, ProjectWithAddons } from '@/types';
 
 import { CreateProjectButton } from '../projects/create-project-button';
 
 export function LatestProjects() {
-  console.log('============ LatestProjects rendered');
   const dispatch = useDispatch();
   const { projects, error } = useSelector((state) => state.projects);
   const fetchInProgress = useRef(false);
   const hasInitialFetch = useRef(false);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const fetchProjectsData = useCallback(async () => {
     // Skip if fetch is already in progress or if we've already fetched
@@ -26,24 +27,26 @@ export function LatestProjects() {
     fetchInProgress.current = true;
 
     try {
-      await dispatch(fetchProjects());
+      // Fetch only user's personal projects
+      await dispatch(fetchProjects() as any);
       hasInitialFetch.current = true;
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error('Error fetching personal projects:', error);
     } finally {
       fetchInProgress.current = false;
     }
-  }, [dispatch, error]);
+  }, [dispatch, error, user]);
 
   useEffect(() => {
     fetchProjectsData();
   }, [fetchProjectsData]);
 
-  // Memoize the filtered and sorted projects
   const activeProjects = useMemo(() => {
-    return projects
-      ?.filter((project: ProjectWithAddons) => project.status === 'active')
-      .sort(
+    const filteredProjects = projects?.filter(
+      (project: ProjectWithAddons) => project.status === 'active'
+    );
+    return filteredProjects
+      ?.sort(
         (a: ProjectWithAddons, b: ProjectWithAddons) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       )
@@ -63,7 +66,7 @@ export function LatestProjects() {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold">Your Latest Active Projects</h2>
-        <Card>
+        <Card className="dark:bg-[hsl(var(--card-dark-bg))]">
           <CardHeader>
             <CardTitle>
               {!projects?.length
@@ -85,7 +88,7 @@ export function LatestProjects() {
                   ? 'All your projects are either completed or inactive. Create a new project or reactivate an existing one.'
                   : 'You have projects, but none are currently active. Activate an existing project or create a new one.'}
             </p>
-            <CreateProjectButton variant="secondary"/>
+            <CreateProjectButton variant="secondary" />
           </CardContent>
         </Card>
       </div>

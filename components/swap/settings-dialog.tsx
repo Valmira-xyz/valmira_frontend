@@ -48,8 +48,8 @@ export function SettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>Swap Settings</DialogTitle>
+          <div className="flex items-center justify-between font-tt">
+            <DialogTitle className="font-extrabold">Swap Settings</DialogTitle>
           </div>
           <p className="text-sm text-muted-foreground">
             Configure your swap parameters for optimal trading.
@@ -64,7 +64,11 @@ export function SettingsDialog({
                   <TooltipTrigger asChild>
                     <Info className="h-4 w-4 text-muted-foreground" />
                   </TooltipTrigger>
-                  <TooltipContent className="w-[280px] p-3" align="start">
+                  <TooltipContent
+                    className="w-[280px] p-3"
+                    align="start"
+                    avoidCollisions={true}
+                  >
                     Your transaction will revert if the price changes
                     unfavorably by more than this percentage.
                   </TooltipContent>
@@ -104,12 +108,16 @@ export function SettingsDialog({
                   <TooltipTrigger>
                     <Info className="h-4 w-4 text-muted-foreground" />
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent align="start" avoidCollisions={true}>
                     Automatically find the best route for your swap
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <Switch checked={autoRouter} onCheckedChange={setAutoRouter} />
+              <Switch
+                className="bg-black"
+                checked={autoRouter}
+                onCheckedChange={setAutoRouter}
+              />
             </div>
             <p className="text-sm text-muted-foreground">
               Automatically find the best route for your swap

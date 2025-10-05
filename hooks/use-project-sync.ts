@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { fetchProjects } from '@/store/slices/projectSlice';
+import { fetchPublicProjects } from '@/store/slices/projectSlice';
 import type { RootState } from '@/store/store';
 
 const REFRESH_INTERVAL = 60000; // Increased from 30s to 60s (1 minute)
-const RETRY_DELAY = 5000; // 5 seconds
+const RETRY_DELAY = 3000; // 3 seconds
 const MAX_RETRIES = 3;
 const BACKOFF_MULTIPLIER = 2; // For exponential backoff
 
 export function useProjectSync() {
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { loading, error } = useSelector((state: RootState) => state.projects);
+  const { loading } = useSelector((state: RootState) => state.projects);
   const retryCount = useRef(0);
   const lastFetchTime = useRef(0);
   const [backoffDelay, setBackoffDelay] = useState(RETRY_DELAY);
@@ -26,7 +26,15 @@ export function useProjectSync() {
 
     try {
       lastFetchTime.current = now;
-      await dispatch(fetchProjects() as any);
+      // await dispatch(fetchProjects() as any); //original code to fetch only user's project
+
+      // new code to fetch all public projects
+      await dispatch(
+        fetchPublicProjects({
+          pageIndex: 0,
+          maxPageCount: 10,
+        }) as any
+      );
       retryCount.current = 0; // Reset retry count on success
       setBackoffDelay(RETRY_DELAY); // Reset backoff delay
     } catch (error: any) {

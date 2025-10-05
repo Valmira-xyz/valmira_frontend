@@ -3,6 +3,9 @@ export interface Project {
   name: string;
   symbol?: string;
   tokenAddress: string;
+  pairAddress: string;
+  chainId: number;
+  chainName: string;
   addons: {
     AutoSellBot?: {
       _id?: string;

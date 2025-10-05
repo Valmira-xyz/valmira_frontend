@@ -25,11 +25,11 @@ export function useTokenValidation() {
     });
   };
 
-  const validateToken = async (address: string) => {
+  const validateToken = async (address: string, chainName: string) => {
     setState((prev) => ({ ...prev, status: 'validating', error: '' }));
 
     try {
-      const tokenInfo = await tokenService.getTokenInfo(address);
+      const tokenInfo = await tokenService.getTokenInfo(address, chainName);
       setState({
         status: 'valid',
         error: '',

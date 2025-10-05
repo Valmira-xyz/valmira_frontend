@@ -16,7 +16,7 @@ export const projectApi = createApi({
   reducerPath: 'projectApi',
   baseQuery: fetchBaseQuery({
     baseUrl: `${process.env.NEXT_PUBLIC_BACKEND_URL}/`, // Your API base URL
-    prepareHeaders: (headers, { getState }) => {
+    prepareHeaders: (headers) => {
       // Add authentication headers if needed
       // const token = (getState() as RootState).auth.token; // Example: Get token from auth slice
       // if (token) {
@@ -136,8 +136,8 @@ export const projectApi = createApi({
         return response as BotPerformanceHistory[];
       },
     }),
-    getBnbPrice: builder.query<number, void>({
-      query: () => 'web3/bnb-price', // Uses the base URL
+    getNativePrice: builder.query<number, void>({
+      query: () => 'web3/native-price', // Uses the base URL
       transformResponse: (response: {
         success: boolean;
         data?: { price: number };
@@ -146,11 +146,11 @@ export const projectApi = createApi({
           return response.data.price;
         }
         console.warn(
-          'Failed to fetch BNB price or invalid format, returning fallback.'
+          'Failed to fetch native currency price or invalid format, returning fallback.'
         );
         return 300; // Fallback value same as in the thunk
       },
-      providesTags: ['GlobalMetrics'], // Assuming BNB price is a global metric
+      providesTags: ['GlobalMetrics'], // Assuming native currency price is a global metric
     }),
     getGlobalMetrics: builder.query<GlobalMetrics, void>({
       query: () => 'metrics/global', // Adjust path as needed
@@ -233,7 +233,7 @@ export const {
   useGetProjectStatsQuery,
   useGetRecentActivityQuery,
   useGetBotPerformanceHistoryQuery,
-  useGetBnbPriceQuery,
+  useGetNativePriceQuery,
   useGetGlobalMetricsQuery,
   useGetProfitTrendingQuery,
   useGetVolumeTrendingQuery,

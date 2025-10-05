@@ -47,7 +47,8 @@ import { getTokenPrice, getWalletBalances } from '@/services/web3Utils';
 import { Project } from '@/types/project';
 
 interface ExtendedProject extends Project {
-  pairAddress?: string;
+  pairAddress: string;
+  chainName: string;
   addons: {
     AutoSellBot?: {
       _id?: string;
@@ -80,17 +81,15 @@ interface ExtendedProject extends Project {
 }
 
 enum WizardStep {
-  INTRODUCTION = 0,
-  WALLET_SETUP = 1,
-  PRICE_CONFIGURATION = 2,
-  EXECUTION = 3,
+  PRICE_CONFIGURATION,
+  EXECUTION,
 }
 
 export interface WalletInfo {
   _id?: string;
   publicKey: string;
   role: string;
-  bnbBalance?: number;
+  nativeBalance?: number;
   tokenBalance?: number;
   targetPrice?: number;
   stopLoss?: string | '0';
@@ -107,6 +106,7 @@ interface AutoSellWizardDialogProps {
   projectId?: string;
   tokenAddress?: string;
   _onWalletsChange?: (wallets: WalletInfo[]) => void;
+  onConfigurationSuccess?: () => void;
 }
 
 export function AutoSellWizardDialog({
@@ -114,9 +114,12 @@ export function AutoSellWizardDialog({
   onOpenChange,
   _wallets,
   _onWalletsChange,
+  onConfigurationSuccess,
 }: AutoSellWizardDialogProps) {
   const { id: projectIdFromParams } = useParams() as { id: string };
-  const [currentStep, setCurrentStep] = useState(WizardStep.INTRODUCTION);
+  const [currentStep, setCurrentStep] = useState(
+    WizardStep.PRICE_CONFIGURATION
+  );
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionSuccess, setExecutionSuccess] = useState(false);
@@ -138,9 +141,17 @@ export function AutoSellWizardDialog({
     null
   );
   const statusRefreshIntervalRef = useRef<NodeJS.Timeout>();
-  const [isDistributingBNBs, setIsDistributingBNBs] = useState(false);
+  const [isDistributingNative, setIsDistributingNative] = useState(false);
   const [distributeAmount, setDistributeAmount] = useState<number>(0.001);
-  const [isCollectingBnb, setIsCollectingBnb] = useState(false);
+  const [isCollectingNative, setIsCollectingNative] = useState(false);
+  const [isRefreshingPrice, setIsRefreshingPrice] = useState(false);
+
+  const nativeCurrency =
+    project?.chainName === 'BSC_MAINNET'
+      ? 'BNB'
+      : project?.chainName === 'ETH_MAINNET'
+        ? 'ETH'
+        : 'SOL';
 
   useEffect(() => {
     if (open && project?.tokenAddress) {
@@ -159,14 +170,18 @@ export function AutoSellWizardDialog({
   const fetchTokenPrice = async () => {
     if (project?.tokenAddress) {
       try {
+        setIsRefreshingPrice(true);
         const price = await getTokenPrice(
           project.tokenAddress,
-          project.pairAddress
+          project.pairAddress,
+          project.chainName || 'BSC_MAINNET'
         );
         setCurrentTokenPrice(price);
       } catch (error) {
         console.error('Error fetching token price:', error);
         setCurrentTokenPrice(null);
+      } finally {
+        setIsRefreshingPrice(false);
       }
     }
   };
@@ -174,7 +189,7 @@ export function AutoSellWizardDialog({
   // Reset states when dialog opens
   useEffect(() => {
     if (open) {
-      setCurrentStep(WizardStep.INTRODUCTION);
+      setCurrentStep(WizardStep.PRICE_CONFIGURATION);
       setConfigLoaded(false);
     }
   }, [open]);
@@ -276,21 +291,16 @@ export function AutoSellWizardDialog({
           }
         }
       }
-    } catch (error: unknown) {
+    } catch (error: any) {
       // Only show error if it's not an abort error
-      if (
-        error &&
-        typeof error === 'object' &&
-        'name' in error &&
-        error.name !== 'AbortError'
-      ) {
-        console.error('Error fetching project:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch project data. Please try again.',
-          variant: 'destructive',
-        });
-      }
+      console.error('Error fetching project:', error);
+      toast({
+        title: error.response?.data?.errorType || 'Project Fetch Error',
+        description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+          'Failed to fetch project data. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoadingProject(false);
     }
@@ -329,7 +339,11 @@ export function AutoSellWizardDialog({
 
       setIsLoadingBalances(true);
 
-      const response = await getWalletBalances(addresses, project.tokenAddress);
+      const response = await getWalletBalances(
+        addresses,
+        project.tokenAddress,
+        project.chainName || 'BSC_MAINNET'
+      );
 
       const updatedWallets = addresses.map((address) => {
         const balance = response.find(
@@ -340,22 +354,38 @@ export function AutoSellWizardDialog({
         );
 
         // Make sure to carefully preserve all existing wallet configuration
-        return {
-          ...existingWallet, // Keep all existing properties first
-          publicKey: address,
-          role:
-            address?.toLowerCase() ===
-            project?.addons?.AutoSellBot?.depositWalletId?.publicKey?.toLowerCase()
-              ? 'botmain'
-              : 'botsub',
-          _id: existingWallet?._id,
-          bnbBalance: balance?.bnbBalance || 0,
-          tokenBalance: balance?.tokenAmount || 0,
-          // Explicitly preserve these configuration values
-          sellPrice: existingWallet?.sellPrice || '0',
-          stopLoss: existingWallet?.stopLoss || '0',
-          enabled: existingWallet?.enabled ?? true,
-        };
+        return typeof existingWallet?.enabled === 'boolean'
+          ? {
+              ...existingWallet, // Keep all existing properties first
+              publicKey: address,
+              role:
+                address?.toLowerCase() ===
+                project?.addons?.AutoSellBot?.depositWalletId?.publicKey?.toLowerCase()
+                  ? 'botmain'
+                  : 'botsub',
+              _id: existingWallet?._id,
+              nativeBalance: balance?.nativeBalance || 0,
+              tokenBalance: balance?.tokenBalance || 0,
+              // Explicitly preserve these configuration values
+              sellPrice: existingWallet?.sellPrice || '0',
+              stopLoss: existingWallet?.stopLoss || '0',
+              enabled: existingWallet?.enabled,
+            }
+          : {
+              ...existingWallet, // Keep all existing properties first
+              publicKey: address,
+              role:
+                address?.toLowerCase() ===
+                project?.addons?.AutoSellBot?.depositWalletId?.publicKey?.toLowerCase()
+                  ? 'botmain'
+                  : 'botsub',
+              _id: existingWallet?._id,
+              nativeBalance: balance?.nativeBalance || 0,
+              tokenBalance: balance?.tokenBalance || 0,
+              // Explicitly preserve these configuration values
+              sellPrice: existingWallet?.sellPrice || '0',
+              stopLoss: existingWallet?.stopLoss || '0',
+            };
       });
 
       // Only update wallets if configuration is already loaded
@@ -379,7 +409,7 @@ export function AutoSellWizardDialog({
               // Return wallet with updated balances but preserve configuration
               return {
                 ...wallet,
-                bnbBalance: updated.bnbBalance,
+                nativeBalance: updated.nativeBalance,
                 tokenBalance: updated.tokenBalance,
               };
             }
@@ -392,11 +422,13 @@ export function AutoSellWizardDialog({
       }
 
       lastBalanceUpdateRef.current = Date.now();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching balances:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to fetch wallet balances',
+        title: error.response?.data?.errorType || 'Balance Fetch Error',
+        description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+          'Failed to fetch wallet balances',
         variant: 'destructive',
       });
     } finally {
@@ -451,12 +483,20 @@ export function AutoSellWizardDialog({
                 w.address.toLowerCase()
               );
               if (existingWallet) {
-                acc.push({
-                  ...existingWallet,
-                  sellPrice: w.sellPrice || '0',
-                  stopLoss: w.stopLoss || '0',
-                  enabled: w.enabled ?? true,
-                });
+                if (typeof existingWallet?.enabled === 'boolean') {
+                  acc.push({
+                    ...existingWallet,
+                    sellPrice: w.sellPrice || '0',
+                    stopLoss: w.stopLoss || '0',
+                    enabled: w.enabled ?? true,
+                  });
+                } else {
+                  acc.push({
+                    ...existingWallet,
+                    sellPrice: w.sellPrice || '0',
+                    stopLoss: w.stopLoss || '0',
+                  });
+                }
               }
               return acc;
             }, []);
@@ -476,11 +516,14 @@ export function AutoSellWizardDialog({
         // Set flag to indicate configuration was loaded successfully
         setConfigLoaded(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading auto-sell parameters:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load existing auto-sell configuration.',
+        title:
+          error.response?.data?.errorType || 'Auto-Sell Configuration Error',
+        description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+          'Failed to load existing auto-sell configuration.',
         variant: 'destructive',
       });
     } finally {
@@ -496,7 +539,7 @@ export function AutoSellWizardDialog({
   };
 
   const goToPreviousStep = () => {
-    if (currentStep > WizardStep.INTRODUCTION) {
+    if (currentStep > WizardStep.PRICE_CONFIGURATION) {
       setCurrentStep((prev) => prev - 1);
     }
   };
@@ -520,21 +563,39 @@ export function AutoSellWizardDialog({
       return;
     }
 
+    const isNoWalletSelected =
+      localWallets.filter((w) => w.role === 'botsub').length === 0 ||
+      localWallets.filter((w) => w.role === 'botsub').every((w) => !w.enabled);
+    if (isNoWalletSelected) {
+      toast({
+        title: 'AutoSell Configuration Error',
+        description: 'Please select at least one wallet to enable AutoSell',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const projectId = project._id as string;
     setExecutionSuccess(false);
     setIsExecuting(true);
 
     try {
-      const result = await BotService.configureAutoSell({
-        projectId,
-        botId: project.addons.AutoSellBot._id as string,
-        wallets: localWallets.map((w) => ({
+      const walletsConfig = localWallets
+        .filter((w) => w.role === 'botsub')
+        .map((w) => ({
           address: w.publicKey,
           sellPrice:
             w.sellPrice && w.sellPrice !== '0' ? w.sellPrice : targetPrice,
           stopLoss: w.stopLoss && w.stopLoss !== '0' ? w.stopLoss : stopLoss,
-          enabled: w.enabled ?? true,
-        })),
+          enabled: w.enabled ?? false,
+        }));
+
+      console.log('[handleExecute] walletsConfig', walletsConfig);
+
+      const result = await BotService.configureAutoSell({
+        projectId,
+        botId: project.addons.AutoSellBot._id as string,
+        wallets: walletsConfig,
       });
 
       if (result.success) {
@@ -543,6 +604,12 @@ export function AutoSellWizardDialog({
           title: 'Success',
           description: 'AutoSell configuration applied successfully',
         });
+
+        // Call the success callback to enable the toggle
+        onConfigurationSuccess?.();
+
+        // Close the modal after successful configuration
+        onOpenChange(false);
 
         // Don't refresh balances here as it can overwrite configuration
         // Instead, do a full refresh to get updated parameters but keep the local state
@@ -563,23 +630,25 @@ export function AutoSellWizardDialog({
           throw new Error(result.error || 'Execution failed');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       // Show user-friendly error message
-      let errorMessage = 'Failed to configure AutoSell';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (
-        typeof error === 'object' &&
-        error !== null &&
-        'error' in error
-      ) {
-        // Handle error object with 'error' property
-        errorMessage = String(error.error);
-      }
+      // let errorMessage = 'Failed to configure AutoSell';
+      // if (error instanceof Error) {
+      //   errorMessage = error.message;
+      // } else if (
+      //   typeof error === 'object' &&
+      //   error !== null &&
+      //   'error' in error
+      // ) {
+      //   // Handle error object with 'error' property
+      //   errorMessage = String(error.error);
+      // }
 
       toast({
-        title: 'Configuration Error',
-        description: errorMessage,
+        title: error.response?.data?.errorType || 'Configuration Error',
+        description:
+          error.response?.data?.errorMessage?.toString().slice(0, 200) ||
+          'Failed to configure AutoSell',
         variant: 'destructive',
       });
     } finally {
@@ -636,7 +705,7 @@ export function AutoSellWizardDialog({
     }
   }, [open]);
 
-  const handleDistributeExtraBnb = async () => {
+  const handleDistributeExtraNative = async () => {
     if (distributeAmount <= 0) {
       toast({
         title: 'Recommendation',
@@ -673,14 +742,15 @@ export function AutoSellWizardDialog({
       // Calculate the even distribution amount for each wallet
       const amounts = subWalletAddresses.map(() => distributeAmount);
 
-      setIsDistributingBNBs(true);
+      setIsDistributingNative(true);
 
-      const response = await BotService.distributeBnb({
+      const response = await BotService.distributeNative({
         depositWallet: depositWallet.publicKey,
         subWallets: subWalletAddresses,
         amounts,
         projectId: project?._id || '',
         botId: project?.addons?.AutoSellBot?._id || '',
+        chainName: project?.chainName || 'BSC_MAINNET',
       });
 
       if (response.success?.success) {
@@ -692,13 +762,13 @@ export function AutoSellWizardDialog({
 
         toast({
           title: 'Success',
-          description: 'Extra BNB distributed successfully.',
+          description: `Extra ${nativeCurrency} distributed successfully.`,
         });
       } else {
         // Check for insufficient balance error
         if (response.success?.error?.includes('Insufficient wallet balance')) {
           const match = response.success.error.match(
-            /Required: ~([\d.]+) BNB, Found: ([\d.]+) BNB/
+            /Required: ~([\d.]+) , Found: ([\d.]+) /
           );
           if (match) {
             const required = parseFloat(match[1]);
@@ -706,7 +776,7 @@ export function AutoSellWizardDialog({
             const needed = (required - found).toFixed(6);
             toast({
               title: 'Insufficient Balance',
-              description: `Failed to distribute Extra BNB. You need to deposit ${needed} BNB to your deposit wallet and try again.`,
+              description: `Failed to distribute Extra ${nativeCurrency}. You need to deposit ${needed} ${nativeCurrency} to your deposit wallet and try again.`,
               variant: 'destructive',
             });
           } else {
@@ -715,7 +785,7 @@ export function AutoSellWizardDialog({
               description:
                 response.success?.error ||
                 response.message ||
-                'Failed to distribute Extra BNB',
+                `Failed to distribute Extra ${nativeCurrency}`,
               variant: 'destructive',
             });
           }
@@ -725,29 +795,30 @@ export function AutoSellWizardDialog({
             description:
               response.success?.error ||
               response.message ||
-              'Failed to distribute Extra BNB',
+              `Failed to distribute Extra ${nativeCurrency}`,
             variant: 'destructive',
           });
         }
       }
-    } catch (error) {
-      console.error('Error distributing extra BNB:', error);
+    } catch (error: any) {
+      console.error(`Error distributing extra ${nativeCurrency}:`, error);
       toast({
-        title: 'Error',
+        title:
+          error.response.data.errorType ||
+          `Extra ${nativeCurrency} Distribution Error`,
         description:
-          error instanceof Error
-            ? error.message
-            : 'Failed to distribute extra BNB',
+          error.response.data.errorMessage ||
+          `Failed to distribute extra ${nativeCurrency}`,
         variant: 'destructive',
       });
     } finally {
-      setIsDistributingBNBs(false);
+      setIsDistributingNative(false);
     }
   };
 
-  const handleCollectBnb = async () => {
+  const handleCollectNative = async () => {
     try {
-      setIsCollectingBnb(true);
+      setIsCollectingNative(true);
       const depositWalletId = project?.addons?.AutoSellBot?.depositWalletId;
       if (!depositWalletId) {
         toast({
@@ -762,7 +833,9 @@ export function AutoSellWizardDialog({
         .filter((w) => w.role != 'botmain')
         .filter(
           (wallet) =>
-            wallet.enabled && wallet.bnbBalance && wallet.bnbBalance > 0.00002
+            wallet.enabled &&
+            wallet.nativeBalance &&
+            wallet.nativeBalance > 0.00002
         );
 
       if (selectedWallets.length === 0) {
@@ -774,16 +847,17 @@ export function AutoSellWizardDialog({
         return;
       }
 
-      await BotService.collectBnb({
+      await BotService.collectNative({
         botId: project?.addons?.AutoSellBot?._id || '',
         walletAddresses: selectedWallets.map((w) => w.publicKey),
         targetWallet: depositWalletId.publicKey,
         projectId: project._id,
+        chainName: project?.chainName || 'BSC_MAINNET',
       });
 
       toast({
         title: 'Success',
-        description: 'BNB collected successfully',
+        description: `${nativeCurrency} collected successfully`,
       });
       setTimeout(() => {
         fetchWalletBalancesPreservingConfig(
@@ -792,12 +866,13 @@ export function AutoSellWizardDialog({
       }, 3000);
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to collect BNB',
+        title:
+          error.response.data.errorType || `Failed to collect native currency`,
+        description: error.response.data.errorMessage,
         variant: 'destructive',
       });
     } finally {
-      setIsCollectingBnb(false);
+      setIsCollectingNative(false);
     }
   };
 
@@ -815,7 +890,7 @@ export function AutoSellWizardDialog({
           _id: depositWallet._id,
           publicKey: depositWallet.publicKey,
           role: 'botmain',
-          bnbBalance: 0,
+          nativeBalance: 0,
           tokenBalance: 0,
           sellPrice: '0',
           stopLoss: '0',
@@ -829,7 +904,7 @@ export function AutoSellWizardDialog({
           _id: wallet._id,
           publicKey: wallet.publicKey,
           role: 'botsub',
-          bnbBalance: 0,
+          nativeBalance: 0,
           tokenBalance: 0,
           sellPrice: '0',
           stopLoss: '0',
@@ -847,112 +922,6 @@ export function AutoSellWizardDialog({
       fetchWalletBalancesPreservingConfig(allAddresses);
     }
   }, [project?.addons?.AutoSellBot]);
-
-  const renderIntroductionStep = () => (
-    <Card className="border-none shadow-none">
-      <CardHeader className="px-0 pt-0 pb-2 sm:px-6 sm:pb-4">
-        <CardTitle>AutoSell Configuration</CardTitle>
-        <CardDescription>
-          Configure automated selling conditions for your wallets to protect
-          your investment.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-0 sm:px-6">
-        <div className="space-y-4">
-          <div className="border rounded-lg p-4">
-            <h3 className="text-base font-medium mb-2">How it works</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              AutoSellBot allows you to set target prices and stop losses for
-              your wallets. When the token price reaches your target price, the
-              bot will automatically sell the specified percentage of tokens. If
-              the price drops to your stop loss, the bot will sell to minimize
-              losses.
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  const renderWalletSetupStep = () => (
-    <Card className="border-none shadow-none">
-      <CardHeader className="px-0 pt-0 pb-2 sm:px-6 sm:pb-4">
-        <CardTitle>Wallet Setup</CardTitle>
-        <CardDescription>
-          Configure existing wallets for auto-selling.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-0 sm:px-6">
-        <div className="space-y-4">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-medium">Wallet Balances</h3>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() =>
-                  fetchWalletBalancesPreservingConfig(
-                    localWallets.map((w) => w.publicKey)
-                  )
-                }
-                disabled={isLoadingBalances}
-              >
-                {isLoadingBalances ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Refresh Balances
-              </Button>
-            </div>
-
-            <div className="border rounded-md overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[10%]">No</TableHead>
-                    <TableHead className="w-[40%]">Wallet Address</TableHead>
-                    <TableHead className="text-right">BNB Balance</TableHead>
-                    <TableHead className="text-right">Token Balance</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {localWallets
-                    .filter((w) => w.role != 'botmain')
-                    .map((wallet, index) => (
-                      <TableRow key={wallet.publicKey}>
-                        <TableCell className="text-left">{index + 1}</TableCell>
-                        <TableCell className="font-mono">
-                          <div className="flex items-center gap-1">
-                            {wallet.publicKey.slice(0, 6)}...
-                            {wallet.publicKey.slice(-4)}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => copyToClipboard(wallet.publicKey)}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {(wallet.bnbBalance || 0).toFixed(4)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {(wallet.tokenBalance || 0).toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 
   const renderPriceConfigurationStep = () => (
     <Card className="border-none shadow-none">
@@ -985,8 +954,11 @@ export function AutoSellWizardDialog({
                   size="icon"
                   className="h-7 w-7"
                   onClick={fetchTokenPrice}
+                  disabled={isRefreshingPrice}
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${isRefreshingPrice ? 'animate-spin' : ''}`}
+                  />
                 </Button>
               </div>
             </div>
@@ -1021,33 +993,36 @@ export function AutoSellWizardDialog({
             </div>
           </div>
 
-          {/* Extra BNB Distribution */}
+          {/* Extra native currency Distribution */}
           <div className="border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-medium">Extra BNB Distribution</h3>
+              <h3 className="text-base font-medium">
+                Extra {nativeCurrency} Distribution
+              </h3>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm text-muted-foreground">
-                    Deposit Wallet BNB:
+                    Deposit Wallet {nativeCurrency}:
                   </span>
                   <span className="text-sm font-medium">
                     {(() => {
                       const depositWalletPublicKey =
                         project?.addons?.AutoSellBot?.depositWalletId
                           ?.publicKey;
-                      if (!depositWalletPublicKey) return '0.0000 BNB';
+                      if (!depositWalletPublicKey)
+                        return `0.0000 ${nativeCurrency}`;
                       const balance = localWallets.find(
                         (w) => w.publicKey === depositWalletPublicKey
-                      )?.bnbBalance;
-                      return `${balance?.toFixed(4) || '0.0000'} BNB`;
+                      )?.nativeBalance;
+                      return `${balance?.toFixed(4) || '0.0000'} ${nativeCurrency}`;
                     })()}
                   </span>
                 </div>
               </div>
             </div>
             <div className="text-sm text-muted-foreground mb-4">
-              Distribute extra BNB from your deposit wallet to selected wallets
-              for future sell operations.
+              Distribute extra {nativeCurrency} from your deposit wallet to
+              selected wallets for future sell operations.
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex items-center gap-2 w-full">
@@ -1065,48 +1040,48 @@ export function AutoSellWizardDialog({
                   min="0"
                   className="w-32"
                 />
-                <span className="text-sm">BNB</span>
+                <span className="text-sm">{nativeCurrency}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 w-full">
                 <Button
-                  onClick={handleDistributeExtraBnb}
+                  onClick={handleDistributeExtraNative}
                   disabled={
                     isLoadingConfig ||
                     !localWallets.some((w) => w.enabled) ||
-                    isDistributingBNBs
+                    isDistributingNative
                   }
                 >
-                  {isDistributingBNBs ? (
+                  {isDistributingNative ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Distributing...
                     </>
                   ) : (
-                    'Distribute Extra BNB'
+                    `Distribute Extra ${nativeCurrency}`
                   )}
                 </Button>
                 <Button
-                  onClick={handleCollectBnb}
+                  onClick={handleCollectNative}
                   disabled={
                     isLoadingConfig ||
                     !localWallets.some((w) => w.enabled) ||
-                    isCollectingBnb
+                    isCollectingNative
                   }
                 >
-                  {isCollectingBnb ? (
+                  {isCollectingNative ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Collecting...
                     </>
                   ) : (
-                    'Collect BNB'
+                    `Collect ${nativeCurrency}`
                   )}
                 </Button>
               </div>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              💡 This is useful for providing BNB to wallets for future sell
-              operations.
+              💡 This is useful for providing {nativeCurrency} to wallets for
+              future sell operations.
             </p>
           </div>
 
@@ -1142,28 +1117,27 @@ export function AutoSellWizardDialog({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="text-center">
+                      <Checkbox
+                        checked={isAllWalletsSelected}
+                        onCheckedChange={handleSelectAllWallets}
+                        data-state={
+                          isSomeWalletsSelected && !isAllWalletsSelected
+                            ? 'indeterminate'
+                            : isAllWalletsSelected
+                              ? 'checked'
+                              : 'unchecked'
+                        }
+                        disabled={isLoadingConfig}
+                      />
+                    </TableHead>
                     <TableHead className="w-[20%]">Wallet</TableHead>
-                    <TableHead className="text-left">BNB</TableHead>
+                    <TableHead className="text-left">
+                      {nativeCurrency}
+                    </TableHead>
                     <TableHead className="text-left">Token</TableHead>
                     <TableHead className="text-left">Sell Price</TableHead>
                     <TableHead className="text-left">Stop Loss</TableHead>
-                    <TableHead className="w-[10%] text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <span>Select</span>
-                        <Checkbox
-                          checked={isAllWalletsSelected}
-                          onCheckedChange={handleSelectAllWallets}
-                          data-state={
-                            isSomeWalletsSelected && !isAllWalletsSelected
-                              ? 'indeterminate'
-                              : isAllWalletsSelected
-                                ? 'checked'
-                                : 'unchecked'
-                          }
-                          disabled={isLoadingConfig}
-                        />
-                      </div>
-                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1186,6 +1160,21 @@ export function AutoSellWizardDialog({
                       .filter((w) => w.role != 'botmain')
                       .map((wallet, index) => (
                         <TableRow key={index}>
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={wallet.enabled}
+                              onCheckedChange={(checked) =>
+                                setLocalWallets((prev) =>
+                                  prev.map((w) =>
+                                    w.publicKey === wallet.publicKey
+                                      ? { ...w, enabled: checked === true }
+                                      : w
+                                  )
+                                )
+                              }
+                              disabled={isLoadingConfig}
+                            />
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <code className="text-xs font-mono">
@@ -1205,7 +1194,7 @@ export function AutoSellWizardDialog({
                             </div>
                           </TableCell>
                           <TableCell className="text-left font-mono">
-                            {(wallet.bnbBalance || 0).toFixed(4)}
+                            {(wallet.nativeBalance || 0).toFixed(4)}
                           </TableCell>
                           <TableCell className="text-left font-mono">
                             {(wallet.tokenBalance || 0).toLocaleString()}
@@ -1254,21 +1243,6 @@ export function AutoSellWizardDialog({
                               disabled={isLoadingConfig}
                             />
                           </TableCell>
-                          <TableCell className="text-center">
-                            <Checkbox
-                              checked={wallet.enabled}
-                              onCheckedChange={(checked) =>
-                                setLocalWallets((prev) =>
-                                  prev.map((w) =>
-                                    w.publicKey === wallet.publicKey
-                                      ? { ...w, enabled: checked === true }
-                                      : w
-                                  )
-                                )
-                              }
-                              disabled={isLoadingConfig}
-                            />
-                          </TableCell>
                         </TableRow>
                       ))
                   )}
@@ -1311,8 +1285,11 @@ export function AutoSellWizardDialog({
                   size="icon"
                   className="h-7 w-7"
                   onClick={fetchTokenPrice}
+                  disabled={isRefreshingPrice}
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${isRefreshingPrice ? 'animate-spin' : ''}`}
+                  />
                 </Button>
                 {project?._id && (
                   <div className="ml-2">
@@ -1401,8 +1378,11 @@ export function AutoSellWizardDialog({
               <div>
                 <Label>Enabled Wallets</Label>
                 <p className="text-sm font-medium">
-                  {localWallets.filter((w) => w.enabled).length} of{' '}
-                  {localWallets.length}
+                  {
+                    localWallets.filter((w) => w.enabled && w.role != 'botmain')
+                      .length
+                  }{' '}
+                  of {localWallets.filter((w) => w.role != 'botmain').length}
                 </p>
               </div>
             </div>
@@ -1487,10 +1467,6 @@ export function AutoSellWizardDialog({
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case WizardStep.INTRODUCTION:
-        return renderIntroductionStep();
-      case WizardStep.WALLET_SETUP:
-        return renderWalletSetupStep();
       case WizardStep.PRICE_CONFIGURATION:
         return renderPriceConfigurationStep();
       case WizardStep.EXECUTION:
@@ -1538,7 +1514,7 @@ export function AutoSellWizardDialog({
               <Button
                 variant="outline"
                 onClick={goToPreviousStep}
-                disabled={currentStep === WizardStep.INTRODUCTION}
+                disabled={currentStep === WizardStep.PRICE_CONFIGURATION}
                 className="h-9 px-2 sm:px-4 "
                 size="sm"
               >

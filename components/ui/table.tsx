@@ -2,20 +2,38 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full">
-    <div className="overflow-auto max-h-[400px]">
-      <table
-        ref={ref}
-        className={cn('w-full caption-bottom text-sm', className)}
-        {...props}
-      />
+interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  fixedHeight?: string | number;
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, fixedHeight, ...props }, ref) => (
+    <div className="relative w-full">
+      <div
+        className={cn(
+          'overflow-auto w-full',
+          fixedHeight ? 'max-h-[400px]' : 'h-auto'
+        )}
+        style={
+          fixedHeight
+            ? {
+                maxHeight:
+                  typeof fixedHeight === 'number'
+                    ? `${fixedHeight}px`
+                    : fixedHeight,
+              }
+            : {}
+        }
+      >
+        <table
+          ref={ref}
+          className={cn('w-full caption-bottom text-sm', className)}
+          {...props}
+        />
+      </div>
     </div>
-  </div>
-));
+  )
+);
 Table.displayName = 'Table';
 
 const TableHeader = React.forwardRef<

@@ -1,33 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useDispatch } from 'react-redux';
-import NumberFlow from '@number-flow/react';
+import { useDispatch, useSelector } from 'react-redux';
 
 import { Bot, ChartColumnIncreasing, Droplet, TrendingUp } from 'lucide-react';
+import NumberFlow from '@number-flow/react';
+import { useQuery } from '@tanstack/react-query';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { projectService } from '@/services/projectService';
 import { getPoolInfo } from '@/services/web3Utils';
 import websocketService, { WebSocketEvents } from '@/services/websocketService';
-import { fetchBnbPrice } from '@/store/slices/projectSlice';
-import { AppDispatch } from '@/store/store';
+import { fetchNativeCurrencyPrice } from '@/store/slices/projectSlice';
+import { AppDispatch, RootState } from '@/store/store';
 import { ProjectWithAddons } from '@/types';
 
 interface ProjectMetricsProps {
   project: ProjectWithAddons;
-  projectStats: any;
   loading: boolean;
-  bnbPrice: number | null;
-  bnbPriceLoading: boolean;
 }
 
-export function ProjectMetrics({ 
-  project, 
-  projectStats, 
-  loading, 
-  bnbPrice, 
-  bnbPriceLoading 
-}: ProjectMetricsProps) {
+export function ProjectMetrics({ project, loading }: ProjectMetricsProps) {
   const dispatch = useDispatch<AppDispatch>();
+  const nativeCurrencyPrice = useSelector(
+    (state: RootState) => state.projects.nativeCurrencyPrice
+  );
+  const nativeCurrencyLoading = useSelector(
+    (state: RootState) => state.projects.nativeCurrencyLoading
+  );
+
+  // Define all state and refs at the top
   const [poolLiquidity, setPoolLiquidity] = useState<number>(0);
   const [loadingLiquidity, setLoadingLiquidity] = useState<boolean>(false);
   const [localMetrics, setLocalMetrics] = useState<ProjectMetrics | null>(null);
@@ -35,11 +36,12 @@ export function ProjectMetrics({
     cumulativeProfit: 0,
     tradingVolume: 0,
     activeBots: 0,
-    liquidity: 0
+    liquidity: 0,
   });
+
   const hasInitialAnimation = useRef(false);
-  const isFetchingBnbPrice = useRef(false);
-  const hasInitialBnbPriceFetch = useRef(false);
+  const isFetchingNativePrice = useRef(false);
+  const hasInitialNativePriceFetch = useRef(false);
   const isCalculatingLiquidity = useRef(false);
 
   // Define a type for the metrics object
@@ -50,48 +52,34 @@ export function ProjectMetrics({
     [key: string]: any; // Allow other properties
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+  // Calculate active bots count
+  const calculateActiveBots = useCallback((): number => {
+    if (!project?.addons) return 0;
 
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('en-US').format(value);
-  };
-
-  // Calculate active bots count similar to dashboard-metrics.tsx
-  const calculateActiveBots = (): number => {
     let activeBots = 0;
-
-    // Count active bots from addons
-    if (project.addons) {
-      // SnipeBot
-      if (project.addons.SnipeBot?.isEnabled) {
-        activeBots += 1;
-      }
-
-      // VolumeBot
-      if (project.addons.VolumeBot?.isEnabled) {
-        activeBots += 1;
-      }
-
-      // HolderBot
-      if (project.addons.HolderBot?.isEnabled) {
-        activeBots += 1;
-      }
-    }
-
+    if (project.addons.SnipeBot?.isEnabled) activeBots += 1;
+    if (project.addons.VolumeBot?.isEnabled) activeBots += 1;
+    if (project.addons.HolderBot?.isEnabled) activeBots += 1;
     return activeBots;
-  };
+  }, [project?.addons]);
 
-  // Update the metrics handler to use animated transitions
+  // Query for project stats
+  const { data: projectStats } = useQuery({
+    queryKey: ['projectStats', project?._id, 'all'],
+    queryFn: () =>
+      project?._id
+        ? projectService.getProjectStats(project._id, {
+            start: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            end: new Date(),
+          })
+        : Promise.resolve(null),
+    enabled: !!project?._id,
+  });
+
+  // Update the metrics handler
   const handleMetricsUpdate = useCallback(
     (data: any) => {
-      if (data.projectId === project._id && data.metrics) {
+      if (data.projectId === project?._id && data.metrics) {
         const updatedMetrics = { ...data.metrics };
         if (!updatedMetrics.activeBots) {
           updatedMetrics.activeBots = calculateActiveBots();
@@ -99,11 +87,67 @@ export function ProjectMetrics({
         setLocalMetrics(updatedMetrics);
       }
     },
-    [project._id, calculateActiveBots]
+    [project?._id, calculateActiveBots]
   );
 
-  // Single effect to handle both initial animation and updates
+  // Fetch native currency price
+  const fetchNativePriceData = useCallback(async () => {
+    if (
+      isFetchingNativePrice.current ||
+      (hasInitialNativePriceFetch.current && nativeCurrencyPrice)
+    ) {
+      return;
+    }
+
+    try {
+      isFetchingNativePrice.current = true;
+      await dispatch(fetchNativeCurrencyPrice());
+      hasInitialNativePriceFetch.current = true;
+    } catch (error) {
+      console.error(
+        '📊 [ProjectMetrics] Error fetching native currency price:',
+        error
+      );
+    } finally {
+      isFetchingNativePrice.current = false;
+    }
+  }, [dispatch, nativeCurrencyPrice]);
+
+  // Calculate liquidity
+  const calculateLiquidity = useCallback(async () => {
+    const chainName = project?.chainName || 'BSC_MAINNET';
+    const price =
+      nativeCurrencyPrice[chainName as keyof typeof nativeCurrencyPrice];
+
+    if (!project?.tokenAddress || !price || isCalculatingLiquidity.current) {
+      return;
+    }
+
+    try {
+      isCalculatingLiquidity.current = true;
+      setLoadingLiquidity(true);
+
+      const poolInfo = await getPoolInfo(project.tokenAddress, chainName);
+
+      if (poolInfo) {
+        const liquidityInUsd = poolInfo.nativeReserve * price * 2;
+        setPoolLiquidity(liquidityInUsd);
+      } else {
+        setPoolLiquidity(0);
+      }
+    } catch (error) {
+      console.error('📊 [ProjectMetrics] Failed to fetch liquidity:', error);
+      setPoolLiquidity(0);
+    } finally {
+      setLoadingLiquidity(false);
+      isCalculatingLiquidity.current = false;
+    }
+  }, [project?.tokenAddress, project?.chainName, nativeCurrencyPrice]);
+
+  // Effects
   useEffect(() => {
+    if (!project) return;
+
     const currentMetrics = {
       cumulativeProfit:
         localMetrics?.cumulativeProfit ??
@@ -119,158 +163,62 @@ export function ProjectMetrics({
       liquidity: poolLiquidity,
     };
 
-    if (!hasInitialAnimation.current && !loading && !loadingLiquidity && !bnbPriceLoading) {
-      // Initial animation
+    if (
+      !hasInitialAnimation.current &&
+      !loading &&
+      !loadingLiquidity &&
+      !nativeCurrencyLoading
+    ) {
       const timer = setTimeout(() => {
         setAnimatedMetrics(currentMetrics);
         hasInitialAnimation.current = true;
       }, 100);
       return () => clearTimeout(timer);
     } else if (hasInitialAnimation.current) {
-      // Regular updates
       setAnimatedMetrics(currentMetrics);
     }
-  }, [localMetrics, poolLiquidity, loading, loadingLiquidity, bnbPriceLoading]);
+  }, [
+    project,
+    localMetrics,
+    projectStats,
+    poolLiquidity,
+    loading,
+    loadingLiquidity,
+    nativeCurrencyLoading,
+    calculateActiveBots,
+  ]);
 
-  // Connect to WebSocket and subscribe to project updates
   useEffect(() => {
-    if (!project?._id) {
-      console.warn(
-        '📊 [ProjectMetrics] No project ID available for WebSocket connection'
-      );
-      return;
-    }
+    if (!project?._id) return;
 
-    console.log('📊 [ProjectMetrics] Setting up WebSocket connection:', {
-      projectId: project._id,
-      timestamp: new Date().toISOString(),
-    });
-
-    // Ensure connection and join project room
     websocketService.connect();
     websocketService.joinProject(project._id);
-
-    // Subscribe to metrics updates
     websocketService.subscribe(
       WebSocketEvents.PROJECT_METRICS_UPDATED,
       handleMetricsUpdate
     );
 
-    // Cleanup on unmount
     return () => {
-      if (project._id) {
-        console.log('📊 [ProjectMetrics] Cleaning up WebSocket connection:', {
-          projectId: project._id,
-          timestamp: new Date().toISOString(),
-        });
-        websocketService.unsubscribe(
-          WebSocketEvents.PROJECT_METRICS_UPDATED,
-          handleMetricsUpdate
-        );
-        websocketService.leaveProject(project._id);
-      }
+      websocketService.unsubscribe(
+        WebSocketEvents.PROJECT_METRICS_UPDATED,
+        handleMetricsUpdate
+      );
+      websocketService.leaveProject(project._id);
     };
   }, [project?._id, handleMetricsUpdate]);
 
-  // Fetch BNB price with debounce mechanism
-  const fetchBnbPriceData = useCallback(async () => {
-    // Skip if fetch is already in progress or we've already fetched and have data
-    if (
-      isFetchingBnbPrice.current ||
-      (hasInitialBnbPriceFetch.current && bnbPrice)
-    ) {
-      console.log('📊 [ProjectMetrics] Skipping BNB price fetch:', {
-        isFetching: isFetchingBnbPrice.current,
-        hasInitialFetch: hasInitialBnbPriceFetch.current,
-        currentPrice: bnbPrice,
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    try {
-      console.log('📊 [ProjectMetrics] Fetching BNB price');
-      isFetchingBnbPrice.current = true;
-      await dispatch(fetchBnbPrice());
-      hasInitialBnbPriceFetch.current = true;
-      console.log('📊 [ProjectMetrics] BNB price fetched successfully:', {
-        price: bnbPrice,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error('📊 [ProjectMetrics] Error fetching BNB price:', {
-        error,
-        timestamp: new Date().toISOString(),
-      });
-    } finally {
-      isFetchingBnbPrice.current = false;
-    }
-  }, [dispatch, bnbPrice]);
+  useEffect(() => {
+    fetchNativePriceData();
+  }, [fetchNativePriceData]);
 
   useEffect(() => {
-    fetchBnbPriceData();
-  }, [fetchBnbPriceData]);
-
-  // Calculate liquidity with fetch tracking
-  const calculateLiquidity = useCallback(async () => {
-    const tokenAddress = project.tokenAddress;
-    if (!tokenAddress || !bnbPrice || isCalculatingLiquidity.current) {
-      console.log('📊 [ProjectMetrics] Skipping liquidity calculation:', {
-        hasTokenAddress: !!tokenAddress,
-        hasBnbPrice: !!bnbPrice,
-        isCalculating: isCalculatingLiquidity.current,
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    try {
-      console.log('📊 [ProjectMetrics] Calculating liquidity for token:', {
-        tokenAddress,
-        bnbPrice,
-        timestamp: new Date().toISOString(),
-      });
-      isCalculatingLiquidity.current = true;
-      setLoadingLiquidity(true);
-
-      const poolInfo = await getPoolInfo(tokenAddress);
-      if (poolInfo) {
-        // Calculate liquidity in USD using the BNB price from Redux
-        const liquidityInUsd = poolInfo.bnbReserve * bnbPrice * 2; // Times 2 because liquidity is balanced
-        console.log('📊 [ProjectMetrics] Liquidity calculated:', {
-          bnbReserve: poolInfo.bnbReserve,
-          bnbPrice,
-          liquidityUsd: liquidityInUsd,
-          timestamp: new Date().toISOString(),
-        });
-        setPoolLiquidity(liquidityInUsd);
-      } else {
-        console.warn('📊 [ProjectMetrics] No pool info available for token:', {
-          tokenAddress,
-          timestamp: new Date().toISOString(),
-        });
-        setPoolLiquidity(0);
-      }
-    } catch (error) {
-      console.error('📊 [ProjectMetrics] Failed to fetch liquidity:', {
-        error,
-        tokenAddress,
-        timestamp: new Date().toISOString(),
-      });
-      setPoolLiquidity(0);
-    } finally {
-      setLoadingLiquidity(false);
-      isCalculatingLiquidity.current = false;
-    }
-  }, [project.tokenAddress, bnbPrice]);
-
-  useEffect(() => {
-    if (bnbPrice && project.tokenAddress) {
+    if (nativeCurrencyPrice && project?.tokenAddress) {
       calculateLiquidity();
     }
-  }, [bnbPrice, project.tokenAddress, calculateLiquidity, localMetrics]);
+  }, [nativeCurrencyPrice, project?.tokenAddress, calculateLiquidity]);
 
-  if (loading || loadingLiquidity || bnbPriceLoading) {
+  // Early return for loading state
+  if (!project || loading || loadingLiquidity || nativeCurrencyLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
@@ -291,21 +239,23 @@ export function ProjectMetrics({
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 !pb-2">
           <CardTitle className="text-sm font-medium">
             Cumulative Profit
           </CardTitle>
           <TrendingUp className="h-4 w-4" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="!pt-0">
           <div className="text-xl font-bold">
-            <NumberFlow 
+            <NumberFlow
+              className="font-tt"
               value={animatedMetrics.cumulativeProfit}
+              locales={'en-US'}
               format={{
                 style: 'currency',
                 currency: 'USD',
                 minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+                maximumFractionDigits: 2,
               }}
             />
           </div>
@@ -315,21 +265,23 @@ export function ProjectMetrics({
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 !pb-2">
           <CardTitle className="text-sm font-medium">
             Cumulative Volume
           </CardTitle>
           <ChartColumnIncreasing className="h-4 w-4" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="!pt-0">
           <div className="text-xl font-bold">
-            <NumberFlow 
+            <NumberFlow
+              className="font-tt"
               value={animatedMetrics.tradingVolume}
+              locales={'en-US'}
               format={{
                 style: 'currency',
                 currency: 'USD',
                 minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+                maximumFractionDigits: 2,
               }}
             />
           </div>
@@ -339,17 +291,19 @@ export function ProjectMetrics({
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 !pb-2">
           <CardTitle className="text-sm font-medium">Active Bots</CardTitle>
           <Bot className="h-4 w-4" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="!pt-0">
           <div className="text-xl font-bold">
-            <NumberFlow 
+            <NumberFlow
+              className="font-tt"
               value={animatedMetrics.activeBots}
+              locales={'en-US'}
               format={{
                 minimumFractionDigits: 0,
-                maximumFractionDigits: 0
+                maximumFractionDigits: 0,
               }}
             />
           </div>
@@ -359,19 +313,21 @@ export function ProjectMetrics({
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 !pb-2">
           <CardTitle className="text-sm font-medium">Liquidity</CardTitle>
           <Droplet className="h-4 w-4" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="!pt-0">
           <div className="text-xl font-bold">
-            <NumberFlow 
+            <NumberFlow
+              className="font-tt"
+              locales={'en-US'}
               value={animatedMetrics.liquidity}
               format={{
                 style: 'currency',
                 currency: 'USD',
                 minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+                maximumFractionDigits: 2,
               }}
             />
           </div>

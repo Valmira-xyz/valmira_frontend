@@ -10,12 +10,13 @@ import {
   useState,
 } from 'react';
 import type { DateRange } from 'react-day-picker';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 
-import { format, isWithinInterval, subDays, subMonths, subWeeks } from 'date-fns';
-
+import { addDays, subWeeks } from 'date-fns';
 import { useParams } from 'next/navigation';
 
+import { DataChart } from '@/components/ui/data-chart';
+import { DataTable } from '@/components/ui/data-table';
 import type {
   ActivityLog,
   BotPerformanceHistory,
@@ -23,12 +24,6 @@ import type {
 } from '@/services/projectService';
 import { projectService } from '@/services/projectService';
 import websocketService, { WebSocketEvents } from '@/services/websocketService';
-
-import { DataChart } from '@/components/ui/data-chart';
-import { DataTable, type TableTab } from '@/components/ui/data-table';
-
-
-type TimePeriod = '24h' | '7d' | '1m';
 
 // Utility function to format milliseconds to a readable duration
 // const formatUptime = (ms: number): string => {
@@ -51,14 +46,14 @@ type TimePeriod = '24h' | '7d' | '1m';
 // };
 
 // Utility function to extract the base bot name from the full identifier
-const extractBaseBotName = (fullBotName: string): string => {
-  if (!fullBotName) return '';
+// const extractBaseBotName = (fullBotName: string): string => {
+//   if (!fullBotName) return '';
 
-  // Split by hyphen and return the first part
-  // e.g., "SnipeBot-2b68b4a081df1ba11c" becomes "SnipeBot"
-  const parts = fullBotName.split('-');
-  return parts[0];
-};
+//   // Split by hyphen and return the first part
+//   // e.g., "SnipeBot-2b68b4a081df1ba11c" becomes "SnipeBot"
+//   const parts = fullBotName.split('-');
+//   return parts[0];
+// };
 
 // Utility function to safely check if a value is a valid date
 // const isValidDate = (value: any): boolean => {
@@ -109,12 +104,6 @@ export interface ProjectAnalyticsHandle {
 }
 
 interface ProjectAnalyticsProps {
-  project?: {
-    _id: string;
-    botPerformance?: BotPerformanceHistory[];
-    recentActivity?: ActivityLog[];
-  };
-  projectStats?: any;
   ref?: React.Ref<ProjectAnalyticsHandle>;
 }
 
@@ -122,28 +111,29 @@ interface ProjectAnalyticsProps {
 export const ProjectAnalytics = forwardRef<
   ProjectAnalyticsHandle,
   ProjectAnalyticsProps
->(({ project, projectStats }, ref ) => {
-  const [_volumeTrends, setVolumeTrends] = useState<TimeSeriesDataPoint[]>([]);
-  const [_profitTrends, setProfitTrends] = useState<TimeSeriesDataPoint[]>([]);
-  const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>('7d');
-  const [volumeTimePeriod, setVolumeTimePeriod] = useState<TimePeriod>('7d');
-  const dispatch = useDispatch();
-  const { id: projectId } = useParams() as { id: string };
+>((_, ref) => {
+  // data for charts
+  const [volumeTrends, setVolumeTrends] = useState<TimeSeriesDataPoint[]>([]);
+  const [profitTrends, setProfitTrends] = useState<TimeSeriesDataPoint[]>([]);
 
-  // Bot performance and activity data state
+  // data for tables
   const [botPerformanceData, setBotPerformanceData] = useState<
     BotPerformanceHistory[]
   >([]);
   const [activityLogData, setActivityLogData] = useState<ActivityLog[]>([]);
+
+  // loading states
   const [isLoadingBotPerformance, setIsLoadingBotPerformance] = useState(false);
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
+  const [isLoadingProfitTrends, setIsLoadingProfitTrends] = useState(false);
+  const [isLoadingVolumeTrends, setIsLoadingVolumeTrends] = useState(false);
 
   // Date range states
   const [botPerformanceDateRange, setBotPerformanceDateRange] = useState<
     DateRange | undefined
   >({
     from: subWeeks(new Date(), 1),
-    to: new Date(),
+    to: addDays(new Date(), 3),
   });
   const [activityLogDateRange, setActivityLogDateRange] = useState<
     DateRange | undefined
@@ -152,11 +142,21 @@ export const ProjectAnalytics = forwardRef<
     to: new Date(),
   });
 
-  // Bot filter states
-  const [selectedBotPerformance, setSelectedBotPerformance] = useState<
-    string | null
-  >(null);
-  const [selectedBot, setSelectedBot] = useState<string | null>(null);
+  const [profitDateRange, setProfitDateRange] = useState<DateRange | undefined>(
+    {
+      from: subWeeks(new Date(), 1),
+      to: new Date(),
+    }
+  );
+  const [volumeDateRange, setVolumeDateRange] = useState<DateRange | undefined>(
+    {
+      from: subWeeks(new Date(), 1),
+      to: new Date(),
+    }
+  );
+
+  const dispatch = useDispatch();
+  const { id: projectId } = useParams() as { id: string };
 
   // Refs to prevent duplicate API calls
   const initialRenderComplete = useRef(false);
@@ -177,161 +177,68 @@ export const ProjectAnalytics = forwardRef<
     endDate: undefined,
   });
 
-  // Refs to prevent duplicate API calls for trending data
-  const trendingFetchInProgress = useRef(false);
-  const lastTrendingFetchParams = useRef<{
-    projectId: string | undefined;
-    profitPeriod: TimePeriod | undefined;
-    volumePeriod: TimePeriod | undefined;
-  }>({
-    projectId: undefined,
-    profitPeriod: undefined,
-    volumePeriod: undefined,
-  });
+  // const { toast } = useToast();
 
   // Add a new ref to track refresh requests
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Memoized function to get date range based on time period
-  const memoizedGetDateRange = useCallback(
-    (period: TimePeriod): { start: Date; end: Date } => {
-      const end = new Date();
-      let start: Date;
-
-      switch (period) {
-        case '24h':
-          start = subDays(end, 1);
-          break;
-        case '7d':
-          start = subDays(end, 7);
-          break;
-        case '1m':
-          start = subMonths(end, 1);
-          break;
-        default:
-          start = subDays(end, 1);
-      }
-
-      return { start, end };
-    },
-    []
-  );
 
   // WebSocket integration
   // Memoize the handlers to prevent recreation on re-renders
   const handleBotPerformanceUpdate = useCallback(
     (data: any) => {
       if (data.projectId === projectId && data.botId && data.performance) {
-        console.log(`🤖 [ProjectAnalytics] Received bot performance update:`, {
-          event: WebSocketEvents.BOT_PERFORMANCE_UPDATED,
-          timestamp: new Date().toISOString(),
-          projectId: data.projectId,
-          botId: data.botId,
-          botName:
-            data.performance.botName || `Bot-${data.botId.substring(0, 8)}`,
-          currentDataSize: botPerformanceData.length,
-          performance: {
-            ...data.performance,
-            profit:
-              typeof data.performance.profit === 'number'
-                ? `${data.performance.profit > 0 ? '+' : ''}${data.performance.profit.toFixed(4)}`
-                : data.performance.profit,
-          },
-        });
-
-        // Update the bot performance data with the new data
-        setBotPerformanceData((prev) => {
-          // Find if this bot already exists in our data
-          const botIndex = prev.findIndex((bot) => bot.botId === data.botId);
-
-          const newPerformanceData = {
+        console.log(
+          `🤖 [ProjectAnalytics] Received new bot performance data:`,
+          {
+            event: WebSocketEvents.BOT_PERFORMANCE_UPDATED,
+            timestamp: new Date().toISOString(),
+            projectId: data.projectId,
             botId: data.botId,
             botName:
               data.performance.botName || `Bot-${data.botId.substring(0, 8)}`,
-            ...data.performance,
-            // Ensure profitContribution is properly transferred from the update data
-            profitContribution:
-              data.performance.profitContribution !== undefined
-                ? data.performance.profitContribution
-                : data.performance.profit,
-            lastUpdated: new Date().toISOString(),
-          };
-
-          // Check if within current date range
-          const inRange =
-            botPerformanceDateRange?.from && botPerformanceDateRange?.to
-              ? isWithinInterval(new Date(), {
-                  start: botPerformanceDateRange.from,
-                  end: getEndOfDay(botPerformanceDateRange.to),
-                })
-              : true;
-
-          if (!inRange) {
-            console.log(
-              '🤖 [ProjectAnalytics] Bot performance update outside current date range:',
-              {
-                botId: data.botId,
-                dateRange: {
-                  from: botPerformanceDateRange?.from?.toISOString(),
-                  to: botPerformanceDateRange?.to?.toISOString(),
-                },
-                updateTime: new Date().toISOString(),
-              }
-            );
+            currentDataSize: botPerformanceData.length,
+            performance: {
+              ...data.performance,
+              profit:
+                typeof data.performance.profit === 'number'
+                  ? `${data.performance.profit > 0 ? '+' : ''}${data.performance.profit.toFixed(4)}`
+                  : data.performance.profit,
+            },
           }
+        );
 
-          let updatedData;
-          if (botIndex >= 0) {
-            // Update existing bot data
-            const updatedBots = [...prev];
-            updatedBots[botIndex] = {
-              ...updatedBots[botIndex],
-              ...newPerformanceData,
-            };
-            updatedData = updatedBots;
-            console.log(
-              '🤖 [ProjectAnalytics] Updated existing bot performance:',
-              {
-                botId: data.botId,
-                oldData: prev[botIndex],
-                newData: updatedBots[botIndex],
-                timestamp: new Date().toISOString(),
-              }
-            );
-          } else {
-            // Add new bot data
-            updatedData = [...prev, newPerformanceData];
-            console.log('🤖 [ProjectAnalytics] Added new bot performance:', {
-              botId: data.botId,
-              newData: newPerformanceData,
-              timestamp: new Date().toISOString(),
-            });
-          }
+        const newPerformanceData = {
+          botId: data.botId,
+          botName:
+            data.performance.botName || `Bot-${data.botId.substring(0, 8)}`,
+          ...data.performance,
+          // Ensure profitContribution is properly transferred from the update data
+          profitContribution:
+            data.performance.profitContribution !== undefined
+              ? data.performance.profitContribution
+              : data.performance.profit,
+          status: data.performance.status,
+          action: data.performance.action,
+          date: new Date().toISOString(),
+          trades: data.performance.trades || 0,
+          profit: data.performance.profit || 0,
+          lastUpdated: new Date().toISOString(),
+        };
+
+        // Update the bot performance data with the new data
+        setBotPerformanceData((prev) => {
+          const updatedData = [newPerformanceData, ...prev];
+          console.log('🤖 [ProjectAnalytics] Added new bot performance:', {
+            botId: data.botId,
+            newData: newPerformanceData,
+            timestamp: new Date().toISOString(),
+          });
           return updatedData.sort(
             (a, b) =>
               new Date(b.lastUpdated || b.date).getTime() -
               new Date(a.lastUpdated || a.date).getTime()
           );
         });
-
-        // If this update matches our filter, show a toast notification
-        const botMatches =
-          !selectedBotPerformance ||
-          selectedBotPerformance === data.performance.botName ||
-          selectedBotPerformance === `Bot-${data.botId.substring(0, 8)}`;
-
-        if (botMatches) {
-          console.log(
-            `🤖 [ProjectAnalytics] Bot performance update matches current filter:`,
-            {
-              botId: data.botId,
-              botName:
-                data.performance.botName || `Bot-${data.botId.substring(0, 8)}`,
-              selectedBot: selectedBotPerformance,
-              timestamp: new Date().toISOString(),
-            }
-          );
-        }
       } else {
         console.warn(`🤖 [ProjectAnalytics] Invalid bot performance data:`, {
           event: WebSocketEvents.BOT_PERFORMANCE_UPDATED,
@@ -345,19 +252,14 @@ export const ProjectAnalytics = forwardRef<
         });
       }
     },
-    [
-      projectId,
-      botPerformanceDateRange,
-      selectedBotPerformance,
-      botPerformanceData.length,
-    ]
+    [projectId, botPerformanceDateRange, botPerformanceData.length]
   );
 
   // Handle activity log updates with enhanced logging
   const handleActivityLogUpdate = useCallback(
     (data: any) => {
       if (data.projectId === projectId && data.activity) {
-        console.log(`📝 [ProjectAnalytics] Received activity update:`, {
+        console.log(`📝 [ProjectAnalytics] Received new activity data:`, {
           event: WebSocketEvents.ACTIVITY_LOG_ADDED,
           timestamp: new Date().toISOString(),
           projectId: data.projectId,
@@ -378,49 +280,12 @@ export const ProjectAnalytics = forwardRef<
           action: data.activity.action || 'Unknown Action',
           description: data.activity.description || 'No description provided',
           volume: data.activity.volume || 0,
+          impact: data.activity.impact || 0,
         };
-
-        // Check if activity is within the current date range filter
-        const inRange =
-          activityLogDateRange?.from && activityLogDateRange?.to
-            ? isWithinInterval(new Date(normalizedActivity.timestamp), {
-                start: activityLogDateRange.from,
-                end: getEndOfDay(activityLogDateRange.to),
-              })
-            : true;
-
-        // Check if activity matches the current bot filter
-        const botMatches =
-          !selectedBot || selectedBot === normalizedActivity.botName;
-
-        if (!inRange) {
-          console.log(
-            '📝 [ProjectAnalytics] Activity outside current date range:',
-            {
-              activity: normalizedActivity,
-              dateRange: {
-                from: activityLogDateRange?.from?.toISOString(),
-                to: activityLogDateRange?.to?.toISOString(),
-              },
-              timestamp: new Date().toISOString(),
-            }
-          );
-        }
-
-        if (!botMatches) {
-          console.log(
-            '📝 [ProjectAnalytics] Activity does not match current bot filter:',
-            {
-              activityBot: normalizedActivity.botName,
-              selectedBot,
-              timestamp: new Date().toISOString(),
-            }
-          );
-        }
 
         // Always update the data regardless of filters to keep it complete
         setActivityLogData((prev) => {
-          const updated = [normalizedActivity, ...prev].slice(0, 100);
+          const updated = [normalizedActivity, ...prev];
           console.log('📝 [ProjectAnalytics] Updated activity log:', {
             newActivity: normalizedActivity,
             totalActivities: updated.length,
@@ -428,17 +293,6 @@ export const ProjectAnalytics = forwardRef<
           });
           return updated;
         });
-
-        // Show toast notification if the activity matches current filters
-        if (inRange && botMatches) {
-          console.log(
-            `📝 [ProjectAnalytics] Activity update matches current filters:`,
-            {
-              activity: normalizedActivity,
-              timestamp: new Date().toISOString(),
-            }
-          );
-        }
       } else {
         console.warn(`📝 [ProjectAnalytics] Invalid activity data:`, {
           event: WebSocketEvents.ACTIVITY_LOG_ADDED,
@@ -451,7 +305,89 @@ export const ProjectAnalytics = forwardRef<
         });
       }
     },
-    [projectId, activityLogDateRange, selectedBot, activityLogData.length]
+    [projectId, activityLogDateRange, activityLogData.length]
+  );
+
+  // Handle distribution updates
+  const handleDistributionUpdate = useCallback(
+    (data: any) => {
+      if (data.projectId === projectId && data.distributionBotId) {
+        console.log(`🔄 [ProjectAnalytics] Received distribution update:`, {
+          event: WebSocketEvents.DISTRIBUTION_UPDATES,
+          timestamp: new Date().toISOString(),
+          projectId: data.projectId,
+          distributionBotId: data.distributionBotId,
+          sourceWallets: data.sourceWallets,
+          targetWallets: data.targetWallets,
+          distributionStyle: data.distributionStyle,
+          estimatedAmount: data.estimatedAmount,
+          chainName: data.chainName,
+          efficiency: data.efficiency,
+        });
+
+        // Create a distribution activity log entry
+        const distributionActivity = {
+          botName: `DistributionBot-${data.distributionBotId?.substring(6) || ''}`,
+          timestamp: new Date(data.timestamp || Date.now()),
+          action: 'Token Distribution Completed' as const,
+          volume: data.estimatedAmount || 0,
+          impact: data.efficiency || 0,
+        };
+
+        // Add to activity log data
+        setActivityLogData((prev) => {
+          const updated = [distributionActivity, ...prev];
+          console.log('🔄 [ProjectAnalytics] Added distribution activity:', {
+            distributionActivity,
+            totalActivities: updated.length,
+            timestamp: new Date().toISOString(),
+          });
+          return updated.sort(
+            (a, b) =>
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+        });
+
+        // Also create a bot performance entry
+        const performanceEntry = {
+          botId: data.distributionBotId,
+          botName: `DistributionBot-${data.distributionBotId?.substring(6) || ''}`,
+          status: 'Active' as const,
+          trades: data.totalWallets || data.sourceWallets + data.targetWallets,
+          action: 'Token Distribution Completed' as const,
+          profitContribution: 0,
+          profit: 0,
+          uptime: '0s',
+          date: new Date().toISOString(),
+          lastUpdated: new Date(),
+        };
+
+        // Add to bot performance data
+        setBotPerformanceData((prev) => {
+          const updated = [performanceEntry, ...prev];
+          console.log('🔄 [ProjectAnalytics] Added distribution performance:', {
+            performanceEntry,
+            timestamp: new Date().toISOString(),
+          });
+          return updated.sort(
+            (a, b) =>
+              new Date(b.lastUpdated || b.date).getTime() -
+              new Date(a.lastUpdated || a.date).getTime()
+          );
+        });
+      } else {
+        console.warn(`🔄 [ProjectAnalytics] Invalid distribution data:`, {
+          event: WebSocketEvents.DISTRIBUTION_UPDATES,
+          hasProjectId: !!data.projectId,
+          hasDistributionBotId: !!data.distributionBotId,
+          expectedProjectId: projectId,
+          actualProjectId: data.projectId,
+          data,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    },
+    [projectId]
   );
 
   // Handle time series data updates
@@ -489,9 +425,18 @@ export const ProjectAnalytics = forwardRef<
 
         // Update the appropriate time series data
         if (data.type === 'profit') {
+          console.log(
+            `\n =============== profitData ===============\n${JSON.stringify(data, null, 2)}`
+          );
           setProfitTrends((prev) => {
             // Check if datapoint is in the current time period
-            const { start, end } = memoizedGetDateRange(profitTimePeriod);
+            // const { start, end } = memoizedGetDateRange(profitDateRange?.to?.toISOString() as TimePeriod);
+            const { start, end } = {
+              start:
+                profitDateRange?.from ||
+                new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+              end: profitDateRange?.to || new Date(),
+            };
             const dataPointDate = new Date(dataPointWithTimestamp.timestamp);
             const isInCurrentPeriod =
               dataPointDate >= start && dataPointDate <= getEndOfDay(end);
@@ -531,9 +476,18 @@ export const ProjectAnalytics = forwardRef<
             dispatch({ type: 'FORCE_CHART_UPDATE', chartType: 'profit' });
           }, 100);
         } else if (data.type === 'volume') {
+          console.log(
+            `\n =============== volumeDate ===============\n${JSON.stringify(data, null, 2)}`
+          );
           setVolumeTrends((prev) => {
             // Check if datapoint is in the current time period
-            const { start, end } = memoizedGetDateRange(volumeTimePeriod);
+            // const { start, end } = memoizedGetDateRange(volumeDateRange?.to?.toISOString() as TimePeriod);
+            const { start, end } = {
+              start:
+                volumeDateRange?.from ||
+                new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+              end: volumeDateRange?.to || new Date(),
+            };
             const dataPointDate = new Date(dataPointWithTimestamp.timestamp);
             const isInCurrentPeriod =
               dataPointDate >= start && dataPointDate <= getEndOfDay(end);
@@ -591,19 +545,13 @@ export const ProjectAnalytics = forwardRef<
         );
       }
     },
-    [
-      projectId,
-      profitTimePeriod,
-      volumeTimePeriod,
-      memoizedGetDateRange,
-      dispatch,
-    ]
+    [projectId, profitDateRange, volumeDateRange, dispatch]
   );
 
   useEffect(() => {
     if (!projectId) return;
 
-    console.log(`🔌 Setting up WebSocket handlers for project ${projectId}`);
+    // console.log(`🔌 Setting up WebSocket handlers for project ${projectId}`);
 
     // Ensure connection and join project room
     websocketService.connect();
@@ -622,10 +570,14 @@ export const ProjectAnalytics = forwardRef<
       WebSocketEvents.TIME_SERIES_UPDATED,
       handleTimeSeriesUpdate
     );
+    websocketService.subscribe(
+      WebSocketEvents.DISTRIBUTION_UPDATES,
+      handleDistributionUpdate
+    );
 
     // Cleanup on unmount
     return () => {
-      console.log(`🔌 Cleaning up WebSocket handlers for project ${projectId}`);
+      // console.log(`🔌 Cleaning up WebSocket handlers for project ${projectId}`);
       websocketService.unsubscribe(
         WebSocketEvents.BOT_PERFORMANCE_UPDATED,
         handleBotPerformanceUpdate
@@ -638,6 +590,10 @@ export const ProjectAnalytics = forwardRef<
         WebSocketEvents.TIME_SERIES_UPDATED,
         handleTimeSeriesUpdate
       );
+      websocketService.unsubscribe(
+        WebSocketEvents.DISTRIBUTION_UPDATES,
+        handleDistributionUpdate
+      );
       websocketService.leaveProject(projectId);
     };
   }, [
@@ -645,6 +601,7 @@ export const ProjectAnalytics = forwardRef<
     handleBotPerformanceUpdate,
     handleActivityLogUpdate,
     handleTimeSeriesUpdate,
+    handleDistributionUpdate,
   ]);
 
   // Expose methods to parent component via useImperativeHandle
@@ -659,7 +616,8 @@ export const ProjectAnalytics = forwardRef<
       return new Promise((resolve) => {
         refreshTimeoutRef.current = setTimeout(async () => {
           try {
-            await fetchTrendingData(true); // Pass true to force refresh
+            await fetchProfitTrends();
+            await fetchVolumeTrends();
             await fetchBotPerformance();
             await fetchActivityLog();
             resolve();
@@ -673,52 +631,48 @@ export const ProjectAnalytics = forwardRef<
   }));
 
   // Filtered data memoization
-  const filteredBotPerformanceData = useMemo(() => {
-    return botPerformanceData
-      .filter((bot) => {
-        const dateInRange =
-          botPerformanceDateRange?.from && botPerformanceDateRange?.to
-            ? isWithinInterval(new Date(bot.lastUpdated || bot.date), {
-                start: botPerformanceDateRange.from,
-                end: getEndOfDay(botPerformanceDateRange.to),
-              })
-            : true;
+  // const filteredBotPerformanceData = useMemo(() => {
+  //   return botPerformanceData
+  //     .filter((bot) => {
+  //       const dateInRange =
+  //         botPerformanceDateRange?.from && botPerformanceDateRange?.to
+  //           ? isWithinInterval(new Date(bot.lastUpdated || bot.date), {
+  //               start: botPerformanceDateRange.from,
+  //               end: getEndOfDay(botPerformanceDateRange.to),
+  //             })
+  //           : true;
 
-        const matchesBot = selectedBotPerformance
-          ? bot.botName === selectedBotPerformance
-          : true;
+  //       return dateInRange && matchesBot;
+  //     })
+  //     .sort(
+  //       (a, b) =>
+  //         new Date(b.lastUpdated || b.date).getTime() -
+  //         new Date(a.lastUpdated || a.date).getTime()
+  //     );
+  // }, [botPerformanceData, botPerformanceDateRange, selectedBotPerformance]);
 
-        return dateInRange && matchesBot;
-      })
-      .sort(
-        (a, b) =>
-          new Date(b.lastUpdated || b.date).getTime() -
-          new Date(a.lastUpdated || a.date).getTime()
-      );
-  }, [botPerformanceData, botPerformanceDateRange, selectedBotPerformance]);
+  // const filteredActivityLogData = useMemo(() => {
+  //   return activityLogData
+  //     .filter((activity) => {
+  //       const dateInRange =
+  //         activityLogDateRange?.from && activityLogDateRange?.to
+  //           ? isWithinInterval(new Date(activity.timestamp), {
+  //               start: activityLogDateRange.from,
+  //               end: getEndOfDay(activityLogDateRange.to),
+  //             })
+  //           : true;
 
-  const filteredActivityLogData = useMemo(() => {
-    return activityLogData
-      .filter((activity) => {
-        const dateInRange =
-          activityLogDateRange?.from && activityLogDateRange?.to
-            ? isWithinInterval(new Date(activity.timestamp), {
-                start: activityLogDateRange.from,
-                end: getEndOfDay(activityLogDateRange.to),
-              })
-            : true;
+  //       const matchesBot = selectedBot
+  //         ? activity.botName === selectedBot
+  //         : true;
 
-        const matchesBot = selectedBot
-          ? activity.botName === selectedBot
-          : true;
-
-        return dateInRange && matchesBot;
-      })
-      .sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-  }, [activityLogData, activityLogDateRange, selectedBot]);
+  //       return dateInRange && matchesBot;
+  //     })
+  //     .sort(
+  //       (a, b) =>
+  //         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  //     );
+  // }, [activityLogData, activityLogDateRange, selectedBot]);
 
   // Fetch bot performance data
   const fetchBotPerformance = useCallback(async () => {
@@ -841,175 +795,71 @@ export const ProjectAnalytics = forwardRef<
     }
   }, [dispatch]);
 
-  // Get available bots from performance data - optimized for rendering speed
-  const initialAvailableBots = useMemo(() => {
-    // For initial render, just use the props data without waiting for Redux
-    if (project?.botPerformance && project.botPerformance.length > 0) {
-      const botMap = new Map<string, { id: string; name: string }>();
-
-      project.botPerformance.forEach((bot) => {
-        if (!botMap.has(bot.botName)) {
-          botMap.set(bot.botName, {
-            id: bot.botName,
-            name: bot.botName,
-          });
-        }
+  // Fetch profit trends individually
+  const fetchProfitTrends = useCallback(async () => {
+    console.log('fetchProfitTrends is called');
+    if (!projectId || !profitDateRange?.from || !profitDateRange?.to) return;
+    try {
+      setIsLoadingProfitTrends(true);
+      const profitData = await projectService.getProfitTrending(projectId, {
+        start: profitDateRange.from,
+        end: profitDateRange.to,
       });
-
-      return Array.from(botMap.values());
+      setProfitTrends(profitData);
+    } catch (error) {
+      console.error('Error fetching profit trends:', error);
+    } finally {
+      setIsLoadingProfitTrends(false);
     }
+  }, [projectId, profitDateRange]);
 
-    return [];
-  }, [project?.botPerformance]); // Only depends on props
-
-  // Full available bots calculation that includes Redux data
-  const availableBots = useMemo(() => {
-    // Start with the initial bots from props
-    const botMap = new Map<string, { id: string; name: string }>();
-
-    // Add initial bots from props first
-    initialAvailableBots.forEach((bot) => {
-      if (!botMap.has(bot.id)) {
-        botMap.set(bot.id, bot);
-      }
-    });
-
-    // Then add any additional bots from Redux store
-    const storePerformance = projectStats?.botPerformance as
-      | BotPerformanceHistory[]
-      | undefined;
-    storePerformance?.forEach((bot) => {
-      if (!botMap.has(bot.botId)) {
-        botMap.set(bot.botId, {
-          id: bot.botId,
-          name: bot.botName,
-        });
-      }
-    });
-
-    // If we still have no bots and there's recentActivity data, extract bot names from there
-    if (
-      botMap.size === 0 &&
-      project?.recentActivity &&
-      project.recentActivity.length > 0
-    ) {
-      project.recentActivity.forEach((activity) => {
-        if (activity.botName && !botMap.has(activity.botName)) {
-          botMap.set(activity.botName, {
-            id: activity.botName,
-            name: activity.botName,
-          });
-        }
+  // Fetch volume trends individually
+  const fetchVolumeTrends = useCallback(async () => {
+    console.log('fetchVolumeTrends is called');
+    if (!projectId || !volumeDateRange?.from || !volumeDateRange?.to) return;
+    try {
+      setIsLoadingVolumeTrends(true);
+      const volumeData = await projectService.getVolumeTrending(projectId, {
+        start: volumeDateRange.from,
+        end: volumeDateRange.to,
       });
+      setVolumeTrends(volumeData);
+    } catch (error) {
+      console.error('Error fetching volume trends:', error);
+    } finally {
+      setIsLoadingVolumeTrends(false);
     }
+  }, [projectId, volumeDateRange]);
 
-    return Array.from(botMap.values());
-  }, [
-    initialAvailableBots,
-    projectStats?.botPerformance,
-    project?.recentActivity,
-  ]);
+  // Fetch profit trends when profitDateRange changes
+  useEffect(() => {
+    fetchProfitTrends();
+  }, [projectId, fetchProfitTrends]);
 
+  // Fetch volume trends when volumeDateRange changes
+  useEffect(() => {
+    fetchVolumeTrends();
+  }, [projectId, fetchVolumeTrends]);
 
-  // Update fetchTrendingData to accept a force parameter
-  const fetchTrendingData = useCallback(
-    async (force = false) => {
-      if (!projectId) return;
-
-      const newParams = {
-        projectId,
-        profitPeriod: profitTimePeriod,
-        volumePeriod: volumeTimePeriod,
-      };
-
-      // Skip if fetch is already in progress
-      if (trendingFetchInProgress.current && !force) {
-        return;
-      }
-
-      const paramsUnchanged =
-        lastTrendingFetchParams.current.projectId === newParams.projectId &&
-        lastTrendingFetchParams.current.profitPeriod ===
-          newParams.profitPeriod &&
-        lastTrendingFetchParams.current.volumePeriod === newParams.volumePeriod;
-
-      // Skip if params haven't changed, unless force=true
-      if (paramsUnchanged && !force) {
-        return;
-      }
-
-      try {
-        // Set the in-progress flag to prevent duplicate fetches
-        trendingFetchInProgress.current = true;
-        lastTrendingFetchParams.current = newParams;
-
-        // Add exponential backoff for retries to prevent 429 errors
-        let retryCount = 0;
-        const maxRetries = 3;
-
-        let profitData, volumeData;
-
-        while (retryCount <= maxRetries) {
-          try {
-            // Fetch both trending datasets in parallel
-            [profitData, volumeData] = await Promise.all([
-              projectService.getProfitTrending(
-                projectId,
-                memoizedGetDateRange(profitTimePeriod)
-              ),
-              projectService.getVolumeTrending(
-                projectId,
-                memoizedGetDateRange(volumeTimePeriod)
-              ),
-            ]);
-
-            // If successful, break out of retry loop
-            break;
-          } catch (error: any) {
-            // If it's a 429 error, wait and retry
-            if (error.status === 429 && retryCount < maxRetries) {
-              retryCount++;
-              // Exponential backoff: 1s, 2s, 4s, etc.
-              const delay = Math.pow(2, retryCount) * 1000;
-              await new Promise((resolve) => setTimeout(resolve, delay));
-            } else {
-              // If it's not a 429 error or we've exceeded retries, rethrow
-              throw error;
-            }
-          }
-        }
-
-        // Only update state if we have data
-        if (profitData) setProfitTrends(profitData);
-        if (volumeData) setVolumeTrends(volumeData);
-      } catch (error) {
-        console.error('Error fetching trending data:', error);
-      } finally {
-        // Always clear the in-progress flag when done
-        trendingFetchInProgress.current = false;
-      }
-    },
-    [projectId, profitTimePeriod, volumeTimePeriod, memoizedGetDateRange]
+  const filterOption = useMemo(
+    () => ({
+      key: { label: 'Bot Name', value: 'botName' },
+      options: [
+        'All',
+        'VolumeBot',
+        'AutoSellBot',
+        'SnipeBot',
+        'HolderBot',
+        'DistributionBot',
+      ],
+    }),
+    []
   );
 
-  // Single effect to handle both trending data fetches
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchTrendingData();
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [fetchTrendingData]);
-
-  const filterOption = useMemo(() => (
-    { 
-      key: { label: "Bot Name", value: "botName"}, 
-      options: ["All", "VolumeBot", "AutoSellBot", "SnipeBot", "HolderBot"] 
-    }), []);
-
-  // console.log(`\n =============== table 1 data ===============\n${JSON.stringify(filteredBotPerformanceData, null, 2)}`)
-  console.log(`\n =============== table 2 data ===============\n${JSON.stringify(filteredActivityLogData, null, 2)}`)
-
+  // console.log(
+  //   `\n =============== table 1 data ===============\n${JSON.stringify(botPerformanceData, null, 2)}`
+  // );
+  // console.log(`\n =============== table 2 data ===============\n${JSON.stringify(activityLogData, null, 2)}`)
 
   return (
     <div className="space-y-6">
@@ -1017,48 +867,48 @@ export const ProjectAnalytics = forwardRef<
         <DataChart
           title="Profit Trend"
           description="Trading profit"
-          data={filteredBotPerformanceData}
-          yKey="profit"
-          xKey="date"
+          data={profitTrends}
+          yKey="value"
+          xKey="timestamp"
           color="hsl(var(--chart-1))"
-          isLoading={isLoadingBotPerformance}
+          isLoading={isLoadingProfitTrends}
           showDateRange={true}
-          showDateButtons={true} 
+          showDateButtons={true}
           showChartTypeSelector={false}
           showHeaderInVertical={true}
-          dateRange={botPerformanceDateRange}
-          onDateRangeChange={setBotPerformanceDateRange}
+          dateRange={profitDateRange}
+          onDateRangeChange={setProfitDateRange}
         />
 
         <DataChart
           title="Trading Volume Trend"
           description="Trading volume"
-          data={filteredActivityLogData}
-          yKey="volume"
+          data={volumeTrends}
+          yKey="value"
           xKey="timestamp"
           color="hsl(var(--chart-1))"
-          isLoading={isLoadingActivity}
+          isLoading={isLoadingVolumeTrends}
           showDateRange={true}
-          showDateButtons={true} 
+          showDateButtons={true}
           showChartTypeSelector={false}
           showHeaderInVertical={true}
-          dateRange={activityLogDateRange}
-          onDateRangeChange={setActivityLogDateRange}
+          dateRange={volumeDateRange}
+          onDateRangeChange={setVolumeDateRange}
         />
       </div>
 
       <DataTable
         title="Bot Performance"
         description=""
-        data={filteredBotPerformanceData}
+        data={botPerformanceData}
         showColumns={[
-          { name: 'botName', type: 'normal'},
+          { name: 'botName', type: 'normal' },
           { name: 'action', type: 'normal' },
-          { name: 'trades', type: 'normal'},
+          { name: 'trades', type: 'normal' },
           { name: 'profit', type: 'price', displayName: 'Profit Contribution' },
-          { name: 'date', type: 'time', displayName: 'Time' },
+          { name: 'timestamp', type: 'time', displayName: 'Time' },
         ]}
-        filterOption={ filterOption }
+        filterOption={filterOption}
         isLoading={isLoadingBotPerformance}
         showSearchInput={true}
         showCheckbox={true}
@@ -1074,15 +924,14 @@ export const ProjectAnalytics = forwardRef<
       <DataTable
         title="Recent Activity"
         description=""
-        data={filteredActivityLogData}
+        data={activityLogData}
         showColumns={[
           { name: 'botName', type: 'normal' },
           { name: 'action', type: 'normal' },
           { name: 'volume', type: 'price' },
-          { name: 'impact', type: 'percent' },
-          { name: 'timestamp', type: 'time' },
+          { name: 'timestamp', type: 'time', displayName: 'Time' },
         ]}
-        filterOption={ filterOption }
+        filterOption={filterOption}
         isLoading={isLoadingActivity}
         showSearchInput={true}
         showCheckbox={true}

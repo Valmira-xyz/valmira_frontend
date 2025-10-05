@@ -21,7 +21,8 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
-  webpack(config) {
+  webpack:(config) =>{
+    config.externals.push("pino-pretty", "lokijs", "encoding")
     const fileLoaderRule = config.module.rules.find((rule) =>
       rule.test?.test?.('.svg'),
     )
@@ -41,9 +42,25 @@ const nextConfig = {
     )
 
     fileLoaderRule.exclude = /\.svg$/i
-
     return config
   },
+  // async headers() {
+  //   return [
+  //     {
+  //       source: "/(.*)",
+  //       headers: [
+  //         {
+  //           key: "Cross-Origin-Opener-Policy",
+  //           value: "unsafe-none",
+  //         },
+  //         {
+  //           key: "Cross-Origin-Embedder-Policy",
+  //           value: "require-corp",
+  //         },
+  //       ],
+  //     },
+  //   ];
+  // }
 }
 
 mergeConfig(nextConfig, userConfig)

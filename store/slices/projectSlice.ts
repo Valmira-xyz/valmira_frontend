@@ -7,18 +7,116 @@ import type {
   BotPerformanceHistory,
 } from '@/services/projectService';
 import { projectService } from '@/services/projectService';
-import type { Project, ProjectState } from '@/types';
+import type { Project } from '@/types';
+
+interface PackData {
+  packType: string;
+  packConfig: {
+    snipeBotConfig?: {
+      walletCount: number;
+      tokenAmount: number;
+    };
+    distributionBotConfig?: {
+      targetWalletCount: number;
+    };
+    volumeBotConfig?: {
+      minNativeAmount: number;
+      maxNativeAmount: number;
+      timeSpanBetweenTransactions: number;
+      targetVolume: number;
+    };
+    holderBotConfig?: {
+      targetHolders: number;
+    };
+    autoSellBotConfig?: {
+      targetPrice: number;
+      stopLoss: number;
+    };
+  };
+  containingBots: string[];
+  // Include project data for pack creation
+  name: string;
+  tokenAddress: string;
+  chainId: number;
+  symbol: string;
+  totalSupply: string;
+  isImported: boolean;
+  pairAddress: string;
+  tokenData: {
+    name: string;
+    symbol: string;
+    decimals: number;
+    totalSupply: string;
+    websiteLink?: string;
+    telegramLink?: string;
+    twitterLink?: string;
+    discordLink?: string;
+    buyFee: number;
+    sellFee: number;
+    maxHoldingLimit_: number;
+    maxBuyLimit_: number;
+    maxSellLimit_: number;
+    templateNumber: number;
+  };
+  chainName: string;
+}
+
+interface Pack {
+  _id: string;
+  packType: string;
+  packConfig: PackData['packConfig'];
+  containingBots: string[];
+  projectId: string;
+  userId: string;
+  status: 'pending' | 'deploying' | 'active' | 'inactive' | 'error';
+  createdAt: string;
+  updatedAt: string;
+  estimatedCost?: string;
+  deploymentProgress?: number;
+}
+
+interface ProjectState {
+  projects: Project[];
+  currentProject: Project | null;
+  // Pack-related state
+  packs: Pack[];
+  currentPack: Pack | null;
+  globalPackParameters: any | null;
+  deploymentProgress: number;
+  deploymentStatus: string;
+  // Common state
+  loading: boolean;
+  error: string | null;
+  volumeData: any;
+  projectStats: any;
+  nativeCurrencyLoading: boolean;
+  globalMetrics: any;
+  nativeCurrencyPrice: {
+    BSC_MAINNET: number;
+    ETH_MAINNET: number;
+  };
+}
 
 const initialState: ProjectState = {
   projects: [],
   currentProject: null,
+  // Pack-related initial state
+  packs: [],
+  currentPack: null,
+  globalPackParameters: null,
+  deploymentProgress: 0,
+  deploymentStatus: 'idle',
+  // Common initial state
   loading: false,
   error: null,
   volumeData: null,
   projectStats: null,
-  bnbPrice: null,
-  bnbPriceLoading: false,
+  nativeCurrencyLoading: false,
   globalMetrics: null,
+  nativeCurrencyPrice: {
+    BSC_MAINNET: 300,
+    ETH_MAINNET: 2000,
+  },
 };
 
 // Async thunks
@@ -28,7 +126,10 @@ export const fetchProjects = createAsyncThunk(
     try {
       return await projectService.getProjects();
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -39,13 +140,21 @@ export const fetchPublicProjects = createAsyncThunk(
     {
       pageIndex = 0,
       maxPageCount = 10,
-    }: { pageIndex?: number; maxPageCount?: number } = {},
+      isProject = true,
+    }: { pageIndex?: number; maxPageCount?: number; isProject?: boolean } = {},
     { rejectWithValue }
   ) => {
     try {
-      return await projectService.getPublicProjects(pageIndex, maxPageCount);
+      return await projectService.getPublicProjects(
+        pageIndex,
+        maxPageCount,
+        isProject
+      );
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -56,7 +165,10 @@ export const fetchProject = createAsyncThunk(
     try {
       return await projectService.getProject(projectId);
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -67,7 +179,10 @@ export const createProject = createAsyncThunk(
     try {
       return await projectService.createProject(projectData);
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -81,7 +196,10 @@ export const updateProjectStatus = createAsyncThunk(
     try {
       return await projectService.updateProjectStatus(projectId, status);
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -93,7 +211,10 @@ export const deleteProject = createAsyncThunk(
       await projectService.deleteProject(projectId);
       return projectId;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -104,7 +225,10 @@ export const fetchVolumeData = createAsyncThunk(
     try {
       return await projectService.getVolumeData(projectId);
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -126,7 +250,10 @@ export const fetchProjectStats = createAsyncThunk(
       // Return the stats as is - the dates will be handled in the reducer
       return stats;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -152,7 +279,10 @@ export const fetchRecentActivity = createAsyncThunk(
     try {
       return await projectService.getRecentActivity(projectId, timeRange);
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -174,35 +304,54 @@ export const fetchBotPerformance = createAsyncThunk(
         endDate
       );
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
 
-export const fetchBnbPrice = createAsyncThunk(
-  'projects/fetchBnbPrice',
+export const fetchNativeCurrencyPrice = createAsyncThunk(
+  'projects/fetchNativeCurrencyPrice',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get<{
+      // Fetch BSC price
+      const bscResponse = await axios.get<{
         success: boolean;
         data: {
           price: number;
           symbol: string;
           currency: string;
         };
-      }>(`${config.apiUrl}/web3/bnb-price`);
+      }>(`${config.apiUrl}/web3/native-price/BSC_MAINNET`);
 
-      if (response.data.success && response.data.data.price) {
-        return response.data.data.price;
-      }
-      return 300; // Fallback value
+      // Fetch ETH price
+      const ethResponse = await axios.get<{
+        success: boolean;
+        data: {
+          price: number;
+          symbol: string;
+          currency: string;
+        };
+      }>(`${config.apiUrl}/web3/native-price/ETH_MAINNET`);
+
+      const prices = {
+        BSC_MAINNET: bscResponse.data.success
+          ? bscResponse.data.data.price
+          : 600,
+        ETH_MAINNET: ethResponse.data.success
+          ? ethResponse.data.data.price
+          : 2500,
+      };
+
+      return prices;
     } catch (error: any) {
-      console.error('Failed to fetch BNB price:', error);
-      return rejectWithValue(
-        error.response?.data?.message ||
-          error.message ||
-          'Failed to fetch BNB price'
-      );
+      console.error('Failed to fetch native currency prices:', error);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -215,7 +364,296 @@ export const fetchGlobalMetrics = createAsyncThunk(
       return result;
     } catch (error: any) {
       console.error('Failed to fetch global metrics:', error);
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
+    }
+  }
+);
+
+// Pack-related async thunks using project service with isProject=false
+export const createPack = createAsyncThunk(
+  'projects/createPack',
+  async (packData: PackData, { rejectWithValue }) => {
+    try {
+      console.log('Creating pack with data:', packData);
+
+      const response = await fetch(
+        `${config.apiUrl}/projects?isProject=false`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            ...packData,
+            packType: packData.packType,
+            packConfig: packData.packConfig,
+            containingBots: packData.containingBots,
+          }),
+        }
+      );
+
+      console.log('Pack creation response status:', response.status);
+
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+          return rejectWithValue([
+            'NETWORK_ERROR',
+            `HTTP ${response.status}: ${response.statusText}`,
+          ]);
+        }
+        console.error('Pack creation failed:', errorData);
+        return rejectWithValue([
+          errorData.errorType || 'CREATION_ERROR',
+          errorData.message || 'Failed to create pack',
+        ]);
+      }
+
+      const result = await response.json();
+      console.log('Pack creation successful:', result);
+      return result.data.project; // Backend returns as project but it's actually a pack
+    } catch (error: any) {
+      console.error('Pack creation error:', error);
+
+      // Handle network errors and other fetch errors properly
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        return rejectWithValue([
+          'NETWORK_ERROR',
+          'Network error occurred. Please check your connection.',
+        ]);
+      }
+
+      return rejectWithValue([
+        'CREATION_ERROR',
+        error.message?.toString().slice(0, 200) || 'Failed to create pack',
+      ]);
+    }
+  }
+);
+
+export const fetchPacks = createAsyncThunk(
+  'projects/fetchPacks',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch(
+        `${config.apiUrl}/projects?isProject=false`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch packs');
+      }
+
+      const result = await response.json();
+      console.log('[123123123]', result.data.projects);
+      return result.data.projects; // Backend returns as projects but they're actually packs
+    } catch (error: any) {
+      return rejectWithValue([
+        error.response?.data?.errorType || 'FETCH_ERROR',
+        error.message?.toString().slice(0, 200) || 'Failed to fetch packs',
+      ]);
+    }
+  }
+);
+
+export const fetchPublicPacks = createAsyncThunk(
+  'projects/fetchPublicPacks',
+  async (
+    {
+      pageIndex = 0,
+      maxPageCount = 10,
+    }: { pageIndex?: number; maxPageCount?: number } = {},
+    { rejectWithValue }
+  ) => {
+    try {
+      const result = await projectService.getPublicProjects(
+        pageIndex,
+        maxPageCount,
+        false
+      ); // isProject=false for packs
+      return result as unknown as Pack[]; // Backend returns projects structure but they're actually packs
+    } catch (error: any) {
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
+    }
+  }
+);
+
+export const fetchPackById = createAsyncThunk(
+  'projects/fetchPackById',
+  async (packId: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(
+        `${config.apiUrl}/projects/${packId}?isProject=false`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch pack');
+      }
+
+      const result = await response.json();
+      return result.data.project; // Backend returns as project but it's actually a pack
+    } catch (error: any) {
+      return rejectWithValue([
+        error.response?.data?.errorType || 'FETCH_ERROR',
+        error.message?.toString().slice(0, 200) || 'Failed to fetch pack',
+      ]);
+    }
+  }
+);
+
+export const updatePackStatus = createAsyncThunk(
+  'projects/updatePackStatus',
+  async (
+    { packId, status }: { packId: string; status: Pack['status'] },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await fetch(
+        `${config.apiUrl}/projects/${packId}/status?isProject=false`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({ status }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update pack status');
+      }
+
+      const result = await response.json();
+      return result.data.project; // Backend returns as project but it's actually a pack
+    } catch (error: any) {
+      return rejectWithValue([
+        error.response?.data?.errorType || 'UPDATE_ERROR',
+        error.message?.toString().slice(0, 200) ||
+          'Failed to update pack status',
+      ]);
+    }
+  }
+);
+
+export const deletePack = createAsyncThunk(
+  'projects/deletePack',
+  async (packId: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(
+        `${config.apiUrl}/projects/${packId}?isProject=false`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete pack');
+      }
+
+      return packId;
+    } catch (error: any) {
+      return rejectWithValue([
+        error.response?.data?.errorType || 'DELETE_ERROR',
+        error.message?.toString().slice(0, 200) || 'Failed to delete pack',
+      ]);
+    }
+  }
+);
+
+export const fetchPackDeploymentProgress = createAsyncThunk(
+  'projects/fetchPackDeploymentProgress',
+  async (packId: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(
+        `${config.apiUrl}/projects/${packId}/progress?isProject=false`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || 'Failed to fetch deployment progress'
+        );
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error: any) {
+      return rejectWithValue([
+        error.response?.data?.errorType || 'FETCH_ERROR',
+        error.message?.toString().slice(0, 200) ||
+          'Failed to fetch deployment progress',
+      ]);
+    }
+  }
+);
+
+export const fetchGlobalPackParameters = createAsyncThunk(
+  'projects/fetchGlobalPackParameters',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${config.apiUrl}/projects/global-params`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || 'Failed to fetch global pack parameters'
+        );
+      }
+
+      const result = await response.json();
+      console.log('fetchGlobalPackParameters API response:', result);
+      return (
+        result.globalPackParams ||
+        result.data?.globalPackParams ||
+        result.data ||
+        result
+      );
+    } catch (error: any) {
+      return rejectWithValue([
+        error.response?.data?.errorType || 'FETCH_ERROR',
+        error.message?.toString().slice(0, 200) ||
+          'Failed to fetch global pack parameters',
+      ]);
     }
   }
 );
@@ -236,7 +674,10 @@ export const fetchProfitTrending = createAsyncThunk(
         end: endDate,
       });
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -257,7 +698,10 @@ export const fetchVolumeTrending = createAsyncThunk(
         end: endDate,
       });
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      return rejectWithValue([
+        error.response?.data?.errorType,
+        error.response?.data?.errorMessage?.toString().slice(0, 200),
+      ]);
     }
   }
 );
@@ -278,6 +722,14 @@ const projectSlice = createSlice({
     },
     updateCurrentProject: (state, action: PayloadAction<Project>) => {
       state.currentProject = action.payload;
+    },
+    // Pack-related reducers
+    clearCurrentPack: (state) => {
+      state.currentPack = null;
+    },
+    resetDeploymentProgress: (state) => {
+      state.deploymentProgress = 0;
+      state.deploymentStatus = 'idle';
     },
     // Force re-render action (used for performance optimization)
     FORCE_ANALYTICS_UPDATE: (state) => {
@@ -544,17 +996,16 @@ const projectSlice = createSlice({
         );
       })
 
-      // Fetch BNB price
-      .addCase(fetchBnbPrice.pending, (state) => {
-        state.bnbPriceLoading = true;
-        state.error = null;
+      // Fetch native currency price
+      .addCase(fetchNativeCurrencyPrice.pending, (state) => {
+        state.nativeCurrencyLoading = true;
       })
-      .addCase(fetchBnbPrice.fulfilled, (state, action) => {
-        state.bnbPriceLoading = false;
-        state.bnbPrice = action.payload;
+      .addCase(fetchNativeCurrencyPrice.fulfilled, (state, action) => {
+        state.nativeCurrencyLoading = false;
+        state.nativeCurrencyPrice = action.payload;
       })
-      .addCase(fetchBnbPrice.rejected, (state, action) => {
-        state.bnbPriceLoading = false;
+      .addCase(fetchNativeCurrencyPrice.rejected, (state, action) => {
+        state.nativeCurrencyLoading = false;
         state.error = action.payload as string;
       })
 
@@ -642,6 +1093,131 @@ const projectSlice = createSlice({
       .addCase(fetchVolumeTrending.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+
+      // Pack-related extraReducers
+      // Create pack
+      .addCase(createPack.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createPack.fulfilled, (state, action) => {
+        state.loading = false;
+        state.packs.push(action.payload);
+        state.currentPack = action.payload;
+      })
+      .addCase(createPack.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Fetch packs
+      .addCase(fetchPacks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPacks.fulfilled, (state, action) => {
+        state.loading = false;
+        state.packs = action.payload;
+      })
+      .addCase(fetchPacks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Fetch public packs
+      .addCase(fetchPublicPacks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPublicPacks.fulfilled, (state, action) => {
+        state.loading = false;
+        state.packs = action.payload as Pack[];
+      })
+      .addCase(fetchPublicPacks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Fetch pack by ID
+      .addCase(fetchPackById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPackById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentPack = action.payload;
+      })
+      .addCase(fetchPackById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Update pack status
+      .addCase(updatePackStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updatePackStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedPack = action.payload;
+        const index = state.packs.findIndex(
+          (pack) => pack._id === updatedPack._id
+        );
+        if (index !== -1) {
+          state.packs[index] = updatedPack;
+        }
+        if (state.currentPack?._id === updatedPack._id) {
+          state.currentPack = updatedPack;
+        }
+      })
+      .addCase(updatePackStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Delete pack
+      .addCase(deletePack.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deletePack.fulfilled, (state, action) => {
+        state.loading = false;
+        const packId = action.payload;
+        state.packs = state.packs.filter((pack) => pack._id !== packId);
+        if (state.currentPack?._id === packId) {
+          state.currentPack = null;
+        }
+      })
+      .addCase(deletePack.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Fetch deployment progress
+      .addCase(fetchPackDeploymentProgress.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(fetchPackDeploymentProgress.fulfilled, (state, action) => {
+        state.deploymentProgress = action.payload.progress;
+        state.deploymentStatus = action.payload.status;
+      })
+      .addCase(fetchPackDeploymentProgress.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+
+      // Fetch global pack parameters
+      .addCase(fetchGlobalPackParameters.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchGlobalPackParameters.fulfilled, (state, action) => {
+        state.loading = false;
+        state.globalPackParameters = action.payload;
+      })
+      .addCase(fetchGlobalPackParameters.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
@@ -651,8 +1227,13 @@ export const {
   clearError,
   updateProjects,
   updateCurrentProject,
+  clearCurrentPack,
+  resetDeploymentProgress,
 } = projectSlice.actions;
 export default projectSlice.reducer;
+
+// Export types for external use
+export type { Pack, PackData };
 
 // Utility function to check global metrics state (for debugging)
 export const checkGlobalMetricsState = (state: any) => {

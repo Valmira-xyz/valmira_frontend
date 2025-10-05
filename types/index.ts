@@ -34,9 +34,15 @@ export interface ProjectState {
   error: string | null;
   volumeData: any | null;
   projectStats: ProjectStatistics | null;
-  bnbPrice: number | null;
-  bnbPriceLoading: boolean;
+  nativePrice: number | null;
+  nativePriceLoading: boolean;
+  ethPrice: number | null;
+  ethPriceLoading: boolean;
   globalMetrics: GlobalMetrics | null;
+  nativeCurrencyPrice: {
+    BSC_MAINNET: number;
+    ETH_MAINNET: number;
+  };
 }
 
 export interface ProjectMetrics {
@@ -107,8 +113,13 @@ export interface ProjectAnalyticsProps {
 export interface User {
   _id: string;
   walletAddress: string;
-  name?: string;
   role: 'user' | 'admin';
+  telegramUserUsername?: string;
+  name?: string;
+  email?: string;
+  nonce?: string;
+  projects?: any[];
+  referralCode?: string;
 }
 
 // Deployment related types
@@ -186,7 +197,6 @@ export interface AuthResponse {
 
 export interface NonceResponse {
   nonce: string;
-  message?: string;
 }
 
 export interface VerifyResponse {
@@ -206,6 +216,14 @@ export interface Project {
   tokenAddress: string;
   pairAddress: string;
   userId: string;
+  chainName: string;
+  owner:
+    | string
+    | {
+        _id: string;
+        walletAddress: string;
+        role: string;
+      };
   metrics?: {
     cumulativeProfit: number;
     tradingVolume: number;
@@ -228,9 +246,9 @@ export interface Wallet {
   projectId: string;
   createdAt: string;
   updatedAt: string;
-  bnbBalance?: number;
-  tokenAmount?: number;
-  bnbToSpend?: number;
+  nativeBalance?: number;
+  tokenBalance?: number;
+  nativeToSpend?: number;
 }
 
 // Auth State type
@@ -240,7 +258,15 @@ export interface AuthState {
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
-  projects: Project[];
+  isAdmin: boolean;
+  projects: any[];
+}
+
+export interface PoolInfo {
+  nativeReserve: number;
+  tokenReserve: number;
+  tokenAddress: string;
+  nativeAddress: string;
 }
 
 // Wallet State type
@@ -254,8 +280,8 @@ export interface WalletState {
 // Wallet Balance type
 export interface WalletBalance {
   address: string;
-  bnbBalance: number;
-  tokenAmount: number;
+  nativeBalance: number;
+  tokenBalance: number;
 }
 
 // Wallet related types
@@ -341,6 +367,38 @@ export interface ProjectWithAddons {
         publicKey: string;
       }[];
     };
+    DistributionBot?: {
+      _id?: string;
+      isEnabled?: boolean;
+      status?: string;
+      depositWalletId: {
+        publicKey: string;
+      };
+      subWalletIds: {
+        role: string;
+        _id: string;
+        publicKey: string;
+      }[];
+    };
+    TrendingBot?: {
+      generatedVolume: number | undefined;
+      _id?: string;
+      isEnabled?: boolean;
+      status?: string;
+      depositWalletId: {
+        publicKey: string;
+      };
+      minNativeAmount?: number;
+      maxNativeAmount?: number;
+      upwardSellRateMin?: number;
+      upwardSellRateMax?: number;
+      downwardSellRateMin?: number;
+      downwardSellRateMax?: number;
+      timeSpanBetweenTransactions?: number;
+      trend?: 'upward' | 'downward';
+      targetMinutes?: number;
+      elapsedMinutes?: number;
+    };
   };
   createdAt: string;
   updatedAt: string;
@@ -351,16 +409,17 @@ export interface ProjectWithAddons {
     activeBots: number;
     lastUpdate: string;
   };
-}
-
-export interface ProjectHeaderProps {
-  project?: ProjectWithAddons;
-  walletAddress?: string;
-  projectId: string;
+  containingBots?: any;
 }
 
 // Bot related types
-export type BotType = 'SnipeBot' | 'VolumeBot' | 'HolderBot' | 'AutoSellBot';
+export type BotType =
+  | 'SnipeBot'
+  | 'VolumeBot'
+  | 'HolderBot'
+  | 'AutoSellBot'
+  | 'DistributionBot'
+  | 'TrendingBot';
 export type BotStatus =
   | 'ready_to_simulation'
   | 'simulating'
@@ -450,4 +509,110 @@ export interface WalletContextType {
   isConnecting: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
+}
+
+// Ambassador related types - Updated to match backend structure
+export interface AmbassadorOverview {
+  totalEarned: number;
+  availableBalance: number;
+  directReferrals: number;
+  indirectReferrals: number;
+  conversionRate: number;
+  averageEarningPerReferral: number;
+  // Additional calculated fields for frontend
+  todayEarnings?: number;
+  weeklyEarnings?: number;
+  monthlyEarnings?: number;
+  mostProfitableReferral?: string;
+  rank?: string;
+}
+
+// Backend returns DailyEarnings format
+export interface DailyEarnings {
+  date: string;
+  earnings: number;
+}
+
+// Backend returns FeeBreakdownItem format
+export interface FeeBreakdownItem {
+  timestamp: string;
+  referredUser: string;
+  feeAmount: number;
+  yourCommission: number;
+}
+
+// For compatibility with existing components, we'll map backend data to this format
+export interface AmbassadorEarningsBreakdown {
+  projectName: string;
+  dailyBotFee: string;
+  numberOfBots: number;
+  totalFee: string;
+  percentage: string;
+  earnings: string;
+  date: string;
+}
+
+export interface AmbassadorFeeBreakdown {
+  projectName: string;
+  dailyBotFee: string;
+  numberOfBots: number;
+  totalFee: string;
+  percentage: string;
+  earnings: string;
+  date: string;
+}
+
+export interface AmbassadorPaymentSettings {
+  paymentMethod: 'stablecoins' | 'ethereum';
+  network: string;
+  preferredStableCoin?: string;
+  paymentAddress: string;
+  automaticWithdrawals: boolean;
+  withdrawalThreshold: number;
+}
+
+export interface AmbassadorPaymentHistory {
+  date: string;
+  amount: string;
+  to: string;
+  status: 'Completed' | 'Pending' | 'Failed';
+  txHash: string;
+}
+
+// Backend DirectReferralItem structure
+export interface BackendDirectReferralItem {
+  id: string;
+  username: string;
+  joinedDate: string;
+  status: 'active' | 'inactive';
+  totalCommissionEarned: number;
+}
+
+// Frontend compatible structure
+export interface DirectReferralItem {
+  projectName: string;
+  date: Date;
+  dailyBotFee: number;
+  monthlyFee: number;
+  percentage: number;
+  earnings: number;
+  status: 'Active' | 'Inactive' | 'Pending';
+  action: string;
+}
+
+export interface IndirectReferralItem {
+  projectName: string;
+  date: Date;
+  dailyBotFee: number;
+  monthlyFee: number;
+  percentage: number;
+  earnings: number;
+  status: 'Active' | 'Inactive' | 'Pending';
+  action: string;
+}
+
+export interface AmbassadorReferralStats {
+  joinedMembers: number;
+  clicks: number;
+  directReferralEarnings: number;
 }
