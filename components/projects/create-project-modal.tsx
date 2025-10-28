@@ -205,10 +205,12 @@ export function CreateProjectModal({
       return;
     }
 
+    console.log('getChainName(chainId)', getChainName(chainId));
+    console.log('chainId', chainId);
+    console.log('selectedNetwork', selectedNetwork);
+
     // in case of deploy, check if the connected wallets chainId is of the selected network
     if (getChainName(chainId) !== selectedNetwork) {
-      console.log('chainId', chainId);
-      console.log('selectedNetwork', selectedNetwork);
       toast({
         title: 'Error',
         description: `Please connect to the correct network. Please check you wallet is switched to ${selectedNetwork}`,
@@ -251,24 +253,37 @@ export function CreateProjectModal({
       setDeploymentStatusText(
         'Processing token deployment and waiting for confirmation of 5 blocks and verification on the blockchain explorer...'
       );
+      // Map selectedNetwork to contract server network names
+      const contractServerNetwork =
+        selectedNetwork === 'BSC_MAINNET'
+          ? 'bsc'
+          : selectedNetwork === 'ETH_MAINNET'
+            ? 'eth'
+            : selectedNetwork === 'SOMNIA_TESTNET'
+              ? 'somniaTestnet'
+              : 'bsc';
+
       const { contractAddress, pairAddress: newPairAddress } =
-        await deploymentService.deployToken({
-          tokenName: newTokenName,
-          tokenSymbol: newTokenSymbol,
-          tokenTotalSupply: newTokenTotalSupply,
-          buyFee: parseFloat(newTokenBuyTax) || 0,
-          sellFee: parseFloat(newTokenSellTax) || 0,
-          maxHoldingLimit_: parseFloat(newTokenMaxHoldingRate) || 0,
-          maxBuyLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
-          maxSellLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
-          socialLinks: {
-            websiteLink: website || '',
-            telegramLink: telegram || '',
-            discordLink: discord || '',
-            twitterLink: twitter || '',
+        await deploymentService.deployToken(
+          {
+            tokenName: newTokenName,
+            tokenSymbol: newTokenSymbol,
+            tokenTotalSupply: newTokenTotalSupply,
+            buyFee: parseFloat(newTokenBuyTax) || 0,
+            sellFee: parseFloat(newTokenSellTax) || 0,
+            maxHoldingLimit_: parseFloat(newTokenMaxHoldingRate) || 0,
+            maxBuyLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
+            maxSellLimit_: parseFloat(newTokenMaxBuySellRate) || 0,
+            socialLinks: {
+              websiteLink: website || '',
+              telegramLink: telegram || '',
+              discordLink: discord || '',
+              twitterLink: twitter || '',
+            },
+            templateNumber: parseInt(tokenTemplate),
           },
-          templateNumber: parseInt(tokenTemplate),
-        });
+          contractServerNetwork
+        );
 
       setDeployedTokenAddress(contractAddress);
       setPairAddress(newPairAddress);
@@ -390,8 +405,15 @@ export function CreateProjectModal({
         isImported: activeTab?.toString() === 'import' ? true : false,
         pairAddress:
           activeTab === 'deploy'
-            ? pairAddress || ''
-            : analyzedToken?.pairAddress || '',
+            ? pairAddress &&
+              pairAddress !== '0x0000000000000000000000000000000000000000'
+              ? pairAddress
+              : ''
+            : analyzedToken?.pairAddress &&
+                analyzedToken.pairAddress !==
+                  '0x0000000000000000000000000000000000000000'
+              ? analyzedToken.pairAddress
+              : '',
         tokenData: {
           name:
             activeTab === 'deploy' ? newTokenName : analyzedToken?.name || '',
@@ -410,22 +432,33 @@ export function CreateProjectModal({
           discordLink: discord,
           buyFee:
             activeTab === 'deploy'
-              ? parseFloat(newTokenBuyTax)
+              ? parseFloat(newTokenBuyTax) || 0
               : analyzedToken?.buyTax || 0,
           sellFee:
             activeTab === 'deploy'
-              ? parseFloat(newTokenSellTax)
+              ? parseFloat(newTokenSellTax) || 0
               : analyzedToken?.sellTax || 0,
           maxHoldingLimit_:
-            activeTab === 'deploy' ? parseFloat(newTokenMaxHoldingRate) : 0,
+            activeTab === 'deploy'
+              ? parseFloat(newTokenMaxHoldingRate) || 0
+              : 0,
           maxBuyLimit_:
-            activeTab === 'deploy' ? parseFloat(newTokenMaxBuySellRate) : 0,
+            activeTab === 'deploy'
+              ? parseFloat(newTokenMaxBuySellRate) || 0
+              : 0,
           maxSellLimit_:
-            activeTab === 'deploy' ? parseFloat(newTokenMaxBuySellRate) : 0,
+            activeTab === 'deploy'
+              ? parseFloat(newTokenMaxBuySellRate) || 0
+              : 0,
           templateNumber: activeTab === 'deploy' ? parseInt(tokenTemplate) : 0,
         },
         chainName: selectedNetwork,
       };
+
+      console.log(
+        '📦 Project data being sent to backend:',
+        JSON.stringify(projectData, null, 2)
+      );
 
       let resultAction;
 
@@ -624,6 +657,8 @@ export function CreateProjectModal({
                 setSelectedNetwork('BSC_MAINNET');
               } else if (value === 'ETH_MAINNET') {
                 setSelectedNetwork('ETH_MAINNET');
+              } else if (value === 'SOMNIA_TESTNET') {
+                setSelectedNetwork('SOMNIA_TESTNET');
               }
             }}
             value={selectedNetwork}
@@ -636,6 +671,7 @@ export function CreateProjectModal({
                 Binance Smart Chain (BSC)
               </SelectItem>
               <SelectItem value="ETH_MAINNET">Ethereum</SelectItem>
+              <SelectItem value="SOMNIA_TESTNET">Somnia Testnet</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -654,7 +690,9 @@ export function CreateProjectModal({
                   ? 'Pancakeswap V2'
                   : selectedNetwork === 'ETH_MAINNET'
                     ? 'Uniswap V2'
-                    : 'Raydium AMM'}
+                    : selectedNetwork === 'SOMNIA_TESTNET'
+                      ? 'Somnia DEX'
+                      : 'Raydium AMM'}
               </span>
               ) token to create a {isStrategyPackMode ? 'pack' : 'project'}.
             </p>
@@ -920,7 +958,9 @@ export function CreateProjectModal({
                   ? 'Pancakeswap V2'
                   : selectedNetwork === 'ETH_MAINNET'
                     ? 'Uniswap V2'
-                    : 'Raydium AMM'}
+                    : selectedNetwork === 'SOMNIA_TESTNET'
+                      ? 'Somnia DEX'
+                      : 'Raydium AMM'}
               </span>
               ) token to create a {isStrategyPackMode ? 'pack' : 'project'}.
             </p>

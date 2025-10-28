@@ -582,7 +582,9 @@ export function BundleSnipingDialog({
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : project?.chainName === 'SOMNIA_TESTNET'
+          ? 'STT'
+          : 'SOL';
 
   // Step navigation functions
   const goToNextStep = () => {

@@ -21,7 +21,13 @@ import { useToast } from '@/components/ui/use-toast';
 import { useEthersSigner } from '@/lib/ether-adapter';
 import { formatNumber } from '@/lib/utils';
 import { projectService } from '@/services/projectService';
-import { getPoolInfo, getWalletBalances, getLPTokenBalance, removeLiquidity, burnLiquidity } from '@/services/web3Utils';
+import {
+  burnLiquidity,
+  getLPTokenBalance,
+  getPoolInfo,
+  getWalletBalances,
+  removeLiquidity,
+} from '@/services/web3Utils';
 import { RootState } from '@/store/store';
 import { ProjectWithAddons } from '@/types';
 
@@ -58,7 +64,9 @@ export function ManualLPDialog({ open, onOpenChange }: ManualLPDialogProps) {
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : project?.chainName === 'SOMNIA_TESTNET'
+          ? 'STT'
+          : 'SOL';
 
   useEffect(() => {
     if (open && user?.walletAddress && project?.tokenAddress) {
@@ -221,7 +229,8 @@ export function ManualLPDialog({ open, onOpenChange }: ManualLPDialogProps) {
       if (result.success) {
         toast({
           title: 'Success',
-          description: 'All LP tokens burned successfully! Liquidity has been permanently removed.',
+          description:
+            'All LP tokens burned successfully! Liquidity has been permanently removed.',
         });
 
         // Refresh balances after successful burning
@@ -512,7 +521,8 @@ export function ManualLPDialog({ open, onOpenChange }: ManualLPDialogProps) {
           <div className="border rounded-lg p-4">
             <h3 className="text-base font-medium mb-2">Remove Liquidity</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              You can remove some or all of your liquidity to get back your {nativeCurrency} and {project?.symbol}.
+              You can remove some or all of your liquidity to get back your{' '}
+              {nativeCurrency} and {project?.symbol}.
             </p>
 
             {lpTokenBalance > 0 ? (

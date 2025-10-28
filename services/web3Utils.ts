@@ -15,7 +15,9 @@ const ROUTER_ABI = [
   'function factory() external pure returns (address)',
   'function WETH() external view returns (address)',
   'function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity)',
+  'function addLiquiditySTT(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity)',
   'function removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH)',
+  'function removeLiquiditySTT(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH)',
   'function removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB)',
   'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] amounts)',
   'function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] amounts)',
@@ -55,7 +57,7 @@ interface ChainConfig {
   wrappedNativeCurrency: string;
 }
 
-const CHAIN_CONFIGS: Record<string, ChainConfig> = {
+export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
   BSC_MAINNET: {
     rpcUrl:
       process.env.NEXT_PUBLIC_BSC_RPC_URL ||
@@ -100,11 +102,11 @@ const CHAIN_CONFIGS: Record<string, ChainConfig> = {
       process.env.NEXT_PUBLIC_SOMNIA_RPC_URL ||
       'https://dream-rpc.somnia.network/',
     nativeCurrency: 'STT',
-    factoryAddress: '', // To be deployed on Somnia Testnet
-    routerAddress: '', // To be deployed on Somnia Testnet
-    disperseAddress: '', // To be deployed on Somnia Testnet
+    factoryAddress: '0x96eE1a0cb578AB2F8d7769c155D4A694d5845477', // Somnia DEX Factory
+    routerAddress: '0xb1618E58Fa411b94da5247Bc0d808DB43f3629BE', // Somnia DEX Router with WSTT support
+    disperseAddress: '0x2511BC75c10bc3Db719985D76B33DBEE95F505A5', // To be deployed on Somnia Testnet
     stablecoins: [], // To be configured for Somnia Testnet
-    wrappedNativeCurrency: '', // WSTT - To be deployed on Somnia Testnet
+    wrappedNativeCurrency: '0x40722b4Eb73194eDB6cf518B94b022f1877b0811', // WSTT (Wrapped STT)
   },
 };
 
@@ -228,18 +230,21 @@ export const hasSufficientBalance = async (
 /**
  * Gets token decimals
  * @param tokenAddress The token contract address
+ * @param chainName The chain name (used only if providerOrSigner is not provided)
+ * @param providerOrSigner Optional provider or signer to use instead of creating new provider
  * @returns Token decimals
  */
 export async function getTokenDecimals(
   tokenAddress: string,
-  chainName: string
+  chainName: string,
+  providerOrSigner?: ethers.Provider | ethers.Signer
 ): Promise<number> {
   try {
-    const provider = getProvider(chainName);
+    const providerToUse = providerOrSigner || getProvider(chainName);
     const tokenContract = new ethers.Contract(
       tokenAddress,
       ERC20_ABI,
-      provider
+      providerToUse
     );
     return await tokenContract.decimals();
   } catch (error) {
@@ -263,51 +268,85 @@ export async function getWalletBalances(
   chainName?: string
 ): Promise<WalletBalance[]> {
   try {
-    const provider = getProvider(chainName || 'BSC_MAINNET');
+    const chain = chainName || 'BSC_MAINNET';
+    const provider = getProvider(chain);
     const tokenContract = new ethers.Contract(
       tokenAddress,
       ERC20_ABI,
       provider
     );
-    const tokenDecimals = await getTokenDecimals(
-      tokenAddress,
-      chainName || 'BSC_MAINNET'
-    );
+    const tokenDecimals = await getTokenDecimals(tokenAddress, chain);
     const results: WalletBalance[] = [];
 
-    // Process wallets in smaller batches to avoid RPC rate limits (reduced from 3 to 2)
-    for (let i = 0; i < walletAddresses.length; i += 5) {
-      const walletBatch = walletAddresses.slice(i, i + 5);
-      const balancePromises = [];
+    // Configure batch size and delay based on chain
+    // Somnia testnet has stricter rate limits and needs smaller batches with longer delays
+    const batchSize = chain === 'SOMNIA_TESTNET' ? 3 : 5;
+    const batchDelay = chain === 'SOMNIA_TESTNET' ? 1000 : 500;
+    const maxRetries = 3;
 
-      // Create promises for both native and token balances
-      for (const wallet of walletBatch) {
-        balancePromises.push(
-          provider.getBalance(wallet),
-          tokenContract.balanceOf(wallet)
-        );
+    // Process wallets in batches to avoid RPC rate limits
+    for (let i = 0; i < walletAddresses.length; i += batchSize) {
+      const walletBatch = walletAddresses.slice(i, i + batchSize);
+      let retryCount = 0;
+      let batchSuccess = false;
+
+      while (!batchSuccess && retryCount < maxRetries) {
+        try {
+          const balancePromises = [];
+
+          // Create promises for both native and token balances
+          for (const wallet of walletBatch) {
+            balancePromises.push(
+              provider.getBalance(wallet),
+              tokenContract.balanceOf(wallet)
+            );
+          }
+
+          // Execute all promises in the batch
+          const batchResults = await Promise.all(balancePromises);
+
+          // Process results for this batch
+          for (let j = 0; j < walletBatch.length; j++) {
+            const nativeBalanceRaw = batchResults[j * 2];
+            const tokenBalanceRaw = batchResults[j * 2 + 1];
+
+            results.push({
+              address: walletBatch[j],
+              nativeBalance: Number(ethers.formatEther(nativeBalanceRaw)),
+              tokenBalance: Number(
+                ethers.formatUnits(tokenBalanceRaw, tokenDecimals)
+              ),
+            });
+          }
+
+          batchSuccess = true;
+        } catch (batchError) {
+          retryCount++;
+          console.warn(
+            `Batch ${i / batchSize + 1} failed (attempt ${retryCount}/${maxRetries}):`,
+            batchError instanceof Error ? batchError.message : 'Unknown error'
+          );
+
+          if (retryCount >= maxRetries) {
+            throw new Error(
+              `Failed to fetch balances after ${maxRetries} retries: ${
+                batchError instanceof Error
+                  ? batchError.message
+                  : 'Unknown error'
+              }`
+            );
+          }
+
+          // Exponential backoff for retries
+          await new Promise((resolve) =>
+            setTimeout(resolve, batchDelay * retryCount)
+          );
+        }
       }
 
-      // Execute all promises in the batch
-      const batchResults = await Promise.all(balancePromises);
-
-      // Process results for this batch
-      for (let j = 0; j < walletBatch.length; j++) {
-        const nativeBalanceRaw = batchResults[j * 2];
-        const tokenBalanceRaw = batchResults[j * 2 + 1];
-
-        results.push({
-          address: walletBatch[j],
-          nativeBalance: Number(ethers.formatEther(nativeBalanceRaw)),
-          tokenBalance: Number(
-            ethers.formatUnits(tokenBalanceRaw, tokenDecimals)
-          ),
-        });
-      }
-
-      // Increased delay between batches to avoid rate limits
-      if (i + 2 < walletAddresses.length) {
-        await new Promise((resolve) => setTimeout(resolve, 500)); // Increased from 100ms to 500ms
+      // Delay between batches to avoid rate limits
+      if (i + batchSize < walletAddresses.length) {
+        await new Promise((resolve) => setTimeout(resolve, batchDelay));
       }
     }
 
@@ -315,6 +354,7 @@ export async function getWalletBalances(
   } catch (error) {
     console.error('Failed to get wallet balances:', {
       tokenAddress,
+      chainName,
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     throw error;
@@ -352,11 +392,169 @@ export async function getTokenOwner(
 
 export async function isTokenTradingEnabled(
   tokenAddress: string,
-  chainName: string = 'BSC_MAINNET'
+  chainName: string = 'BSC_MAINNET',
+  providerOrSigner?: ethers.Provider | ethers.Signer
 ): Promise<boolean> {
-  const provider = getProvider(chainName);
-  const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+  const providerToUse = providerOrSigner || getProvider(chainName);
+  const tokenContract = new ethers.Contract(
+    tokenAddress,
+    ERC20_ABI,
+    providerToUse
+  );
   return await tokenContract.swapEnabled();
+}
+
+/**
+ * Enables trading for a token (must be called by token owner)
+ * @param tokenAddress The token contract address
+ * @param signer The ethers signer (must be token owner)
+ * @returns Transaction receipt
+ */
+export async function enableTrading(
+  tokenAddress: string,
+  signer: ethers.Signer
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    const tx = await tokenContract.openTrading();
+    return await tx.wait();
+  } catch (error) {
+    console.error('Failed to enable trading:', error);
+    throw error;
+  }
+}
+
+/**
+ * Updates the swap tokens at amount threshold (prevents auto-swap if set high)
+ * @param tokenAddress The token contract address
+ * @param amount The threshold amount (set very high to disable auto-swap)
+ * @param signer The ethers signer (must be token owner)
+ * @param chainName The chain name
+ * @returns Transaction receipt
+ */
+export async function updateSwapTokensAtAmount(
+  tokenAddress: string,
+  amount: string,
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    const decimals = await getTokenDecimals(tokenAddress, chainName, signer);
+    const amountInWei = safeParseUnits(amount, decimals);
+    const tx = await tokenContract.updateSwapTokensAtAmount(amountInWei);
+    return await tx.wait();
+  } catch (error) {
+    console.error('Failed to update swap tokens at amount:', error);
+    throw error;
+  }
+}
+
+/**
+ * Updates the max transaction size (must be called by token owner)
+ * @param tokenAddress The token contract address
+ * @param amount The new max transaction size in tokens (e.g., "500000000" for 500M tokens)
+ * @param signer The ethers signer (must be token owner)
+ * @param chainName The chain name
+ * @returns Transaction receipt
+ */
+export async function updateMaxTxnSize(
+  tokenAddress: string,
+  amount: string,
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    const decimals = await getTokenDecimals(tokenAddress, chainName, signer);
+    const amountInWei = safeParseUnits(amount, decimals);
+    console.log(`Updating maxTxnSize to ${amount} tokens (${amountInWei} wei)`);
+    const tx = await tokenContract.updatemaxTxnSize(amountInWei);
+    return await tx.wait();
+  } catch (error) {
+    console.error('Failed to update max transaction size:', error);
+    throw error;
+  }
+}
+
+/**
+ * Updates the max wallet size (must be called by token owner)
+ * @param tokenAddress The token contract address
+ * @param amount The new max wallet size in tokens (e.g., "500000000" for 500M tokens)
+ * @param signer The ethers signer (must be token owner)
+ * @param chainName The chain name
+ * @returns Transaction receipt
+ */
+export async function updateMaxWalletSize(
+  tokenAddress: string,
+  amount: string,
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    const decimals = await getTokenDecimals(tokenAddress, chainName, signer);
+    const amountInWei = safeParseUnits(amount, decimals);
+    console.log(
+      `Updating maxWalletSize to ${amount} tokens (${amountInWei} wei)`
+    );
+    const tx = await tokenContract.updateMaxWalletSize(amountInWei);
+    return await tx.wait();
+  } catch (error) {
+    console.error('Failed to update max wallet size:', error);
+    throw error;
+  }
+}
+
+/**
+ * Gets the pair address for a token
+ * @param tokenAddress The token contract address
+ * @param chainName The chain name
+ * @param providerOrSigner Optional provider or signer
+ * @returns Pair address
+ */
+export async function getTokenPairAddress(
+  tokenAddress: string,
+  chainName: string = 'BSC_MAINNET',
+  providerOrSigner?: ethers.Provider | ethers.Signer
+): Promise<string> {
+  try {
+    const providerToUse = providerOrSigner || getProvider(chainName);
+    const tokenContract = new ethers.Contract(
+      tokenAddress,
+      ERC20_ABI,
+      providerToUse
+    );
+    return await tokenContract.uniswapPair();
+  } catch (error) {
+    console.error('Failed to get pair address:', error);
+    throw error;
+  }
+}
+
+/**
+ * Checks token balance for an address
+ * @param tokenAddress The token contract address
+ * @param walletAddress The wallet address to check
+ * @param providerOrSigner Optional provider or signer
+ * @returns Token balance
+ */
+export async function getTokenBalance(
+  tokenAddress: string,
+  walletAddress: string,
+  providerOrSigner?: ethers.Provider | ethers.Signer
+): Promise<bigint> {
+  try {
+    const tokenContract = new ethers.Contract(
+      tokenAddress,
+      ERC20_ABI,
+      providerOrSigner
+    );
+    return await tokenContract.balanceOf(walletAddress);
+  } catch (error) {
+    console.error('Failed to get token balance:', error);
+    throw error;
+  }
 }
 
 /**
@@ -482,7 +680,10 @@ export async function hasTokenAllowance(
     );
     return (
       allowance >=
-      safeParseUnits(amount, await getTokenDecimals(tokenAddress, chainName))
+      safeParseUnits(
+        amount,
+        await getTokenDecimals(tokenAddress, chainName, signer)
+      )
     );
   } catch (error) {
     console.error('Failed to check token allowance:', error);
@@ -507,7 +708,8 @@ export async function approveTokens(
 ): Promise<ethers.TransactionReceipt> {
   try {
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
-    const decimals = await getTokenDecimals(tokenAddress, chainName);
+    // Use the signer to get decimals from the correct network
+    const decimals = await getTokenDecimals(tokenAddress, chainName, signer);
     const amountInWei = safeParseUnits(amount, decimals);
 
     // Approve the tokens
@@ -537,11 +739,91 @@ export async function addLiquidity(
   try {
     const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
     const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
-    const tokenDecimals = await getTokenDecimals(tokenAddress, chainName);
+    const signerAddress = await signer.getAddress();
 
-    console.log(`tokenDecimals: ${tokenDecimals}`);
-    // Convert amounts to wei
+    // Pre-flight checks
+    console.log('=== Pre-flight checks for addLiquidity ===');
+
+    // 1. Check token decimals
+    const tokenDecimals = await getTokenDecimals(
+      tokenAddress,
+      chainName,
+      signer
+    );
+    console.log(`Token decimals: ${tokenDecimals}`);
+
+    // 2. Check if trading is enabled
+    try {
+      const tradingEnabled = await isTokenTradingEnabled(
+        tokenAddress,
+        chainName,
+        signer
+      );
+      console.log(`Trading enabled: ${tradingEnabled}`);
+      if (!tradingEnabled) {
+        throw new Error(
+          'Trading is not enabled on this token. Please enable trading first.'
+        );
+      }
+    } catch (e) {
+      console.warn('Could not check trading status:', e);
+    }
+
+    // 3. Check token balance
+    const tokenBalance = await getTokenBalance(
+      tokenAddress,
+      signerAddress,
+      signer
+    );
     const tokenAmountInWei = safeParseUnits(tokenAmount, tokenDecimals);
+    console.log(
+      `Token balance: ${ethers.formatUnits(tokenBalance, tokenDecimals)}`
+    );
+    console.log(`Token amount to add: ${tokenAmount}`);
+    if (tokenBalance < tokenAmountInWei) {
+      throw new Error(
+        `Insufficient token balance. You have ${ethers.formatUnits(tokenBalance, tokenDecimals)} but trying to add ${tokenAmount}`
+      );
+    }
+
+    // 4. Check pair address
+    try {
+      const pairAddress = await getTokenPairAddress(
+        tokenAddress,
+        chainName,
+        signer
+      );
+      console.log(`Pair address: ${pairAddress}`);
+      if (pairAddress === ethers.ZeroAddress) {
+        console.warn('Pair address is zero - pair may not be created yet');
+      }
+    } catch (e) {
+      console.warn('Could not check pair address:', e);
+    }
+
+    // 5. Check approval/allowance for router
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    try {
+      const allowance = await tokenContract.allowance(
+        signerAddress,
+        routerAddress
+      );
+      console.log(
+        `Current allowance for router: ${ethers.formatUnits(allowance, tokenDecimals)}`
+      );
+      if (allowance < tokenAmountInWei) {
+        throw new Error(
+          `Insufficient allowance. Router has allowance of ${ethers.formatUnits(allowance, tokenDecimals)} but needs ${tokenAmount}. Please approve tokens first.`
+        );
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('Insufficient allowance')) {
+        throw e;
+      }
+      console.warn('Could not check allowance:', e);
+    }
+
+    // Convert amounts to wei
     const nativeAmountInWei = safeParseEther(nativeAmount);
 
     // Set slippage tolerance (e.g., 5%)
@@ -556,22 +838,42 @@ export async function addLiquidity(
     // Set deadline to 20 minutes from now
     const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
 
-    console.log(
-      `addLiquidity, tokenAddress: ${tokenAddress}, tokenAmountInWei: ${tokenAmountInWei}, minTokenAmount: ${minTokenAmount}, minNativeAmount: ${minNativeAmount}, signer: ${signer}`
-    );
+    console.log('=== Executing addLiquidityETH ===');
+    console.log(`Router: ${routerAddress}`);
+    console.log(`Token: ${tokenAddress}`);
+    console.log(`Token amount (wei): ${tokenAmountInWei}`);
+    console.log(`Native amount (wei): ${nativeAmountInWei}`);
+    console.log(`Min token: ${minTokenAmount}`);
+    console.log(`Min native: ${minNativeAmount}`);
+    console.log(`To: ${signerAddress}`);
+    console.log(`Deadline: ${deadline}`);
 
     // Add liquidity
-    const tx = await router.addLiquidityETH(
-      tokenAddress,
-      tokenAmountInWei,
-      minTokenAmount,
-      minNativeAmount,
-      await signer.getAddress(),
-      deadline,
-      { value: nativeAmountInWei }
-    );
+    const tx =
+      chainName === 'SOMNIA_TESTNET'
+        ? await router.addLiquiditySTT(
+            tokenAddress,
+            tokenAmountInWei,
+            minTokenAmount,
+            minNativeAmount,
+            signerAddress,
+            deadline,
+            { value: nativeAmountInWei }
+          )
+        : await router.addLiquidityETH(
+            tokenAddress,
+            tokenAmountInWei,
+            minTokenAmount,
+            minNativeAmount,
+            signerAddress,
+            deadline,
+            { value: nativeAmountInWei }
+          );
 
-    return await tx.wait();
+    const receipt = await tx.wait();
+    console.log('✅ Liquidity added successfully!');
+
+    return receipt;
   } catch (error) {
     console.error('Failed to add liquidity:', error);
     throw error;
@@ -866,8 +1168,7 @@ export async function removeLiquidity(
         minTokens,
         minNative,
         walletAddress,
-        deadline,
-        { gasLimit: 800000 }
+        deadline
       );
 
       console.log(
@@ -897,15 +1198,25 @@ export async function removeLiquidity(
       try {
         console.log('Attempting removeLiquidityETH (ETH method)...');
         // Try with ETH method as fallback
-        const removeTx = await (routerWithSigner as any).removeLiquidityETH(
-          tokenAddress,
-          amountToRemove,
-          minTokens,
-          minNative,
-          walletAddress,
-          deadline,
-          { gasLimit: 800000 }
-        );
+        const removeTx =
+          chainName === 'SOMNIA_TESTNET'
+            ? await (routerWithSigner as any).removeLiquiditySTT(
+                tokenAddress,
+                amountToRemove,
+                minTokens,
+                minNative,
+                walletAddress,
+                deadline
+              )
+            : await (routerWithSigner as any).removeLiquidityETH(
+                tokenAddress,
+                amountToRemove,
+                minTokens,
+                minNative,
+                walletAddress,
+                deadline,
+                { gasLimit: 800000 }
+              );
 
         console.log(
           'Remove liquidity ETH transaction sent, waiting for confirmation...'

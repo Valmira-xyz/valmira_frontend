@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import Decimal from 'decimal.js';
 import { ethers } from 'ethers';
 import { Loader2 } from 'lucide-react';
 
@@ -10,9 +11,12 @@ import { useToast } from '@/components/ui/use-toast';
 import {
   addLiquidity,
   approveTokens,
+  CHAIN_CONFIGS,
+  enableTrading,
   hasTokenAllowance,
+  isTokenTradingEnabled,
+  updateSwapTokensAtAmount,
 } from '@/services/web3Utils';
-import Decimal from 'decimal.js';
 
 interface ApproveAndAddLiquidityButtonsProps {
   tokenAddress: string;
@@ -35,6 +39,10 @@ export function ApproveAndAddLiquidityButtons({
   const [isCheckingApproval, setIsCheckingApproval] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isAddingLiquidity, setIsAddingLiquidity] = useState(false);
+  const [isTradingEnabled, setIsTradingEnabled] = useState(false);
+  const [isCheckingTrading, setIsCheckingTrading] = useState(false);
+  const [isEnablingTrading, setIsEnablingTrading] = useState(false);
+  const [isUpdatingSwapThreshold, setIsUpdatingSwapThreshold] = useState(false);
   const { toast } = useToast();
 
   const nativeCurrency =
@@ -42,18 +50,141 @@ export function ApproveAndAddLiquidityButtons({
       ? 'BNB'
       : chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : chainName === 'SOMNIA_TESTNET'
+          ? 'STT'
+          : 'SOL';
 
   // Network-specific router addresses
-  const routerAddress =
-    process.env.NEXT_PUBLIC_NETWORK === 'testnet'
-      ? '0xD99D1c33F9fC3444f8101754aBC46c52416550D1' // PancakeSwap Router on BSC Testnet
-      : '0x10ED43C718714eb63d5aA57B78B54704E256024E'; // PancakeSwap Router on BSC Mainnet
+  const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
 
-  // Check if token is approved when component mounts or inputs change
+  // Check if token is approved and trading is enabled when component mounts or inputs change
   useEffect(() => {
-    checkApproval();
+    const init = async () => {
+      await checkTradingStatus();
+      await checkApproval();
+    };
+    init();
   }, [tokenAddress, tokenAmount, signer]);
+
+  // Function to check if trading is enabled
+  const checkTradingStatus = async () => {
+    if (!signer || !tokenAddress) {
+      setIsTradingEnabled(false);
+      return;
+    }
+
+    try {
+      setIsCheckingTrading(true);
+      console.log(
+        `🔍 Checking trading status for token: ${tokenAddress} on ${chainName}`
+      );
+      const tradingEnabled = await isTokenTradingEnabled(
+        tokenAddress,
+        chainName,
+        signer
+      );
+      console.log(
+        `📊 Trading status: ${tradingEnabled ? '✅ ENABLED' : '❌ DISABLED'}`
+      );
+      setIsTradingEnabled(tradingEnabled);
+
+      if (!tradingEnabled) {
+        console.warn(
+          '⚠️ TRADING IS DISABLED - You must enable trading before adding liquidity!'
+        );
+        toast({
+          title: 'Trading Disabled',
+          description: 'Please enable trading on your token first',
+          variant: 'default',
+        });
+      }
+    } catch (error) {
+      console.error('Error checking trading status:', error);
+      setIsTradingEnabled(false);
+    } finally {
+      setIsCheckingTrading(false);
+    }
+  };
+
+  // Function to enable trading
+  const handleEnableTrading = async () => {
+    if (!signer || !tokenAddress) {
+      toast({
+        title: 'Error',
+        description: 'Please connect your wallet',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsEnablingTrading(true);
+      console.log(`🚀 Enabling trading for token: ${tokenAddress}`);
+      const receipt = await enableTrading(tokenAddress, signer);
+      console.log('✅ Trading enabled! Transaction:', receipt.hash);
+      setIsTradingEnabled(true);
+      toast({
+        title: 'Success',
+        description: 'Trading enabled successfully! You can now add liquidity.',
+      });
+
+      // Recheck approval status after enabling trading
+      await checkApproval();
+    } catch (error) {
+      console.error('❌ Error enabling trading:', error);
+      toast({
+        title: 'Error',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to enable trading. Make sure you are the token owner.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEnablingTrading(false);
+    }
+  };
+
+  // Function to update swap threshold (to prevent auto-swap issues on first LP)
+  const handleUpdateSwapThreshold = async () => {
+    if (!signer || !tokenAddress) {
+      toast({
+        title: 'Error',
+        description: 'Please connect your wallet',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsUpdatingSwapThreshold(true);
+      console.log(`🔧 Updating swap threshold to 1 billion tokens`);
+      // Set to 1 billion to effectively disable auto-swap until liquidity is added
+      await updateSwapTokensAtAmount(
+        tokenAddress,
+        '1000000000',
+        signer,
+        chainName
+      );
+      toast({
+        title: 'Success',
+        description:
+          'Swap threshold updated! You can now safely add liquidity.',
+      });
+    } catch (error) {
+      console.error('❌ Error updating swap threshold:', error);
+      toast({
+        title: 'Error',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to update swap threshold. Your token may not support this function yet.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingSwapThreshold(false);
+    }
+  };
 
   // Function to check if token is approved
   const checkApproval = async () => {
@@ -75,7 +206,8 @@ export function ApproveAndAddLiquidityButtons({
         signerAddress,
         routerAddress,
         tokenAmount,
-        signer
+        signer,
+        chainName
       );
       setIsApproved(hasAllowance);
     } catch (error) {
@@ -88,8 +220,10 @@ export function ApproveAndAddLiquidityButtons({
 
   const formatValue = (value: number | string, decimals = 2): string => {
     const decimalValue = new Decimal(value);
-    return decimalValue.toDecimalPlaces(decimals, Decimal.ROUND_DOWN).toString();
-  }
+    return decimalValue
+      .toDecimalPlaces(decimals, Decimal.ROUND_DOWN)
+      .toString();
+  };
 
   // Function to approve tokens
   const handleApprove = async () => {
@@ -108,7 +242,9 @@ export function ApproveAndAddLiquidityButtons({
     }
 
     try {
-      console.log(`approveTokens, tokenAddress: ${tokenAddress}, routerAddress: ${routerAddress}, tokenAmount: ${tokenAmount}, signer: ${signer}`);
+      console.log(
+        `approveTokens, tokenAddress: ${tokenAddress}, routerAddress: ${routerAddress}, tokenAmount: ${tokenAmount}, signer: ${signer}`
+      );
       setIsApproving(true);
       await approveTokens(tokenAddress, routerAddress, tokenAmount, signer);
       setIsApproved(true);
@@ -197,43 +333,93 @@ export function ApproveAndAddLiquidityButtons({
     parseFloat(nativeAmount) <= 0;
 
   return (
-    <div className="w-full sm:w-auto grid grid-cols-2 gap-2">
-      {!isApproved && (
+    <div className="w-full sm:w-auto flex flex-col gap-2">
+      {!isTradingEnabled && (
         <Button
-          onClick={handleApprove}
-          disabled={isDisabled || isApproving || isCheckingApproval}
-          variant="outline"
+          onClick={handleEnableTrading}
+          disabled={!signer || isEnablingTrading || isCheckingTrading}
+          variant="default"
           size="sm"
+          className="w-full"
         >
-          {isApproving ? (
+          {isEnablingTrading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Approving...
+              Enabling Trading...
             </>
-          ) : isCheckingApproval ? (
+          ) : isCheckingTrading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Checking...
             </>
           ) : (
-            'Approve Tokens'
+            'Enable Trading (Required First)'
           )}
         </Button>
       )}
-      <Button
-        onClick={handleAddLiquidity}
-        disabled={isDisabled || !isApproved || isAddingLiquidity}
-        size="sm"
-      >
-        {isAddingLiquidity ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Adding Liquidity...
-          </>
-        ) : (
-          'Add Liquidity'
+      {isTradingEnabled && (
+        <Button
+          onClick={handleUpdateSwapThreshold}
+          disabled={!signer || isUpdatingSwapThreshold}
+          variant="secondary"
+          size="sm"
+          className="w-full"
+        >
+          {isUpdatingSwapThreshold ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Updating Swap Threshold...
+            </>
+          ) : (
+            'Fix Auto-Swap Issue (Optional)'
+          )}
+        </Button>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        {!isApproved && (
+          <Button
+            onClick={handleApprove}
+            disabled={
+              isDisabled ||
+              isApproving ||
+              isCheckingApproval ||
+              !isTradingEnabled
+            }
+            variant="outline"
+            size="sm"
+          >
+            {isApproving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Approving...
+              </>
+            ) : isCheckingApproval ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              'Approve Tokens'
+            )}
+          </Button>
         )}
-      </Button>
+        <Button
+          onClick={handleAddLiquidity}
+          disabled={
+            isDisabled || !isApproved || isAddingLiquidity || !isTradingEnabled
+          }
+          size="sm"
+        >
+          {isAddingLiquidity ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Adding Liquidity...
+            </>
+          ) : (
+            'Add Liquidity'
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

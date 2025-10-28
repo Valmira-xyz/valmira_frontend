@@ -341,6 +341,17 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
   const initialBalancesFetched = useRef(false);
   const [isInitialBalanceLoading, setIsInitialBalanceLoading] = useState(true);
   const currentProjectIdRef = useRef(project?._id);
+  // Get current user from auth state
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [wallets, setWallets] = useState<WalletInfo[]>([]);
+  const [isManualSwapDialogOpen, setIsManualSwapDialogOpen] = useState(false);
+  const [isWalletManagementModalOpen, setIsWalletManagementModalOpen] =
+    useState(false);
+  const [isManualLPDialogOpen, setIsManualLPDialogOpen] = useState(false);
+  const [isHolderBotDialogOpen, setIsHolderBotDialogOpen] = useState(false);
+  const [isDistributionBotDialogOpen, setIsDistributionBotDialogOpen] =
+    useState(false);
+  const [isTrendingBotDialogOpen, setIsTrendingBotDialogOpen] = useState(false);
 
   // Failsafe: Clear loading state after 10 seconds regardless
   useEffect(() => {
@@ -355,17 +366,6 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
 
     return () => clearTimeout(timeout);
   }, [isInitialBalanceLoading]);
-  // Get current user from auth state
-  const { user } = useSelector((state: RootState) => state.auth);
-  const [wallets, setWallets] = useState<WalletInfo[]>([]);
-  const [isManualSwapDialogOpen, setIsManualSwapDialogOpen] = useState(false);
-  const [isWalletManagementModalOpen, setIsWalletManagementModalOpen] =
-    useState(false);
-  const [isManualLPDialogOpen, setIsManualLPDialogOpen] = useState(false);
-  const [isHolderBotDialogOpen, setIsHolderBotDialogOpen] = useState(false);
-  const [isDistributionBotDialogOpen, setIsDistributionBotDialogOpen] =
-    useState(false);
-  const [isTrendingBotDialogOpen, setIsTrendingBotDialogOpen] = useState(false);
 
   // Check if current user is the project owner
   const isProjectOwner = useMemo(() => {
@@ -871,12 +871,16 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
       if (data.error) {
         console.error('Holder generation error:', data.error);
         console.log('======== project? : ', project);
+
         const nativeCurrency =
           project?.chainName === 'BSC_MAINNET'
             ? 'BNB'
             : project?.chainName === 'ETH_MAINNET'
               ? 'ETH'
-              : 'SOL';
+              : project?.chainName === 'SOMNIA_TESTNET'
+                ? 'STT'
+                : 'SOL';
+
         const { title, message } = parseErrorMessage(
           data.error.message,
           data.error.details,
@@ -1100,7 +1104,9 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
             ? 'BNB'
             : project?.chainName === 'ETH_MAINNET'
               ? 'ETH'
-              : 'SOL';
+              : project?.chainName === 'SOMNIA_TESTNET'
+                ? 'STT'
+                : 'SOL';
         const { title, message } = parseErrorMessage(
           data.error.message,
           data.error.details,
@@ -1500,7 +1506,9 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : project?.chainName === 'SOMNIA_TESTNET'
+          ? 'STT'
+          : 'SOL';
 
   return (
     <div className="space-y-6">
@@ -1668,7 +1676,16 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
                                 asChild
                               >
                                 <a
-                                  href={`https://${project?.chainName === 'BSC_MAINNET' ? 'bscscan.com' : project?.chainName === 'ETH_MAINNET' ? 'etherscan.io' : 'solscan.io'}/address/${addon.depositWallet}`}
+                                  href={`https://${
+                                    project?.chainName === 'BSC_MAINNET'
+                                      ? 'bscscan.com'
+                                      : project?.chainName === 'ETH_MAINNET'
+                                        ? 'etherscan.io'
+                                        : project?.chainName ===
+                                            'SOMNIA_TESTNET'
+                                          ? 'shannon-explorer.somnia.network'
+                                          : 'solscan.io'
+                                  }/address/${addon.depositWallet}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
@@ -1755,16 +1772,16 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
                           {(() => {
                             const showSkeleton =
                               isInitialBalanceLoading || isRefreshingBalances;
-                            console.log(
-                              '[project-addons] Native balance render:',
-                              {
-                                isInitialBalanceLoading,
-                                isRefreshingBalances,
-                                showSkeleton,
-                                hasBalanceData:
-                                  !!depositWalletBalances[addon.depositWallet],
-                              }
-                            );
+                            // console.log(
+                            //   '[project-addons] Native balance render:',
+                            //   {
+                            //     isInitialBalanceLoading,
+                            //     isRefreshingBalances,
+                            //     showSkeleton,
+                            //     hasBalanceData:
+                            //       !!depositWalletBalances[addon.depositWallet],
+                            //   }
+                            // );
                             return showSkeleton ? (
                               <Skeleton className="h-7 w-32" />
                             ) : (
@@ -1800,7 +1817,7 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
                             toggleDialog(addon.botType, open)
                           }
                           depositWalletAddress={addon.depositWallet}
-                          chainName={project?.chainName || 'BSC_MAINNET'}
+                          chainName={project?.chainName}
                           onSuccess={() => {
                             // Refresh wallet balances after successful deposit
                             memoizedRefreshWalletBalances();

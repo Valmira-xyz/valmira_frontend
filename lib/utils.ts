@@ -58,6 +58,8 @@ export const getChainName = (chainId: number) => {
       return 'ETH_MAINNET';
     case 56:
       return 'BSC_MAINNET';
+    case 50312:
+      return 'SOMNIA_TESTNET';
     default:
       return 'UNKNOWN';
   }

@@ -67,15 +67,17 @@ export const ProjectActivationModal: React.FC<ProjectActivationModalProps> = ({
     try {
       // Get activation fee data from backend
       const feeInfo = await activationService.getActivationFee(project._id);
+      console.log('project.chainName:', project.chainName);
 
       // Get current native currency price
       const nativeCurrency = activationService.getNativeCurrencySymbol(
         project.chainName
       );
+      console.log('nativeCurrency:', nativeCurrency);
       const priceInfo = await activationService.getNativeCurrencyPrice(
-        nativeCurrency as 'BNB' | 'ETH'
+        nativeCurrency as 'BNB' | 'ETH' | 'STT'
       );
-
+      console.log('priceInfo.price:', priceInfo.price);
       const nativeAmount = activationService.calculateNativeAmount(
         feeInfo.setupFeeUSD,
         priceInfo.price

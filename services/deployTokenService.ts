@@ -90,9 +90,10 @@ export const getContractWithSocialLinks = async (
 };
 
 export async function verifyContract(
-  params: VerificationParams
+  params: VerificationParams,
+  chainName?: string
 ): Promise<DeploymentJobResponse> {
-  console.log('Verifying contract with params:', params);
+  console.log('Verifying contract with params:', { ...params, chainName });
   await waitForRateLimit();
 
   try {
@@ -102,7 +103,7 @@ export async function verifyContract(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify({ ...params, chainName }),
     });
 
     const data = await response.json();
@@ -155,11 +156,120 @@ export const contractDeployByCustomByteCode = async (
 
   const factory = new ethers.ContractFactory(TokenAbi.abi, byteCode, signer);
 
-  const contract = await factory.deploy(...args);
+  // Get gas price directly using eth_gasPrice to avoid EIP-1559 issues
+  let gasPrice;
+  try {
+    // Use eth_gasPrice directly for legacy networks
+    const gasPriceHex = await signer.provider.send('eth_gasPrice', []);
+    gasPrice = BigInt(gasPriceHex);
+    console.log('Retrieved gas price from network:', gasPrice.toString());
+  } catch (error) {
+    console.warn(
+      'Failed to get gas price via eth_gasPrice, using default:',
+      error
+    );
+    gasPrice = ethers.parseUnits('10', 'gwei');
+    console.log('Using default gas price:', gasPrice.toString());
+  }
 
-  await new Promise((resolve) => setTimeout(resolve, 15000)); // Poll every 15 seconds
+  // Encode constructor arguments
+  const deployData = factory.interface.encodeDeploy(args);
+  const fullByteCode = ethers.concat([byteCode, deployData]);
 
-  return contract?.target;
+  console.log('Preparing manual transaction deployment...');
+
+  const fromAddress = await signer.getAddress();
+
+  // Estimate gas for deployment
+  let estimatedGas;
+  try {
+    console.log('Estimating gas for deployment...');
+    const gasEstimate = await signer.provider.estimateGas({
+      from: fromAddress,
+      data: ethers.hexlify(fullByteCode),
+    });
+    // Add 20% buffer to gas estimate for safety
+    estimatedGas = (gasEstimate * BigInt(120)) / BigInt(100);
+    console.log(
+      'Estimated gas:',
+      gasEstimate.toString(),
+      '→ With buffer:',
+      estimatedGas.toString()
+    );
+  } catch (error) {
+    console.warn('Gas estimation failed, using fallback:', error);
+    // Fallback to 8M if estimation fails
+    estimatedGas = BigInt(8000000);
+  }
+
+  // Manually construct transaction params - send directly via MetaMask RPC to bypass ethers.js
+  const txParams = {
+    from: fromAddress,
+    data: ethers.hexlify(fullByteCode),
+    gas: ethers.toBeHex(estimatedGas), // Use estimated gas with buffer
+    gasPrice: ethers.toBeHex(gasPrice), // Convert to hex
+  };
+
+  console.log(
+    'Sending deployment transaction directly via eth_sendTransaction...'
+  );
+  console.log('Transaction params:', {
+    from: txParams.from,
+    dataLength: txParams.data.length,
+    gas: txParams.gas,
+    gasPrice: txParams.gasPrice,
+  });
+
+  // Access the raw Ethereum provider (window.ethereum) to completely bypass ethers.js
+  const ethereum = typeof window !== 'undefined' && (window as any).ethereum;
+
+  if (!ethereum || typeof ethereum.request !== 'function') {
+    throw new Error('MetaMask or Ethereum provider not found');
+  }
+
+  console.log('Using raw Ethereum provider to send transaction...');
+
+  // Send transaction directly to MetaMask, bypassing all ethers.js processing
+  const txHash = (await (ethereum.request as any)({
+    method: 'eth_sendTransaction',
+    params: [txParams],
+  })) as string;
+
+  console.log('Contract deployment transaction sent:', txHash);
+
+  // Wait for transaction to be mined using raw provider
+  let receipt: any = null;
+  let attempts = 0;
+  const maxAttempts = 60; // Wait up to 60 seconds
+
+  while (!receipt && attempts < maxAttempts) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      receipt = await (ethereum.request as any)({
+        method: 'eth_getTransactionReceipt',
+        params: [txHash],
+      });
+      if (receipt) {
+        console.log('Contract deployed at:', receipt.contractAddress);
+        break;
+      }
+    } catch {
+      // Receipt not available yet, continue waiting
+    }
+    attempts++;
+  }
+
+  if (!receipt) {
+    throw new Error('Transaction receipt not received after 60 seconds');
+  }
+
+  if (!receipt.contractAddress) {
+    throw new Error(
+      'Contract deployment failed - no contract address in receipt'
+    );
+  }
+
+  return receipt.contractAddress;
 };
 
 export const getPairAddress = async (tokenAddress: string, signer: any) => {
@@ -170,12 +280,48 @@ export const getPairAddress = async (tokenAddress: string, signer: any) => {
     // Create an instance of the token contract
     const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
 
-    // Call the uniswapPair() function to get the pair address
-    const pairAddress = await tokenContract.uniswapPair();
+    // Retry mechanism - give the contract time to initialize after deployment
+    const maxRetries = 3;
 
-    return pairAddress;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Wait a bit before each attempt (except the first one)
+        if (attempt > 0) {
+          console.log(
+            `Retrying to fetch pair address (attempt ${attempt + 1}/${maxRetries})...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second between retries
+        }
+
+        // Call the uniswapPair() function to get the pair address
+        const pairAddress = await tokenContract.uniswapPair();
+
+        console.log(
+          `Pair address fetched (attempt ${attempt + 1}):`,
+          pairAddress
+        );
+
+        // Return the address, even if it's zero address
+        // The pair might be created later or might not exist for this token type
+        return pairAddress || '0x0000000000000000000000000000000000000000';
+      } catch (error) {
+        console.warn(
+          `Attempt ${attempt + 1}/${maxRetries} to fetch pair address failed:`,
+          error
+        );
+
+        // If this is the last attempt, return zero address
+        if (attempt === maxRetries - 1) {
+          console.warn('All attempts failed, returning zero address');
+          return '0x0000000000000000000000000000000000000000';
+        }
+      }
+    }
+
+    // Fallback (should never reach here due to return in loop)
+    return '0x0000000000000000000000000000000000000000';
   } catch (error) {
-    console.error('Error fetching pair address:', error);
+    console.error('Unexpected error in getPairAddress:', error);
     return '0x0000000000000000000000000000000000000000'; // Return a zero address in case of failure
   }
 };
@@ -243,15 +389,18 @@ export class TokenDeploymentService {
       params.tokenTotalSupply,
       params.buyFee || 3,
       params.sellFee || 3,
-      params.maxHoldingLimit_ || 10,
-      params.maxBuyLimit_ || 10,
-      params.maxSellLimit_ || 10,
+      params.maxHoldingLimit_ || 100000000,
+      params.maxBuyLimit_ || 100000000,
+      params.maxSellLimit_ || 100000000,
       this.walletClient.account?.address ||
         '0x0000000000000000000000000000000000000000',
     ];
   }
 
-  public async deployToken(params: DeploymentParams): Promise<{
+  public async deployToken(
+    params: DeploymentParams,
+    chainName?: string
+  ): Promise<{
     contractAddress: string;
     pairAddress: string;
     success: boolean;
@@ -301,11 +450,18 @@ export class TokenDeploymentService {
       }
 
       // Fetch pair address with native currency at here
-      const pairAddress = await getPairAddress(
+      const fetchedPairAddress = await getPairAddress(
         contractAddress as string,
         this.signer
       );
-      console.log('pairAddress : ', pairAddress);
+      console.log('pairAddress : ', fetchedPairAddress);
+
+      // Convert zero address to empty string for backend compatibility
+      const pairAddress =
+        fetchedPairAddress &&
+        fetchedPairAddress !== '0x0000000000000000000000000000000000000000'
+          ? fetchedPairAddress
+          : '';
 
       // Notify backend for verification
       const verifyParams: VerificationParams = {
@@ -316,14 +472,30 @@ export class TokenDeploymentService {
         tokenName: params.tokenName,
       };
       console.log('auth token: ', localStorage.getItem('token'));
-      console.log('verifyParams : ', verifyParams);
-      const response = await verifyContract(verifyParams);
+      console.log('verifyParams : ', verifyParams, 'chainName: ', chainName);
+
+      let response;
+      try {
+        response = await verifyContract(verifyParams, chainName);
+      } catch (verifyError) {
+        console.error(
+          'Verification failed, but continuing with deployment:',
+          verifyError
+        );
+        // If verification fails, still return success since the contract is deployed
+        response = {
+          success: true, // Contract is deployed, just verification failed
+          message:
+            'Contract deployed successfully, but verification failed. You can verify it manually later.',
+          jobId: null,
+        };
+      }
 
       return {
         contractAddress: contractAddress as string,
-        pairAddress: pairAddress as string,
-        success: response.success || false,
-        message: response.message || 'Failed to verify contract',
+        pairAddress: pairAddress,
+        success: true, // Always true if we got here (contract is deployed)
+        message: response.message || 'Contract deployed successfully',
       };
     } catch (error) {
       console.error('Error verifying token:', error);

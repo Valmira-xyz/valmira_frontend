@@ -135,7 +135,15 @@ export const ProjectHeader: React.FC<{
                       asChild
                     >
                       <a
-                        href={`https://${project?.chainName === 'BSC_MAINNET' ? 'bscscan.com' : project?.chainName === 'ETH_MAINNET' ? 'etherscan.io' : 'solscan.io'}/token/${project.tokenAddress || 'No token address'}`}
+                        href={`https://${
+                          project?.chainName === 'BSC_MAINNET'
+                            ? 'bscscan.com'
+                            : project?.chainName === 'ETH_MAINNET'
+                              ? 'etherscan.io'
+                              : project?.chainName === 'SOMNIA_TESTNET'
+                                ? 'shannon-explorer.somnia.network'
+                                : 'solscan.io'
+                        }/token/${project.tokenAddress || 'No token address'}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >

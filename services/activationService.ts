@@ -72,7 +72,7 @@ export const activationService = {
 
   // Get current native currency price
   getNativeCurrencyPrice: async (
-    currency: 'BNB' | 'ETH'
+    currency: 'BNB' | 'ETH' | 'STT'
   ): Promise<NativeCurrencyPrice> => {
     try {
       const response = await axios.get<{ data: NativeCurrencyPrice }>(
@@ -95,17 +95,27 @@ export const activationService = {
     const baseUrl =
       chainName === 'BSC_MAINNET'
         ? 'https://bscscan.com/address/'
-        : 'https://etherscan.io/address/';
+        : chainName === 'ETH_MAINNET'
+          ? 'https://etherscan.io/address/'
+          : 'https://shannon-explorer.somnia.network/address/';
     return `${baseUrl}${address}`;
   },
 
   // Get native currency symbol from chain name
   getNativeCurrencySymbol: (chainName: string): string => {
-    return chainName === 'BSC_MAINNET' ? 'BNB' : 'ETH';
+    return chainName === 'BSC_MAINNET'
+      ? 'BNB'
+      : chainName === 'ETH_MAINNET'
+        ? 'ETH'
+        : 'STT';
   },
 
   // Get network name for display
   getNetworkName: (chainName: string): string => {
-    return chainName === 'BSC_MAINNET' ? 'BSC' : 'Ethereum';
+    return chainName === 'BSC_MAINNET'
+      ? 'BSC'
+      : chainName === 'ETH_MAINNET'
+        ? 'Ethereum'
+        : 'Somnia';
   },
 };
