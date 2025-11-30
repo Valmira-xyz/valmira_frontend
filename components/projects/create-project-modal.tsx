@@ -213,7 +213,7 @@ export function CreateProjectModal({
     if (getChainName(chainId) !== selectedNetwork) {
       toast({
         title: 'Error',
-        description: `Please connect to the correct network. Please check you wallet is switched to ${selectedNetwork}`,
+        description: `Please connect to the correct network. Please check your wallet is switched to ${selectedNetwork}`,
         variant: 'destructive',
       });
       return;
@@ -254,14 +254,6 @@ export function CreateProjectModal({
         'Processing token deployment and waiting for confirmation of 5 blocks and verification on the blockchain explorer...'
       );
       // Map selectedNetwork to contract server network names
-      const contractServerNetwork =
-        selectedNetwork === 'BSC_MAINNET'
-          ? 'bsc'
-          : selectedNetwork === 'ETH_MAINNET'
-            ? 'eth'
-            : selectedNetwork === 'SOMNIA_TESTNET'
-              ? 'somniaTestnet'
-              : 'bsc';
 
       const { contractAddress, pairAddress: newPairAddress } =
         await deploymentService.deployToken(
@@ -282,7 +274,7 @@ export function CreateProjectModal({
             },
             templateNumber: parseInt(tokenTemplate),
           },
-          contractServerNetwork
+          selectedNetwork
         );
 
       setDeployedTokenAddress(contractAddress);
@@ -659,6 +651,8 @@ export function CreateProjectModal({
                 setSelectedNetwork('ETH_MAINNET');
               } else if (value === 'SOMNIA_TESTNET') {
                 setSelectedNetwork('SOMNIA_TESTNET');
+              } else if (value === 'SOMNIA_MAINNET') {
+                setSelectedNetwork('SOMNIA_MAINNET');
               }
             }}
             value={selectedNetwork}
@@ -671,7 +665,8 @@ export function CreateProjectModal({
                 Binance Smart Chain (BSC)
               </SelectItem>
               <SelectItem value="ETH_MAINNET">Ethereum</SelectItem>
-              <SelectItem value="SOMNIA_TESTNET">Somnia Testnet</SelectItem>
+              {/* <SelectItem value="SOMNIA_TESTNET">Somnia Testnet</SelectItem> */}
+              <SelectItem value="SOMNIA_MAINNET">Somnia Mainnet</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -690,8 +685,9 @@ export function CreateProjectModal({
                   ? 'Pancakeswap V2'
                   : selectedNetwork === 'ETH_MAINNET'
                     ? 'Uniswap V2'
-                    : selectedNetwork === 'SOMNIA_TESTNET'
-                      ? 'Somnia DEX'
+                    : selectedNetwork === 'SOMNIA_TESTNET' ||
+                        selectedNetwork === 'SOMNIA_MAINNET'
+                      ? 'QuickSwap (Algebra V4)'
                       : 'Raydium AMM'}
               </span>
               ) token to create a {isStrategyPackMode ? 'pack' : 'project'}.
@@ -747,6 +743,11 @@ export function CreateProjectModal({
                       deploymentStatusText === 'success'
                     }
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Enter the total supply in tokens (e.g., 1000000000 for 1
+                    billion tokens). Decimals (18) will be applied
+                    automatically.
+                  </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 justify-between w-full">
                   <div className="space-y-2 w-1/2">
@@ -958,8 +959,9 @@ export function CreateProjectModal({
                   ? 'Pancakeswap V2'
                   : selectedNetwork === 'ETH_MAINNET'
                     ? 'Uniswap V2'
-                    : selectedNetwork === 'SOMNIA_TESTNET'
-                      ? 'Somnia DEX'
+                    : selectedNetwork === 'SOMNIA_TESTNET' ||
+                        selectedNetwork === 'SOMNIA_MAINNET'
+                      ? 'QuickSwap (Algebra V4)'
                       : 'Raydium AMM'}
               </span>
               ) token to create a {isStrategyPackMode ? 'pack' : 'project'}.

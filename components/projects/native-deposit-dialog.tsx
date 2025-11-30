@@ -47,6 +47,10 @@ export function NativeDepositDialog({
         return 56; // BSC Mainnet
       case 'ETH_MAINNET':
         return 1; // Ethereum Mainnet
+      case 'SOMNIA_TESTNET':
+        return 50312; // Somnia Testnet
+      case 'SOMNIA_MAINNET':
+        return 5031; // Somnia Mainnet
       default:
         return 1; // Default to Ethereum Mainnet
     }
@@ -73,7 +77,9 @@ export function NativeDepositDialog({
       ? 'BNB'
       : chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : chainName === 'SOMNIA_TESTNET' || chainName === 'SOMNIA_MAINNET'
+          ? 'SOMI'
+          : 'SOL';
 
   // Format address for display
   const formatAddress = (address: string) => {
@@ -173,7 +179,7 @@ export function NativeDepositDialog({
     if (getChainName(chainId) !== chainName) {
       toast({
         title: 'Wrong network',
-        description: `Please switch your wallet to ${chainName === 'ETH_MAINNET' ? 'Ethereum' : chainName === 'BSC_MAINNET' ? 'Binance Smart Chain' : 'Solana'} to continue.`,
+        description: `Please switch your wallet to ${chainName === 'ETH_MAINNET' ? 'Ethereum' : chainName === 'BSC_MAINNET' ? 'Binance Smart Chain' : chainName === 'SOMNIA_TESTNET' ? 'Somnia Testnet' : chainName === 'SOMNIA_MAINNET' ? 'Somnia Mainnet' : 'Solana'} to continue.`,
         variant: 'destructive',
       });
       return;

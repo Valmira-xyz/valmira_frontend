@@ -781,6 +781,21 @@ const projectSlice = createSlice({
       .addCase(fetchProject.fulfilled, (state, action) => {
         state.loading = false;
         state.currentProject = action.payload;
+        // Also update the project in the projects array if it exists
+        const index = state.projects.findIndex(
+          (p) => p._id === action.payload._id
+        );
+        if (index !== -1) {
+          state.projects[index] = action.payload;
+        }
+        // Dispatch custom event to notify sidebar about project update
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('projectUpdated', {
+              detail: { project: action.payload },
+            })
+          );
+        }
       })
       .addCase(fetchProject.rejected, (state, action) => {
         state.loading = false;

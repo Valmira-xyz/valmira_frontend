@@ -60,6 +60,8 @@ export const getChainName = (chainId: number) => {
       return 'BSC_MAINNET';
     case 50312:
       return 'SOMNIA_TESTNET';
+    case 5031:
+      return 'SOMNIA_MAINNET';
     default:
       return 'UNKNOWN';
   }
@@ -117,6 +119,10 @@ export const getBlockExplorerUrl = (
       return `https://bscscan.com/${type}/${address}`;
     case 'ETH_MAINNET':
       return `https://etherscan.io/${type}/${address}`;
+    case 'SOMNIA_TESTNET':
+      return `https://shannon-explorer.somnia.network/${type}/${address}`;
+    case 'SOMNIA_MAINNET':
+      return `https://explorer.somnia.network/${type}/${address}`;
     case 'SOLANA_MAINNET':
       // Solana uses different endpoints for tokens vs addresses
       return type === 'token'

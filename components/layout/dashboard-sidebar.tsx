@@ -280,6 +280,46 @@ export function DashboardSidebar() {
     };
   }, [fetchUserProjects]);
 
+  // Listen for project updates (status changes, etc.)
+  useEffect(() => {
+    const handleProjectUpdated = (event: CustomEvent<{ project: any }>) => {
+      const updatedProject = event.detail.project;
+
+      // Update the project in userProjects if it exists
+      setUserProjects((prevProjects) => {
+        const projectIndex = prevProjects.findIndex(
+          (p) => p._id === updatedProject._id
+        );
+
+        if (projectIndex !== -1) {
+          // Update the existing project with new data
+          const updatedProjects = [...prevProjects];
+          updatedProjects[projectIndex] = {
+            ...updatedProjects[projectIndex],
+            ...updatedProject,
+          };
+          return updatedProjects;
+        }
+
+        // If project not found, it might be a new project, refresh the list
+        return prevProjects;
+      });
+    };
+
+    // Listen for custom project updated event
+    window.addEventListener(
+      'projectUpdated',
+      handleProjectUpdated as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        'projectUpdated',
+        handleProjectUpdated as EventListener
+      );
+    };
+  }, []);
+
   // Listen for pack changes (creation/deletion)
   useEffect(() => {
     const handlePacksChanged = () => {

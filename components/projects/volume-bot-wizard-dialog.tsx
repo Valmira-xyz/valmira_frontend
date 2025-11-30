@@ -110,7 +110,9 @@ export function VolumeBotWizardDialog({
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : project?.chainName === 'SOL_MAINNET'
+          ? 'SOL'
+          : 'SOMI';
   const loadBotConfiguration = async () => {
     if (!project) return;
     setIsLoading(true);
@@ -175,7 +177,10 @@ export function VolumeBotWizardDialog({
             ? 'BNB'
             : currentProject?.chainName === 'ETH_MAINNET'
               ? 'ETH'
-              : 'SOL';
+              : currentProject?.chainName === 'SOMNIA_TESTNET' ||
+                  project?.chainName === 'SOMNIA_MAINNET'
+                ? 'SOMI'
+                : 'SOL';
 
         const { title, message } = parseErrorMessage(
           data.error.message,

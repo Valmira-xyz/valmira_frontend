@@ -279,7 +279,7 @@ export const ProjectAnalytics = forwardRef<
           botName: data.activity.botName || 'Unknown Bot',
           action: data.activity.action || 'Unknown Action',
           description: data.activity.description || 'No description provided',
-          volume: data.activity.volume || 0,
+          volume: (data.activity.volume || 0).toFixed(4),
           impact: data.activity.impact || 0,
         };
 

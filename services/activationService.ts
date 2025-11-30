@@ -107,7 +107,7 @@ export const activationService = {
       ? 'BNB'
       : chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'STT';
+        : 'SOMI';
   },
 
   // Get network name for display

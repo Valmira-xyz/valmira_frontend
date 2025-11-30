@@ -117,7 +117,10 @@ export function WalletManagementModal({
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : project?.chainName === 'SOMNIA_TESTNET' ||
+            project?.chainName === 'SOMNIA_MAINNET'
+          ? 'SOMI'
+          : 'SOL';
 
   // Computed values
   // const subWallets = wallets.filter((w) => w.role !== 'botmain');
@@ -939,7 +942,7 @@ export function WalletManagementModal({
                       <div className="flex items-center justify-center gap-1">
                         <span className="text-sm">
                           {currentTokenPrice !== null
-                            ? `${project?.symbol} price:  $${currentTokenPrice.toFixed(8)}`
+                            ? `${project?.symbol} price:  $${currentTokenPrice?.toFixed(8)}`
                             : 'Loading...'}
                         </span>
                         <Button

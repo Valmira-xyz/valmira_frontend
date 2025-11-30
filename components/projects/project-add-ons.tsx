@@ -152,7 +152,7 @@ type LiquidationSnipeBotStatus =
 
 type BotConfig = {
   _id?: string;
-  status?: LiquidationSnipeBotStatus;
+  status?: LiquidationSnipeBotStatus | string;
   enabled: boolean;
   amount: number;
   nativeCurrency: number;
@@ -631,10 +631,14 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
           (addon) => addon.botType === 'VolumeBot'
         );
         if (index !== -1) {
+          const currentVolume = updatedAddOns[index].generatedVolume || 0;
+          const backendVolume = bot.generatedVolume || 0;
+
           updatedAddOns[index] = {
             ...updatedAddOns[index],
             depositWallet: bot.depositWalletId?.publicKey || '',
-            generatedVolume: bot.generatedVolume ?? 0,
+            //generatedVolume: bot.generatedVolume ?? 0,
+            generatedVolume: Math.max(currentVolume, backendVolume),
           };
 
           // Update config
@@ -789,7 +793,10 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
             ? 'BNB'
             : project?.chainName === 'ETH_MAINNET'
               ? 'ETH'
-              : 'SOL';
+              : project?.chainName === 'SOMNIA_TESTNET' ||
+                  project?.chainName === 'SOMNIA_MAINNET'
+                ? 'SOMI'
+                : 'SOL';
         const { title, message } = parseErrorMessage(
           data.error.message,
           data.error.details,
@@ -811,9 +818,25 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
         if (data.generatedVolume > 0) {
           toast({
             title: 'Volume Generated',
-            description: `Successfully generated ${data.generatedVolume.toFixed(2)} volume`,
+            description: `Successfully generated ${data.generatedVolume.toFixed(5)} volume`,
             variant: 'default',
           });
+
+          // Update the volume count in the UI
+          setAddOns((prevAddOns) =>
+            prevAddOns.map((addon) =>
+              addon.botType === 'VolumeBot'
+                ? {
+                    ...addon,
+                    generatedVolume: Number(
+                      (
+                        (addon.generatedVolume || 0) + data.generatedVolume
+                      ).toFixed(5)
+                    ),
+                  }
+                : addon
+            )
+          );
         }
       }
       // Refresh wallet balances after volume generation update
@@ -866,6 +889,9 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
         projectId?: string;
         botId?: string;
       };
+      completed?: boolean;
+      isEnabled?: boolean;
+      status?: string;
     }) => {
       console.log('Received holder generation update:', data);
       if (data.error) {
@@ -877,8 +903,9 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
             ? 'BNB'
             : project?.chainName === 'ETH_MAINNET'
               ? 'ETH'
-              : project?.chainName === 'SOMNIA_TESTNET'
-                ? 'STT'
+              : project?.chainName === 'SOMNIA_TESTNET' ||
+                  project?.chainName === 'SOMNIA_MAINNET'
+                ? 'SOMI'
                 : 'SOL';
 
         const { title, message } = parseErrorMessage(
@@ -899,14 +926,43 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
         });
       } else {
         console.log('Holders generated successfully:', data.generatedHolders);
-        if (data.generatedHolders > 0) {
+
+        // Update bot status if provided
+        if (
+          data.isEnabled !== undefined ||
+          data.completed !== undefined ||
+          data.status
+        ) {
+          setConfigs((prev) => ({
+            ...prev,
+            ['HolderBot']: {
+              ...prev['HolderBot'],
+              enabled:
+                data.isEnabled !== undefined
+                  ? data.isEnabled
+                  : prev['HolderBot']?.enabled,
+              status: data.status || prev['HolderBot']?.status,
+            },
+          }));
+        }
+
+        // Show completion toast if bot completed
+        if (data.completed) {
+          toast({
+            title: 'Holder Bot Completed',
+            description: `Successfully generated ${data.generatedHolders} holders. Target reached!`,
+            variant: 'default',
+          });
+        } else if (data.generatedHolders > 0) {
           toast({
             title: 'Holders Generated',
             description: `Successfully generated ${data.generatedHolders} holders`,
             variant: 'default',
           });
+        }
 
-          // Update the holder count in the UI
+        // Update the holder count in the UI
+        if (data.generatedHolders > 0) {
           setAddOns((prevAddOns) =>
             prevAddOns.map((addon) =>
               addon.botType === 'HolderBot'
@@ -1104,8 +1160,9 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
             ? 'BNB'
             : project?.chainName === 'ETH_MAINNET'
               ? 'ETH'
-              : project?.chainName === 'SOMNIA_TESTNET'
-                ? 'STT'
+              : project?.chainName === 'SOMNIA_TESTNET' ||
+                  project?.chainName === 'SOMNIA_MAINNET'
+                ? 'SOMI'
                 : 'SOL';
         const { title, message } = parseErrorMessage(
           data.error.message,
@@ -1131,7 +1188,7 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
         if (data.generatedVolume > 0) {
           toast({
             title: 'Trending Volume Generated',
-            description: `Successfully generated ${data.generatedVolume.toFixed(2)} trending volume for ${data.generatedTrending}`,
+            description: `Successfully generated ${data.generatedVolume.toFixed(5)} trending volume for ${data.generatedTrending}`,
             variant: 'default',
           });
 
@@ -1287,7 +1344,7 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
 
     // Get the current enabled state
     const currentEnabled = configs[botType].enabled;
-
+    console.log('currentEnabled---------', currentEnabled);
     if (botType === 'VolumeBot' && !currentEnabled) {
       setIsVolumeDialogOpen(true);
       return;
@@ -1506,8 +1563,9 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : project?.chainName === 'SOMNIA_TESTNET'
-          ? 'STT'
+        : project?.chainName === 'SOMNIA_TESTNET' ||
+            project?.chainName === 'SOMNIA_MAINNET'
+          ? 'SOMI'
           : 'SOL';
 
   return (
@@ -1850,7 +1908,7 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
                         <div>
                           <Label>Generated Volume</Label>
                           <p className="text-xl font-bold">
-                            ${formatNumber(addon.generatedVolume)}
+                            ${parseFloat(addon.generatedVolume.toFixed(5))}
                           </p>
                         </div>
                       )}
@@ -1900,7 +1958,10 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
                         <div>
                           <Label>Generated Trending Volume</Label>
                           <p className="text-xl font-bold">
-                            ${formatNumber(addon.generatedVolume || 0)}
+                            $
+                            {parseFloat(
+                              addon.generatedVolume?.toFixed(5) || '0'
+                            )}
                           </p>
                         </div>
                         <div>
@@ -1985,9 +2046,15 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
                                   variant: 'destructive',
                                 })
                           }
-                          disabled={!isProjectOwner || isRefreshingBalances}
+                          disabled={
+                            !isProjectOwner ||
+                            isRefreshingBalances ||
+                            configs['HolderBot']?.enabled
+                          }
                         >
-                          Configure & Execute
+                          {configs['HolderBot']?.enabled
+                            ? 'Bot is Running'
+                            : 'Configure & Execute'}
                         </Button>
                       </>
                     ) : addon.botType === 'AutoSellBot' ||
@@ -2032,7 +2099,7 @@ export function ProjectAddOns({ project }: { project: ProjectWithAddons }) {
                             }
                           >
                             {configs[addon.botType]?.enabled
-                              ? 'Bot is Running - Use Switch to Disable'
+                              ? 'Bot is Running'
                               : 'Configure & Execute'}
                           </Button>
                           {/* Buy & Fill Token Button for Trending Bot */}

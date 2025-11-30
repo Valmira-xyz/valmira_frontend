@@ -72,25 +72,25 @@ const waitForRateLimit = async (url: string) => {
 
   // If we have too many active requests, wait
   if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
-    console.log(
-      `⏱️ Waiting for active requests to complete. Current: ${activeRequests}/${MAX_CONCURRENT_REQUESTS}`
-    );
+    // console.log(
+    //   `⏱️ Waiting for active requests to complete. Current: ${activeRequests}/${MAX_CONCURRENT_REQUESTS}`
+    // );
     await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY));
   }
 
   // If we're making requests too quickly, wait
   if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
     const waitTime = RATE_LIMIT_DELAY - timeSinceLastRequest;
-    console.log(`⏱️ Rate limiting - waiting ${waitTime}ms before next request`);
+    // console.log(`⏱️ Rate limiting - waiting ${waitTime}ms before next request`);
     await new Promise((resolve) => setTimeout(resolve, waitTime));
   }
 
   // If we're making requests to the same endpoint too quickly, wait
   if (timeSinceEndpointRequest < endpointDelay) {
     const waitTime = endpointDelay - timeSinceEndpointRequest;
-    console.log(
-      `⏱️ Endpoint rate limiting for ${endpointKey} - waiting ${waitTime}ms`
-    );
+    // console.log(
+    //   `⏱️ Endpoint rate limiting for ${endpointKey} - waiting ${waitTime}ms`
+    // );
     await new Promise((resolve) => setTimeout(resolve, waitTime));
   }
 
@@ -138,9 +138,9 @@ const retryWithBackoff = async <T>(
         MAX_RETRY_DELAY
       );
 
-      console.warn(
-        `Rate limit reached. Waiting ${Math.round(backoffDelay)}ms before retry... Retries left: ${retries - 1}`
-      );
+      // console.warn(
+      //   `Rate limit reached. Waiting ${Math.round(backoffDelay)}ms before retry... Retries left: ${retries - 1}`
+      // );
       await new Promise((resolve) => setTimeout(resolve, backoffDelay));
 
       // Queue the retry instead of executing immediately
@@ -696,7 +696,13 @@ export const projectService = {
     nativeAmount: number,
     chainName: string
   ): Promise<void> => {
-    console.log('logLPAddition', projectId, tokenAmount, nativeAmount, chainName);
+    console.log(
+      'logLPAddition',
+      projectId,
+      tokenAmount,
+      nativeAmount,
+      chainName
+    );
     return;
     const nativePrice =
       await projectService.fetchNativeCurrencyPrice(chainName);

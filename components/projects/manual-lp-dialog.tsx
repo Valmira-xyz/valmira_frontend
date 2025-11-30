@@ -25,6 +25,7 @@ import {
   burnLiquidity,
   getLPTokenBalance,
   getPoolInfo,
+  getTokenDecimals,
   getWalletBalances,
   removeLiquidity,
 } from '@/services/web3Utils';
@@ -57,6 +58,7 @@ export function ManualLPDialog({ open, onOpenChange }: ManualLPDialogProps) {
     native: number;
     token: number;
   }>({ native: 0, token: 0 });
+  const [_tokenDecimals, setTokenDecimals] = useState<number>(18);
   const signer = useEthersSigner({ chainId: project?.chainId || 56 });
 
   const nativeCurrency =
@@ -64,8 +66,9 @@ export function ManualLPDialog({ open, onOpenChange }: ManualLPDialogProps) {
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : project?.chainName === 'SOMNIA_TESTNET'
-          ? 'STT'
+        : project?.chainName === 'SOMNIA_TESTNET' ||
+            project?.chainName === 'SOMNIA_MAINNET'
+          ? 'SOMI'
           : 'SOL';
 
   useEffect(() => {
@@ -73,8 +76,31 @@ export function ManualLPDialog({ open, onOpenChange }: ManualLPDialogProps) {
       fetchConnectedWalletBalance();
       fetchLpTokenBalance();
       fetchPoolReserves();
+      fetchTokenDecimals();
     }
   }, [open, user?.walletAddress, project?.tokenAddress]);
+
+  const fetchTokenDecimals = async () => {
+    if (!project?.tokenAddress || !project?.chainName) return;
+
+    // Use tokenDecimals from project if available, otherwise fetch it
+    if (project?.tokenDecimals) {
+      setTokenDecimals(Number(project.tokenDecimals));
+      return;
+    }
+
+    try {
+      const decimals = await getTokenDecimals(
+        project.tokenAddress,
+        project.chainName
+      );
+      setTokenDecimals(Number(decimals));
+    } catch (error) {
+      console.error('Error fetching token decimals:', error);
+      // Default to 18 if fetch fails
+      setTokenDecimals(18);
+    }
+  };
 
   const fetchConnectedWalletBalance = async () => {
     if (!user?.walletAddress || !project?.tokenAddress) return;

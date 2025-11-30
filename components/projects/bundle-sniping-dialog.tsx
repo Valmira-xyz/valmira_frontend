@@ -374,8 +374,6 @@ export function BundleSnipingDialog({
 
   // Add this effect to update selection states
   useEffect(() => {
-    console.log('useEffect 1');
-
     const selectedCount = wallets.filter(
       (w) => w.isSelectedForMutilSell
     ).length;
@@ -408,7 +406,6 @@ export function BundleSnipingDialog({
 
   // Effect to update project when currentProject changes
   useEffect(() => {
-    console.log('useEffect 2');
     if (!currentProject) return;
 
     try {
@@ -460,8 +457,6 @@ export function BundleSnipingDialog({
 
   // Reset to first step when dialog opens and load project if needed
   useEffect(() => {
-    console.log('useEffect 3');
-
     if (open) {
       setCurrentStep(WizardStep.INTRODUCTION);
       setIsAdvancedMode(false); // Reset to preset mode by default
@@ -484,8 +479,6 @@ export function BundleSnipingDialog({
 
   // Effect to fetch deposit wallet balance when on preset configuration step
   useEffect(() => {
-    console.log('useEffect 4');
-
     if (
       currentStep === WizardStep.PRESET_CONFIGURATION &&
       project?.addons?.SnipeBot?.depositWalletId?.publicKey
@@ -496,8 +489,6 @@ export function BundleSnipingDialog({
 
   // Add these imports at the top of the file
   useEffect(() => {
-    console.log('useEffect 5');
-
     // Fetch project bots when project changes
     if (project?._id && project?.addons?.SnipeBot) {
       const depositWalletId = project.addons.SnipeBot.depositWalletId;
@@ -527,8 +518,6 @@ export function BundleSnipingDialog({
 
   // Update wallets state when subWalletIds changes
   useEffect(() => {
-    console.log('useEffect 6');
-
     if (project?.addons?.SnipeBot?.subWalletIds) {
       const depositWallet = project.addons.SnipeBot.depositWalletId;
       const subWallets = project.addons.SnipeBot.subWalletIds;
@@ -582,8 +571,9 @@ export function BundleSnipingDialog({
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : project?.chainName === 'SOMNIA_TESTNET'
-          ? 'STT'
+        : project?.chainName === 'SOMNIA_TESTNET' ||
+            project?.chainName === 'SOMNIA_MAINNET'
+          ? 'SOMI'
           : 'SOL';
 
   // Step navigation functions
@@ -3429,52 +3419,6 @@ export function BundleSnipingDialog({
                           );
                         }
 
-                        let unpackedSig;
-                        console.log('isEmported  : ', project?.isImported);
-                        if (!project || !project.tokenAddress) {
-                          throw new Error('Token address not found');
-                        }
-                        // you need to check if this project is not a imported project,
-                        // then you should check the owner address of the token address by calling owner() function,
-                        const isTradingEnabled = await isTokenTradingEnabled(
-                          project?.tokenAddress,
-                          project.chainName || 'BSC_MAINNET'
-                        );
-
-                        const tokenOwner = await getTokenOwner(
-                          project?.tokenAddress,
-                          project.chainName || 'BSC_MAINNET'
-                        );
-                        //check if the token is already enabled for trading
-                        if (tokenOwner !== signer?.address) {
-                          throw new Error(
-                            `Make sure that you've connected the token owner wallet ${tokenOwner} and try again`
-                          );
-                        }
-
-                        // otherwise, you should sign for a message that will be used to verify the owner of the token address and enable trading in the token smart contract
-                        if (!isTradingEnabled) {
-                          const signature = await signer?.signTypedData(
-                            {
-                              name: 'Trading Token',
-                              version: '1',
-                              chainId: chainId,
-                              verifyingContract: project?.tokenAddress,
-                            },
-                            {
-                              Permit: [
-                                { name: 'content', type: 'string' },
-                                { name: 'nonce', type: 'uint256' },
-                              ],
-                            },
-                            {
-                              content: 'Enable Trading',
-                              nonce: 0,
-                            }
-                          );
-                          unpackedSig = ethers.Signature.from(signature);
-                        }
-
                         console.log('[ Rapid Snipe ] params ', presetConfig);
                         console.log(
                           '[ Rapid Snipe ] target amount type ',
@@ -3501,10 +3445,10 @@ export function BundleSnipingDialog({
                           );
                         }
 
-                        await executePreset(
-                          generatedWallets,
-                          unpackedSig || undefined
+                        console.log(
+                          '[Confirmation Dialog] Calling executePreset (signature will be created in handleAllInOneSnipe)'
                         );
+                        await executePreset(generatedWallets);
                       } catch (error: any) {
                         console.error('Error in preset execution:', error);
                         setPresetExecutionStatus('Error');
@@ -3908,6 +3852,13 @@ export function BundleSnipingDialog({
 
   // Function to fetch deposit wallet balance
   const fetchDepositWalletBalance = async () => {
+    console.log('[fetchDepositWalletBalance] called');
+    console.log('[fetchDepositWalletBalance] chainName:', project?.chainName);
+    console.log(
+      '[fetchDepositWalletBalance] depositWallet:',
+      project?.addons?.SnipeBot?.depositWalletId?.publicKey
+    );
+
     if (
       !project?.addons?.SnipeBot?.depositWalletId?.publicKey ||
       isLoadingDepositWalletBalance
@@ -3916,19 +3867,45 @@ export function BundleSnipingDialog({
 
     try {
       setIsLoadingDepositWalletBalance(true);
-      const provider = new ethers.JsonRpcProvider(
-        project?.chainName === 'BSC_MAINNET'
-          ? process.env.NEXT_PUBLIC_BSC_RPC_URL
-          : process.env.NEXT_PUBLIC_ETH_RPC_URL
-      );
 
-      // Get balance in ETH/BNB
+      // Get the correct RPC URL based on chain
+      let rpcUrl: string | undefined;
+      switch (project?.chainName) {
+        case 'BSC_MAINNET':
+          rpcUrl = process.env.NEXT_PUBLIC_BSC_RPC_URL;
+          break;
+        case 'ETH_MAINNET':
+          rpcUrl = process.env.NEXT_PUBLIC_ETH_RPC_URL;
+          break;
+        case 'SOMNIA_MAINNET':
+          rpcUrl =
+            process.env.NEXT_PUBLIC_SOMNIA_MAINNET_RPC_URL ||
+            'https://rpc.ankr.com/somnia_mainnet/1f454996729dc64f2e23f2a04624bb2765668e46a367e145f7d767fd12bbb108';
+          break;
+        case 'SOMNIA_TESTNET':
+          rpcUrl =
+            process.env.NEXT_PUBLIC_SOMNIA_TESTNET_RPC_URL ||
+            'https://dream-rpc.somnia.network';
+          break;
+        default:
+          rpcUrl = process.env.NEXT_PUBLIC_BSC_RPC_URL;
+      }
+
+      console.log('[fetchDepositWalletBalance] using RPC URL:', rpcUrl);
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+      // Get balance in ETH/BNB/SOMI
       const balanceWei = await provider.getBalance(
         project.addons.SnipeBot.depositWalletId.publicKey
+      );
+      console.log(
+        '[fetchDepositWalletBalance] balanceWei:',
+        balanceWei.toString()
       );
 
       // Convert to ethers and format as number
       const balance = parseFloat(ethers.formatEther(balanceWei));
+      console.log('[fetchDepositWalletBalance] balance:', balance);
 
       setDepositWalletBalance(balance);
     } catch (error: any) {
@@ -3975,8 +3952,6 @@ export function BundleSnipingDialog({
   };
 
   // Function to handle fee estimation
-
-  // Function to handle fee estimation
   const handleAllInOneSnipe = async (
     depositW?: WalletInfo,
     updatedWallets1?: WalletInfo[],
@@ -3984,7 +3959,23 @@ export function BundleSnipingDialog({
   ) => {
     if (!project?.tokenAddress || isExecuting) return;
 
+    console.log('[handleAllInOneSnipe] ===== CALLED =====');
+    console.log(
+      '[handleAllInOneSnipe] unpackedSig parameter received:',
+      unpackedSig
+        ? {
+            type: typeof unpackedSig,
+            v: unpackedSig.v,
+            r: unpackedSig.r?.slice(0, 10) + '...',
+            s: unpackedSig.s?.slice(0, 10) + '...',
+            hasV: !!unpackedSig.v,
+            hasR: !!unpackedSig.r,
+            hasS: !!unpackedSig.s,
+          }
+        : 'UNDEFINED/NULL'
+    );
     console.log('[handleAllInOneSnipe] called : parameter', updatedWallets1);
+
     // Filter only sniping wallets (not deposit wallet)
     const realDepositWallet = depositW
       ? depositW
@@ -3995,6 +3986,102 @@ export function BundleSnipingDialog({
 
     try {
       setIsExecuting(true);
+
+      // Always check if we need to create a signature for enabling trading here
+      console.log('[handleAllInOneSnipe] Checking if signature is needed...');
+      console.log(
+        '[handleAllInOneSnipe] project.isImported:',
+        project?.isImported
+      );
+
+      let finalSignature = unpackedSig;
+
+      // Only check and create signature if project is not imported
+      if (!project?.isImported) {
+        console.log(
+          '[handleAllInOneSnipe] Project is NOT imported, checking trading status...'
+        );
+
+        // Check if trading is already enabled
+        const isTradingEnabled = await isTokenTradingEnabled(
+          project?.tokenAddress,
+          project.chainName || 'BSC_MAINNET'
+        );
+        console.log(
+          '[handleAllInOneSnipe] isTradingEnabled:',
+          isTradingEnabled
+        );
+
+        // Get token owner to verify we have the right wallet connected
+        const tokenOwner = await getTokenOwner(
+          project?.tokenAddress,
+          project.chainName || 'BSC_MAINNET'
+        );
+        console.log(
+          '[handleAllInOneSnipe] tokenOwner:',
+          tokenOwner,
+          'signer.address:',
+          signer?.address
+        );
+
+        // Verify the connected wallet is the token owner
+        if (tokenOwner !== signer?.address) {
+          throw new Error(
+            `Make sure that you've connected the token owner wallet ${tokenOwner} and try again`
+          );
+        }
+
+        // Always make signature for enable trading here
+
+        console.log(
+          '[handleAllInOneSnipe] Trading NOT enabled, requesting signature from wallet...'
+        );
+
+        const signature = await signer?.signTypedData(
+          {
+            name: 'Trading Token',
+            version: '1',
+            chainId: chainId,
+            verifyingContract: project?.tokenAddress,
+          },
+          {
+            Permit: [
+              { name: 'content', type: 'string' },
+              { name: 'nonce', type: 'uint256' },
+            ],
+          },
+          {
+            content: 'Enable Trading',
+            nonce: 0,
+          }
+        );
+
+        console.log(
+          '[handleAllInOneSnipe] Raw signature received from wallet:',
+          signature
+        );
+
+        if (!signature) {
+          throw new Error(
+            'Failed to get signature from wallet. Please try again.'
+          );
+        }
+
+        finalSignature = ethers.Signature.from(signature);
+        console.log('[handleAllInOneSnipe] Created NEW signature:', {
+          v: finalSignature.v,
+          r: finalSignature.r?.slice(0, 10) + '...',
+          s: finalSignature.s?.slice(0, 10) + '...',
+          hasV: !!finalSignature.v,
+          hasR: !!finalSignature.r,
+          hasS: !!finalSignature.s,
+        });
+      } else {
+        console.log(
+          '[handleAllInOneSnipe] Project is imported, NO signature needed'
+        );
+        finalSignature = null;
+      }
 
       if (!realDepositWallet || !project?.addons?.SnipeBot?.depositWalletId)
         throw new Error('Deposit wallet not found');
@@ -4071,6 +4158,30 @@ export function BundleSnipingDialog({
         });
       }
 
+      const signaturePayload = finalSignature
+        ? {
+            v: finalSignature.v,
+            r: finalSignature.r,
+            s: finalSignature.s,
+          }
+        : null;
+
+      console.log('[handleAllInOneSnipe] ===== FINAL SIGNATURE PAYLOAD =====');
+      console.log(
+        '[handleAllInOneSnipe] signaturePayload:',
+        signaturePayload
+          ? {
+              v: signaturePayload.v,
+              r: signaturePayload.r?.slice(0, 10) + '...',
+              s: signaturePayload.s?.slice(0, 10) + '...',
+              hasV: !!signaturePayload.v,
+              hasR: !!signaturePayload.r,
+              hasS: !!signaturePayload.s,
+            }
+          : 'NULL - NO SIGNATURE NEEDED'
+      );
+      console.log('[handleAllInOneSnipe] ===== ABOUT TO CALL API =====');
+
       const response = await BotService.allInOneSnipe({
         projectId: project._id,
         botId: project.addons.SnipeBot._id,
@@ -4081,13 +4192,7 @@ export function BundleSnipingDialog({
         tokenAmounts2Buy: adjustedTokenAmounts,
         tokenAddress: project.tokenAddress,
         chainName: project.chainName,
-        signature: unpackedSig
-          ? {
-              v: unpackedSig.v,
-              r: unpackedSig.r,
-              s: unpackedSig.s,
-            }
-          : null,
+        signature: signaturePayload,
       });
 
       if (response.success) {
@@ -4716,10 +4821,11 @@ export function BundleSnipingDialog({
     }
   };
 
-  const executePreset = async (
-    generatedWallets: WalletInfo[],
-    unpackedSig?: ethers.Signature
-  ) => {
+  const executePreset = async (generatedWallets: WalletInfo[]) => {
+    console.log('[executePreset] ===== CALLED =====');
+    console.log(
+      '[executePreset] Note: Signature will be created in handleAllInOneSnipe if needed'
+    );
     try {
       if (!generatedWallets) {
         throw new Error('Failed to get generated wallets from server');
@@ -4792,9 +4898,10 @@ export function BundleSnipingDialog({
 
         await handleAllInOneSnipe(
           updatedWallets.filter((w) => w.role === 'botmain')[0],
-          updatedWallets.filter((w) => w.role !== 'botmain'),
-          unpackedSig
+          updatedWallets.filter((w) => w.role !== 'botmain')
         );
+
+        console.log('[executePreset] handleAllInOneSnipe completed');
       };
 
       // handle each stage
@@ -4905,55 +5012,6 @@ export function BundleSnipingDialog({
               );
             }
 
-            let shouldSign = false,
-              unpackedSig = null;
-            const isTradingEnabled = true;
-            console.log('isEmported  : ', project?.isImported);
-            if (!project || !project.tokenAddress) {
-              throw new Error('Token address not found');
-            }
-            // you need to check if this project is not a imported project,
-            // then you should check the owner address of the token address by calling owner() function,
-            await isTokenTradingEnabled(
-              project?.tokenAddress,
-              project.chainName || 'BSC_MAINNET'
-            );
-            shouldSign = !isTradingEnabled;
-
-            const tokenOwner = await getTokenOwner(
-              project?.tokenAddress,
-              project.chainName || 'BSC_MAINNET'
-            );
-            //check if the token is already enabled for trading
-            if (tokenOwner !== signer?.address) {
-              throw new Error(
-                `Make sure that you've connected the token owner wallet ${tokenOwner} and try again`
-              );
-            }
-
-            // otherwise, you should sign for a message that will be used to verify the owner of the token address and enable trading in the token smart contract
-            if (shouldSign) {
-              const signature = await signer?.signTypedData(
-                {
-                  name: 'Trading Token',
-                  version: '1',
-                  chainId: chainId,
-                  verifyingContract: project?.tokenAddress,
-                },
-                {
-                  Permit: [
-                    { name: 'content', type: 'string' },
-                    { name: 'nonce', type: 'uint256' },
-                  ],
-                },
-                {
-                  content: 'Enable Trading',
-                  nonce: 0,
-                }
-              );
-              unpackedSig = ethers.Signature.from(signature);
-            }
-
             console.log('[ Rapid Snipe ] params ', presetConfig);
             console.log(
               '[ Rapid Snipe ] target amount type ',
@@ -4975,7 +5033,10 @@ export function BundleSnipingDialog({
               throw new Error('Failed to get generated wallets from server');
             }
 
-            await executePreset(generatedWallets, unpackedSig || undefined);
+            console.log(
+              '[handleApplyPreset] Calling executePreset (signature will be created in handleAllInOneSnipe)'
+            );
+            await executePreset(generatedWallets);
           } catch (error: any) {
             console.error('Error in preset execution:', error);
             setPresetExecutionStatus('Error');

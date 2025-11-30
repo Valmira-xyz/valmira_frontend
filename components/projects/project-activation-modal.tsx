@@ -74,9 +74,13 @@ export const ProjectActivationModal: React.FC<ProjectActivationModalProps> = ({
         project.chainName
       );
       console.log('nativeCurrency:', nativeCurrency);
-      const priceInfo = await activationService.getNativeCurrencyPrice(
-        nativeCurrency as 'BNB' | 'ETH' | 'STT'
-      );
+      // API requires 'STT' for Somnia, but display uses 'SOMI'
+      const apiCurrency =
+        project.chainName === 'SOMNIA_TESTNET'
+          ? 'STT'
+          : (nativeCurrency as 'BNB' | 'ETH' | 'STT');
+      const priceInfo =
+        await activationService.getNativeCurrencyPrice(apiCurrency);
       console.log('priceInfo.price:', priceInfo.price);
       const nativeAmount = activationService.calculateNativeAmount(
         feeInfo.setupFeeUSD,

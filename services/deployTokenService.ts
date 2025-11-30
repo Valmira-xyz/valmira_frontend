@@ -449,6 +449,244 @@ export class TokenDeploymentService {
         throw new Error('Failed to deploy contract');
       }
 
+      console.log('chainName : ', chainName);
+      // For Algebra DEX networks (Somnia), initialize pool after deployment
+      const isAlgebraDEX =
+        chainName === 'SOMNIA_TESTNET' || chainName === 'SOMNIA_MAINNET';
+      console.log('isAlgebraDEX : ', isAlgebraDEX);
+      if (isAlgebraDEX) {
+        try {
+          console.log('Initializing Algebra pool for deployed contract...');
+
+          // Wait longer for the contract to be fully deployed and propagated on-chain
+          // This is important for Somnia testnet which may have slower block times
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+
+          const tokenContract = new ethers.Contract(
+            contractAddress,
+            [
+              'function initializePool() external',
+              'function canInitializePool() external view returns (bool canInit, string memory reason)',
+              'function getFactoryConfig() external view returns (address pluginFactory, address vault, uint16 communityFee, bool hasPlugin, bool hasVault)',
+              'function owner() external view returns (address)',
+              'function poolInitialized() external view returns (bool)',
+              'function isAlgebraDEX() external view returns (bool)',
+              'function factoryAddress() external view returns (address)',
+              'function wethAddress() external view returns (address)',
+            ],
+            this.signer
+          );
+
+          // Check factory configuration for debugging
+          try {
+            const factoryConfig = await tokenContract.getFactoryConfig();
+            console.log('Factory configuration:', {
+              pluginFactory: factoryConfig.pluginFactory,
+              vaultFactory: factoryConfig.vault,
+              communityFee: factoryConfig.communityFee.toString(),
+              hasPlugin: factoryConfig.hasPlugin,
+              hasVault: factoryConfig.hasVault,
+            });
+
+            if (factoryConfig.hasPlugin) {
+              console.warn(
+                '⚠️ Factory has plugin factory configured - plugin hooks may cause pool creation to fail'
+              );
+            }
+            if (factoryConfig.hasVault) {
+              console.warn(
+                '⚠️ Factory has vault factory configured - vault creation may cause pool creation to fail'
+              );
+            }
+          } catch (configError) {
+            console.warn('Could not read factory configuration:', configError);
+          }
+
+          // Check if pool can be initialized
+          try {
+            const [canInit, reason] = await tokenContract.canInitializePool();
+            if (!canInit) {
+              throw new Error(`Cannot initialize pool: ${reason}`);
+            }
+            console.log('Pool initialization check passed');
+          } catch (checkError: any) {
+            console.error('Pool initialization check failed:', checkError);
+            throw checkError;
+          }
+
+          // Check contract state before calling
+          const [owner, alreadyInitialized, isAlgebra, factoryAddr, wethAddr] =
+            await Promise.all([
+              tokenContract.owner().catch(() => null),
+              tokenContract.poolInitialized().catch(() => false),
+              tokenContract.isAlgebraDEX().catch(() => false),
+              tokenContract.factoryAddress().catch(() => null),
+              tokenContract.wethAddress().catch(() => null),
+            ]);
+
+          console.log('Contract state check:', {
+            owner,
+            deployer: this.walletClient.account?.address,
+            alreadyInitialized,
+            isAlgebra,
+            factoryAddr,
+            wethAddr,
+          });
+
+          if (alreadyInitialized) {
+            console.log('Pool already initialized, skipping...');
+          } else {
+            // Verify all required values are set
+            if (
+              !wethAddr ||
+              wethAddr === '0x0000000000000000000000000000000000000000'
+            ) {
+              throw new Error('WETH address not set in contract');
+            }
+            if (
+              !factoryAddr ||
+              factoryAddr === '0x0000000000000000000000000000000000000000'
+            ) {
+              throw new Error('Factory address not set in contract');
+            }
+            if (!isAlgebra) {
+              throw new Error('Contract is not configured for Algebra DEX');
+            }
+
+            // Check if pool already exists by querying the factory directly
+            let existingPoolAddress = null;
+            try {
+              const factoryAbi = [
+                'function poolByPair(address, address) external view returns (address)',
+              ];
+              const factoryContract = new ethers.Contract(
+                factoryAddr,
+                factoryAbi,
+                this.signer
+              );
+
+              // Check both orders (factory handles token ordering internally)
+              const [pool1, pool2] = await Promise.all([
+                factoryContract
+                  .poolByPair(contractAddress, wethAddr)
+                  .catch(() => '0x0000000000000000000000000000000000000000'),
+                factoryContract
+                  .poolByPair(wethAddr, contractAddress)
+                  .catch(() => '0x0000000000000000000000000000000000000000'),
+              ]);
+
+              console.log('pool1 : ', pool1);
+              console.log('pool2 : ', pool2);
+
+              existingPoolAddress =
+                pool1 !== '0x0000000000000000000000000000000000000000'
+                  ? pool1
+                  : pool2;
+
+              if (
+                existingPoolAddress !==
+                '0x0000000000000000000000000000000000000000'
+              ) {
+                console.log(
+                  'Pool already exists in factory:',
+                  existingPoolAddress
+                );
+              } else {
+                console.log('No existing pool found, will create new one');
+              }
+            } catch (factoryError) {
+              console.warn(
+                'Could not check factory for existing pool:',
+                factoryError
+              );
+            }
+
+            // Call initializePool with increased gas limit
+            console.log('Calling initializePool...');
+            try {
+              // Estimate gas first
+              const gasEstimate = await tokenContract.initializePool
+                .estimateGas()
+                .catch((err: any) => {
+                  console.warn('Gas estimation failed:', err);
+                  return null;
+                });
+
+              const gasLimit = gasEstimate
+                ? (gasEstimate * BigInt(150)) / BigInt(100)
+                : BigInt(5000000); // 50% buffer or 5M default
+              console.log('Using gas limit:', gasLimit.toString());
+
+              const initTx = await tokenContract.initializePool({
+                gasLimit: gasLimit,
+              });
+              console.log('Pool initialization transaction:', initTx.hash);
+
+              // Wait for transaction confirmation
+              const receipt = await initTx.wait();
+
+              // Check if transaction succeeded
+              if (receipt?.status === 0) {
+                throw new Error('Pool initialization transaction failed');
+              }
+
+              console.log(
+                'Pool initialized successfully. Gas used:',
+                receipt?.gasUsed?.toString()
+              );
+
+              // Verify the pool was actually initialized
+              const poolInitialized = await tokenContract.poolInitialized();
+              const pairAddress = await tokenContract.uniswapPair();
+
+              if (!poolInitialized) {
+                throw new Error(
+                  'Pool initialization transaction succeeded but poolInitialized is still false'
+                );
+              }
+
+              if (
+                !pairAddress ||
+                pairAddress === '0x0000000000000000000000000000000000000000'
+              ) {
+                throw new Error(
+                  'Pool initialization transaction succeeded but pair address is zero'
+                );
+              }
+
+              console.log('Pool verified - Pair address:', pairAddress);
+            } catch (txError: any) {
+              console.error('Transaction failed:', txError);
+              if (txError?.data) {
+                console.error('Error data:', txError.data);
+              }
+              if (txError?.reason) {
+                console.error('Error reason:', txError.reason);
+              }
+              throw txError;
+            }
+          }
+        } catch (initError: any) {
+          console.error('Failed to initialize pool:', initError);
+          // Log more details about the error
+          if (initError?.data) {
+            console.error('Error data:', initError.data);
+          }
+          if (initError?.reason) {
+            console.error('Error reason:', initError.reason);
+          }
+          // Log a user-friendly message
+          console.warn(
+            '⚠️ Pool initialization failed. The contract has been deployed successfully, ' +
+              'but the Algebra pool could not be created automatically. ' +
+              'You can initialize the pool manually by calling initializePool() on the contract, ' +
+              'or the pool may be created automatically when the first liquidity is added.'
+          );
+          // Don't throw - allow deployment to succeed even if pool init fails
+          // The pool can be initialized manually later
+        }
+      }
+
       // Fetch pair address with native currency at here
       const fetchedPairAddress = await getPairAddress(
         contractAddress as string,
@@ -491,11 +729,19 @@ export class TokenDeploymentService {
         };
       }
 
+      // Build success message
+      let successMessage = response.message || 'Contract deployed successfully';
+      if (isAlgebraDEX && !pairAddress) {
+        successMessage +=
+          ' Note: Algebra pool initialization failed. ' +
+          'You can initialize the pool manually by calling initializePool() on the contract.';
+      }
+
       return {
         contractAddress: contractAddress as string,
         pairAddress: pairAddress,
         success: true, // Always true if we got here (contract is deployed)
-        message: response.message || 'Contract deployed successfully',
+        message: successMessage,
       };
     } catch (error) {
       console.error('Error verifying token:', error);

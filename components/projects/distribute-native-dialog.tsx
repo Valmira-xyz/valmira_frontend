@@ -68,7 +68,9 @@ export function DistributeNativeDialog({
       ? 'BNB'
       : chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : chainName === 'SOMNIA_TESTNET'
+          ? 'SOMI'
+          : 'SOL';
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

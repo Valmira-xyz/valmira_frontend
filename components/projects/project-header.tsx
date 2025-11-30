@@ -142,7 +142,9 @@ export const ProjectHeader: React.FC<{
                               ? 'etherscan.io'
                               : project?.chainName === 'SOMNIA_TESTNET'
                                 ? 'shannon-explorer.somnia.network'
-                                : 'solscan.io'
+                                : project?.chainName === 'SOMNIA_MAINNET'
+                                  ? 'explorer.somnia.network'
+                                  : 'solscan.io'
                         }/token/${project.tokenAddress || 'No token address'}`}
                         target="_blank"
                         rel="noopener noreferrer"

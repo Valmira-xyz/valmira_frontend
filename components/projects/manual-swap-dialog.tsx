@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 
 import { ArrowLeftRight, RefreshCw } from 'lucide-react';
 
+import { AddressDisplay } from '@/components/ui/address-display';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,14 +19,15 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useEthersSigner } from '@/lib/ether-adapter';
 import { formatNumber } from '@/lib/utils';
+import { activationService } from '@/services/activationService';
 import {
   buyTokens,
   formatValue,
   getPoolInfo,
+  getTokenDecimals,
   getWalletBalances,
   sellTokens,
 } from '@/services/web3Utils';
-import { getTokenPrice } from '@/services/web3Utils';
 import { RootState } from '@/store/store';
 import { PoolInfo, ProjectWithAddons } from '@/types';
 
@@ -66,6 +68,7 @@ export function ManualSwapDialog({
   const [percent, setPercent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [tokenPrice, setTokenPrice] = useState<number>(0);
+  const [nativeCurrencyPrice, setNativeCurrencyPrice] = useState<number>(0);
   const [slippage, setSlippage] = useState<string>('10');
 
   const [balances, setBalances] = useState<{
@@ -73,20 +76,84 @@ export function ManualSwapDialog({
     token: number;
   }>({ native: 0, token: 0 });
   const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null);
+  const [tokenDecimals, setTokenDecimals] = useState<number>(18);
+
+  // Helper function to convert BigInt or number to number
+  const toNumber = (
+    value: number | bigint | string | undefined | null
+  ): number => {
+    if (value === undefined || value === null) return 0;
+    if (typeof value === 'bigint') {
+      return Number(value);
+    }
+    if (typeof value === 'string') {
+      return Number(value) || 0;
+    }
+    return value;
+  };
+
+  // Helper function to get token decimals as a number
+  const getTokenDecimalsNumber = (): number => {
+    return toNumber(tokenDecimals) || 18;
+  };
 
   const nativeCurrency =
     project?.chainName === 'BSC_MAINNET'
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : project?.chainName === 'SOMNIA_TESTNET' ||
+            project?.chainName === 'SOMNIA_MAINNET'
+          ? 'SOMI'
+          : 'SOL';
 
   useEffect(() => {
     if (open && user?.walletAddress && project?.tokenAddress) {
       fetchBalances();
+      fetchTokenDecimals();
+      fetchNativeCurrencyPrice();
       fetchPoolInfo();
     }
   }, [open, user?.walletAddress, project?.tokenAddress]);
+
+  // Recalculate token price when poolInfo or nativeCurrencyPrice changes
+  useEffect(() => {
+    console.log('Price calculation useEffect triggered:', {
+      poolInfo,
+      nativeCurrencyPrice,
+      hasPoolInfo: !!poolInfo,
+      hasPrice: nativeCurrencyPrice > 0,
+      chainName: project?.chainName,
+    });
+
+    calculateTokenPriceFromPool(
+      poolInfo,
+      nativeCurrencyPrice,
+      project?.chainName
+    );
+  }, [poolInfo, nativeCurrencyPrice, project?.chainName]);
+
+  const fetchTokenDecimals = async () => {
+    if (!project?.tokenAddress || !project?.chainName) return;
+
+    // Use tokenDecimals from project if available, otherwise fetch it
+    if (project?.tokenDecimals) {
+      setTokenDecimals(toNumber(project.tokenDecimals));
+      return;
+    }
+
+    try {
+      const decimals = await getTokenDecimals(
+        project.tokenAddress,
+        project.chainName
+      );
+      setTokenDecimals(toNumber(decimals));
+    } catch (error) {
+      console.error('Error fetching token decimals:', error);
+      // Default to 18 if fetch fails
+      setTokenDecimals(18);
+    }
+  };
 
   const fetchBalances = async () => {
     if (!user?.walletAddress || !project?.tokenAddress) return;
@@ -101,8 +168,8 @@ export function ManualSwapDialog({
 
       if (balances.length > 0) {
         setBalances({
-          native: Number(balances[0].nativeBalance) || 0,
-          token: Number(balances[0].tokenBalance) || 0,
+          native: toNumber(balances[0].nativeBalance) || 0,
+          token: toNumber(balances[0].tokenBalance) || 0,
         });
       }
     } catch (error: any) {
@@ -117,24 +184,110 @@ export function ManualSwapDialog({
     }
   };
 
-  const fetchPoolInfo = async () => {
-    // TODO: Implement pool info fetching
-    // This should fetch the total tokens and native currency in the liquidity pool
-    if (!project?.tokenAddress || !project?.chainName) return;
+  const fetchNativeCurrencyPrice = async () => {
+    if (!project?.chainName) return;
 
-    const info = await getPoolInfo(project.tokenAddress, project.chainName);
-    if (info) {
-      setPoolInfo(info);
+    try {
+      let currency: 'BNB' | 'ETH' | 'STT' = 'BNB';
+      if (project.chainName === 'ETH_MAINNET') {
+        currency = 'ETH';
+      } else if (project.chainName === 'SOMNIA_TESTNET') {
+        currency = 'STT';
+      }
+
+      const priceData =
+        await activationService.getNativeCurrencyPrice(currency);
+      const price = priceData.price || 0;
+      console.log('Fetched native currency price:', { currency, price });
+      setNativeCurrencyPrice(price);
+    } catch (error) {
+      console.error('Error fetching native currency price:', error);
+      // Set default price for SOMI on Somnia testnet
+      if (
+        project?.chainName === 'SOMNIA_TESTNET' ||
+        project?.chainName === 'SOMNIA_MAINNET'
+      ) {
+        console.log('Using default SOMI price: 0.5');
+        setNativeCurrencyPrice(0.5);
+      } else {
+        // Try to set a reasonable default for other chains
+        const defaultPrice =
+          project.chainName === 'BSC_MAINNET'
+            ? 600
+            : project.chainName === 'ETH_MAINNET'
+              ? 3000
+              : 0;
+        console.log('Using default price:', defaultPrice);
+        setNativeCurrencyPrice(defaultPrice);
+      }
+    }
+  };
+
+  const calculateTokenPriceFromPool = (
+    pool: PoolInfo | null,
+    nativePrice: number,
+    chainName?: string
+  ) => {
+    if (!pool) {
+      setTokenPrice(0);
+      return;
     }
 
-    if (project?.tokenAddress) {
-      const price = await getTokenPrice(
-        project?.tokenAddress,
-        project?.pairAddress,
-        project?.chainName
-      );
-      console.log('token price', price);
-      setTokenPrice(price || 0);
+    const nativeReserve = toNumber(pool.nativeReserve);
+    const tokenReserve = toNumber(pool.tokenReserve);
+
+    console.log('Calculating price from pool:', {
+      nativeReserve,
+      tokenReserve,
+      nativePrice,
+      chainName,
+    });
+
+    if (nativeReserve > 0 && tokenReserve > 0) {
+      // Use nativeCurrencyPrice if available, otherwise use default for SOMI
+      const priceToUse =
+        nativePrice > 0
+          ? nativePrice
+          : chainName === 'SOMNIA_TESTNET'
+            ? 0.5
+            : 0;
+
+      if (priceToUse > 0) {
+        const pricePerToken = (nativeReserve / tokenReserve) * priceToUse;
+        console.log('Calculated token price:', pricePerToken);
+        setTokenPrice(pricePerToken);
+      } else {
+        console.log('Native currency price is 0, cannot calculate');
+        setTokenPrice(0);
+      }
+    } else {
+      console.log('Invalid reserves');
+      setTokenPrice(0);
+    }
+  };
+
+  const fetchPoolInfo = async () => {
+    if (!project?.tokenAddress || !project?.chainName) return;
+
+    try {
+      const info = await getPoolInfo(project.tokenAddress, project.chainName);
+      if (info) {
+        console.log('pool info', info);
+        setPoolInfo(info);
+        // Immediately calculate price if we have native currency price
+        calculateTokenPriceFromPool(
+          info,
+          nativeCurrencyPrice,
+          project.chainName
+        );
+      } else {
+        setPoolInfo(null);
+        setTokenPrice(0);
+      }
+    } catch (error) {
+      console.error('Error fetching pool info:', error);
+      setPoolInfo(null);
+      setTokenPrice(0);
     }
   };
 
@@ -172,7 +325,12 @@ export function ManualSwapDialog({
       if (direction === 'buy') {
         amount = Number(percent); // Use as absolute native currency amount
       } else {
-        amount = (Number(percent) * balances.token) / 100; // Percent of token balance
+        // Convert percent to actual token amount
+        // balances.token is in raw format (with decimals), so we divide by decimals after calculating percentage
+        const tokenBalance = toNumber(balances.token);
+        const decimals = getTokenDecimalsNumber();
+        amount =
+          (Number(percent) * tokenBalance) / 100 / Math.pow(10, decimals);
       }
 
       if (direction === 'buy') {
@@ -258,6 +416,18 @@ export function ManualSwapDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Pool Address */}
+        {project?.pairAddress && (
+          <div className="border-t border-b py-3 px-1">
+            <AddressDisplay
+              address={project.pairAddress}
+              label="Pool Address"
+              chainName={project.chainName}
+              className="text-xs"
+            />
+          </div>
+        )}
+
         <div className="space-y-4 py-4">
           {/* Wallet Balances */}
           <div className="space-y-2">
@@ -274,7 +444,14 @@ export function ManualSwapDialog({
               <div className="p-3 rounded-lg bg-muted">
                 <p className="text-sm text-muted-foreground">Tokens</p>
                 <p className="text-lg font-semibold">
-                  {formatValue(balances.token?.toString(), 4)} {project?.symbol}
+                  {formatValue(
+                    (
+                      toNumber(balances.token) /
+                      Math.pow(10, getTokenDecimalsNumber())
+                    )?.toString(),
+                    4
+                  )}{' '}
+                  {project?.symbol}
                 </p>
               </div>
             </div>
@@ -289,7 +466,8 @@ export function ManualSwapDialog({
                   Total Tokens in Pool
                 </p>
                 <p className="text-lg font-semibold">
-                  {formatNumber(poolInfo?.tokenReserve || 0)} {project?.symbol}
+                  {formatNumber(toNumber(poolInfo?.tokenReserve))}{' '}
+                  {project?.symbol}
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-muted">
@@ -376,7 +554,14 @@ export function ManualSwapDialog({
             <p className="text-sm text-muted-foreground">
               {direction === 'buy'
                 ? `You will spend ${Number(percent) || 0} ${nativeCurrency}`
-                : `You will sell ${((Number(percent) || 0) * balances.token) / 100} ${project?.symbol}`}
+                : `You will sell ${formatValue(
+                    (
+                      ((Number(percent) || 0) * toNumber(balances.token)) /
+                      100 /
+                      Math.pow(10, getTokenDecimalsNumber())
+                    )?.toString() || '0',
+                    4
+                  )} ${project?.symbol}`}
             </p>
           </div>
 
@@ -425,7 +610,7 @@ export function ManualSwapDialog({
               !slippage ||
               Number(percent) === 0 ||
               (direction === 'buy' && balances.native === 0) ||
-              (direction === 'sell' && balances.token <= 10 ** -9) ||
+              (direction === 'sell' && toNumber(balances.token) <= 10 ** -9) ||
               Number(slippage) <= 0 ||
               Number(slippage) > 100
             }

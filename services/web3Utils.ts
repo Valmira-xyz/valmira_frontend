@@ -28,10 +28,27 @@ const ROUTER_ABI = [
   'function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external',
 ];
 
+// Algebra V4 SwapRouter ABI (for QuickSwap on Somnia)
+const ALGEBRA_ROUTER_ABI = [
+  'function exactInputSingle((address tokenIn, address tokenOut, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 limitSqrtPrice)) external payable returns (uint256 amountOut)',
+  'function exactInput((bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum)) external payable returns (uint256 amountOut)',
+  'function exactOutputSingle((address tokenIn, address tokenOut, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum, uint160 limitSqrtPrice)) external payable returns (uint256 amountIn)',
+  'function exactOutput((bytes path, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum)) external payable returns (uint256 amountIn)',
+  'function multicall(bytes[] data) external payable returns (bytes[] results)',
+  'function refundETH() external payable',
+  'function unwrapWETH9(uint256 amountMinimum, address recipient) external payable',
+];
+
 // PancakeSwap V2 Factory ABI (minimal)
 const FACTORY_ABI = [
   'function getPair(address tokenA, address tokenB) external view returns (address pair)',
   'function createPair(address tokenA, address tokenB) external returns (address pair)',
+];
+
+// Algebra V4 Factory ABI (for QuickSwap on Somnia)
+const ALGEBRA_FACTORY_ABI = [
+  'function poolByPair(address tokenA, address tokenB) external view returns (address pool)',
+  'function createPool(address tokenA, address tokenB, bytes calldata data) external returns (address pool)',
 ];
 
 // PancakeSwap V2 Pair ABI (minimal)
@@ -46,6 +63,58 @@ const PAIR_ABI = [
   'function transfer(address to, uint value) external returns (bool)',
 ];
 
+// Algebra V4 Pool ABI (for QuickSwap on Somnia)
+const ALGEBRA_POOL_ABI = [
+  'function token0() external view returns (address)',
+  'function token1() external view returns (address)',
+  'function liquidity() external view returns (uint128)',
+  'function globalState() external view returns (uint160, int24, uint16, uint16, uint8, bool)',
+  'function balanceOf(address owner) external view returns (uint256)',
+  'function initialize(uint160 initialPrice) external',
+  'function tickSpacing() external view returns (int24)',
+  'function plugin() external view returns (address)',
+  'function communityVault() external view returns (address)',
+];
+
+// Algebra V4 QuoterV2 ABI (for getting swap quotes)
+const ALGEBRA_QUOTER_V2_ABI = [
+  'function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint160 limitSqrtPrice)) external returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)',
+  'function quoteExactOutputSingle((address tokenIn, address tokenOut, uint256 amountOut, uint160 limitSqrtPrice)) external returns (uint256 amountIn, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)',
+];
+
+// Algebra V4 NonfungiblePositionManager ABI (for managing liquidity positions)
+// Note: Different Algebra forks have different mint signatures
+const ALGEBRA_POSITION_MANAGER_ABI = [
+  'function mint((address token0, address token1, address deployer, int24 tickLower, int24 tickUpper, uint256 amount0Desired, uint256 amount1Desired, uint256 amount0Min, uint256 amount1Min, address recipient, uint256 deadline)) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)',
+  'function positions(uint256 tokenId) external view returns (uint88 nonce, address operator, address token0, address token1, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, uint128 tokensOwed0, uint128 tokensOwed1)',
+  'function increaseLiquidity((uint256 tokenId, uint256 amount0Desired, uint256 amount1Desired, uint256 amount0Min, uint256 amount1Min, uint256 deadline)) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1)',
+  'function decreaseLiquidity((uint256 tokenId, uint128 liquidity, uint256 amount0Min, uint256 amount1Min, uint256 deadline)) external payable returns (uint256 amount0, uint256 amount1)',
+  'function collect((uint256 tokenId, address recipient, uint128 amount0Max, uint128 amount1Max)) external payable returns (uint256 amount0, uint256 amount1)',
+  'function burn(uint256 tokenId) external payable',
+  'function refundNativeToken() external payable',
+  'function unwrapWNativeToken(uint256 amountMinimum, address recipient) external payable',
+  'function sweepToken(address token, uint256 amountMinimum, address recipient) external payable',
+  'function WETH9() external view returns (address)',
+  'function poolDeployer() external view returns (address)',
+  'function balanceOf(address owner) external view returns (uint256)',
+  'function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)',
+];
+
+// Alternative ABI WITHOUT deployer parameter (standard Algebra without Integral)
+// Kept for potential future use with different Algebra implementations
+const _ALGEBRA_POSITION_MANAGER_ABI_NO_DEPLOYER = [
+  'function mint((address token0, address token1, int24 tickLower, int24 tickUpper, uint256 amount0Desired, uint256 amount1Desired, uint256 amount0Min, uint256 amount1Min, address recipient, uint256 deadline)) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)',
+];
+
+// WETH/WSOMI ABI (for wrapping native tokens)
+const WETH_ABI = [
+  'function deposit() external payable',
+  'function withdraw(uint256 amount) external',
+  'function approve(address spender, uint256 amount) external returns (bool)',
+  'function balanceOf(address owner) external view returns (uint256)',
+  'function allowance(address owner, address spender) external view returns (uint256)',
+];
+
 // Chain-specific configuration
 interface ChainConfig {
   rpcUrl: string;
@@ -55,6 +124,9 @@ interface ChainConfig {
   disperseAddress: string;
   stablecoins: string[];
   wrappedNativeCurrency: string;
+  quoterV2Address?: string; // For Algebra V4
+  positionManagerAddress?: string; // For Algebra V4
+  dexType?: 'uniswapV2' | 'algebraV4'; // DEX protocol type
 }
 
 export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
@@ -99,29 +171,113 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
   },
   SOMNIA_TESTNET: {
     rpcUrl:
-      process.env.NEXT_PUBLIC_SOMNIA_RPC_URL ||
-      'https://dream-rpc.somnia.network/',
+      process.env.SOMNIA_TESTNET_RPC_URL ||
+      'https://rpc.ankr.com/somnia_testnet/1f454996729dc64f2e23f2a04624bb2765668e46a367e145f7d767fd12bbb108',
     nativeCurrency: 'STT',
-    factoryAddress: '0x96eE1a0cb578AB2F8d7769c155D4A694d5845477', // Somnia DEX Factory
-    routerAddress: '0xb1618E58Fa411b94da5247Bc0d808DB43f3629BE', // Somnia DEX Router with WSTT support
-    disperseAddress: '0x2511BC75c10bc3Db719985D76B33DBEE95F505A5', // To be deployed on Somnia Testnet
+    factoryAddress: '0xA9e79B95F2ea2fB089B8F0744CDDA2c22eB00211', // / algbra DEX Factory
+    routerAddress: '0xaB93207d3Af2f205f60b30A5b7E4470aFD7936c0', // algebra DEX Router with WSTT support
+    disperseAddress: '0xcAE7cDCf4168100377ACc1697d53513aDADd55FA', // To be deployed on Somnia Testnet
     stablecoins: [], // To be configured for Somnia Testnet
-    wrappedNativeCurrency: '0x40722b4Eb73194eDB6cf518B94b022f1877b0811', // WSTT (Wrapped STT)
+    wrappedNativeCurrency: '0xDa928F6A86497b3d3571fC4c2bAD04448Cc756A9', // WSTT (Wrapped STT)
+  },
+  SOMNIA_MAINNET: {
+    rpcUrl:
+      process.env.SOMNIA_MAINNET_RPC_URL ||
+      'https://rpc.ankr.com/somnia_mainnet/1f454996729dc64f2e23f2a04624bb2765668e46a367e145f7d767fd12bbb108',
+    nativeCurrency: 'SOMI',
+    factoryAddress: '0x0ccff3D02A3a200263eC4e0Fdb5E60a56721B8Ae', // QuickSwap AlgebraFactory V4
+    routerAddress: '0x1582f6f3D26658F7208A799Be46e34b1f366CE44', // QuickSwap SwapRouter
+    quoterV2Address: '0xcB68373404a835268D3ED76255C8148578A82b77', // QuickSwap QuoterV2
+    positionManagerAddress: '0xfE02219e0578B1E4831CDE7C3CB36f71AEb4A833', // QuickSwap NonfungiblePositionManager
+    disperseAddress: '0x40722b4Eb73194eDB6cf518B94b022f1877b0811', // Disperse contract on Somnia Mainnet
+    stablecoins: [
+      '0x28bec7e30e6faee657a03e19bf1128aad7632a00', // USDC
+      '0x67B302E35Aef5EEE8c32D934F5856869EF428330', // USDT
+    ],
+    wrappedNativeCurrency: '0x046EDe9564A72571df6F5e44d0405360c0f4dCab', // WSOMI (Wrapped SOMI)
+    dexType: 'algebraV4',
   },
 };
 
 function getProvider(chainName: string): ethers.JsonRpcProvider {
+  const chainConfig = CHAIN_CONFIGS[chainName];
+  if (!chainConfig) {
+    throw new Error(`Unknown chain: ${chainName}`);
+  }
+
   const rpcUrl =
     chainName === 'BSC_MAINNET'
-      ? process.env.NEXT_PUBLIC_BSC_RPC_URL
+      ? process.env.NEXT_PUBLIC_BSC_RPC_URL || chainConfig.rpcUrl
       : chainName === 'ETH_MAINNET'
-        ? process.env.NEXT_PUBLIC_ETH_RPC_URL
+        ? process.env.NEXT_PUBLIC_ETH_RPC_URL || chainConfig.rpcUrl
         : chainName === 'SOMNIA_TESTNET'
           ? process.env.NEXT_PUBLIC_SOMNIA_RPC_URL ||
             'https://dream-rpc.somnia.network/'
-          : '';
+          : chainName === 'SOMNIA_MAINNET'
+            ? process.env.NEXT_PUBLIC_SOMNIA_MAINNET_RPC_URL ||
+              chainConfig.rpcUrl
+            : chainConfig.rpcUrl;
 
   return new ethers.JsonRpcProvider(rpcUrl);
+}
+
+// Helper function to check if chain uses Algebra V4
+function isAlgebraV4(chainName: string): boolean {
+  return CHAIN_CONFIGS[chainName]?.dexType === 'algebraV4';
+}
+
+export function safeParseEther(value: string | number): bigint {
+  return safeParseUnits(value, 18);
+}
+
+export function safeParseUnits(
+  value: string | number,
+  decimals: number | string | bigint = 18
+): bigint {
+  try {
+    // Ensure decimals is a number, handle BigInt conversion
+    let decimalsNum: number;
+    if (typeof decimals === 'string') {
+      decimalsNum = parseInt(decimals, 10);
+    } else if (typeof decimals === 'bigint') {
+      decimalsNum = Number(decimals); // Convert BigInt to number
+    } else {
+      decimalsNum = decimals;
+    }
+
+    console.log('safeParseUnits decimals', {
+      originalDecimals: decimals,
+      decimalsNum,
+      decimalsType: typeof decimals,
+    });
+
+    // Validate decimals
+    if (isNaN(decimalsNum) || decimalsNum < 0 || decimalsNum > 18) {
+      console.log('Invalid decimals value, using default 18', {
+        originalDecimals: decimals,
+        fallbackDecimals: 18,
+      });
+      return safeParseUnits(value, 18);
+    }
+
+    console.log(`[safeParseUnits] input: ${value}`);
+
+    // Use Decimal.js for precise rounding down
+    const decimalValue = new Decimal(value);
+    const strValue = decimalValue
+      .toDecimalPlaces(decimalsNum, Decimal.ROUND_DOWN)
+      .toString();
+
+    console.log(`[safeParseUnits] normalized: ${strValue}`);
+
+    return ethers.parseUnits(strValue, decimalsNum);
+  } catch (error) {
+    console.log('Failed to parse ether value, using fallback', {
+      value,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return BigInt(1); // fallback to 1 wei
+  }
 }
 
 export function formatValue(value: number | string, decimals = 2): string {
@@ -145,7 +301,7 @@ export const getNativeBalance = async (
       : chainName === 'ETH_MAINNET'
         ? 'ETH'
         : chainName === 'SOMNIA_TESTNET'
-          ? 'STT'
+          ? 'SOMI'
           : 'SOL';
 
   try {
@@ -174,7 +330,10 @@ export const transferNativeCurrency = async (
   try {
     // Convert amount from ether to wei
     const amountWei = ethers.parseEther(amount.toString());
-
+    // const network = await signer.provider?.getNetwork();
+    // if(!network){
+    //   throw new Error('Network not found');
+    // }
     // Create transaction object
     const tx = {
       to: toAddress,
@@ -189,6 +348,7 @@ export const transferNativeCurrency = async (
     return receipt;
   } catch (error) {
     console.error('Error transferring: ', error);
+
     throw new Error(`Failed to transfer: ${error}`);
   }
 };
@@ -211,7 +371,7 @@ export const hasSufficientBalance = async (
       : chainName === 'ETH_MAINNET'
         ? 'ETH'
         : chainName === 'SOMNIA_TESTNET'
-          ? 'STT'
+          ? 'SOMI'
           : 'SOL';
 
   try {
@@ -568,46 +728,110 @@ export async function getPoolInfo(
 ): Promise<PoolInfo | null> {
   try {
     const provider = getProvider(chainName);
-    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
-    const factoryAddress = CHAIN_CONFIGS[chainName].factoryAddress;
+    const chainConfig = CHAIN_CONFIGS[chainName];
+    const routerAddress = chainConfig.routerAddress;
+    const factoryAddress = chainConfig.factoryAddress;
+    const wNativeAddress = chainConfig.wrappedNativeCurrency;
 
-    const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
-    const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
+    if (isAlgebraV4(chainName)) {
+      // Algebra V4 logic
+      const factory = new ethers.Contract(
+        factoryAddress,
+        ALGEBRA_FACTORY_ABI,
+        provider
+      );
 
-    // Get W native currency address
-    const wNativeAddress = await router.WETH();
+      // Get pool address using poolByPair
+      const poolAddress = await factory.poolByPair(
+        tokenAddress,
+        wNativeAddress
+      );
 
-    // Get pair address
-    const pairAddress = await factory.getPair(tokenAddress, wNativeAddress);
+      // If pool doesn't exist, return null
+      if (!poolAddress || poolAddress === ethers.ZeroAddress) {
+        return null;
+      }
 
-    // If pair doesn't exist, return null
-    if (pairAddress === ethers.ZeroAddress) {
-      return null;
+      const pool = new ethers.Contract(poolAddress, ALGEBRA_POOL_ABI, provider);
+
+      // Get token addresses
+      const [token0, token1] = await Promise.all([
+        pool.token0(),
+        pool.token1(),
+      ]);
+
+      // Get token balances directly from ERC20 contracts (these are the reserves)
+      const token0Contract = new ethers.Contract(token0, ERC20_ABI, provider);
+      const token1Contract = new ethers.Contract(token1, ERC20_ABI, provider);
+
+      const [token0Balance, token1Balance, token0Decimals, token1Decimals] =
+        await Promise.all([
+          token0Contract.balanceOf(poolAddress),
+          token1Contract.balanceOf(poolAddress),
+          token0Contract.decimals(),
+          token1Contract.decimals(),
+        ]);
+
+      // Determine which token is which
+      const isNativeToken0 =
+        token0.toLowerCase() === wNativeAddress.toLowerCase();
+      const nativeReserve = isNativeToken0 ? token0Balance : token1Balance;
+      const tokenReserve = isNativeToken0 ? token1Balance : token0Balance;
+      const nativeDecimals = isNativeToken0 ? token0Decimals : token1Decimals;
+      const tokenDecimals = isNativeToken0 ? token1Decimals : token0Decimals;
+
+      return {
+        nativeReserve: Number(
+          ethers.formatUnits(nativeReserve, nativeDecimals)
+        ),
+        tokenReserve: Number(ethers.formatUnits(tokenReserve, tokenDecimals)),
+        tokenAddress,
+        nativeAddress: wNativeAddress,
+      };
+    } else {
+      // Uniswap V2 logic (BSC, ETH, etc.)
+      const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
+      const factory = new ethers.Contract(
+        factoryAddress,
+        FACTORY_ABI,
+        provider
+      );
+
+      // Get W native currency address
+      const wNative = await router.WETH();
+
+      // Get pair address
+      const pairAddress = await factory.getPair(tokenAddress, wNative);
+
+      // If pair doesn't exist, return null
+      if (pairAddress === ethers.ZeroAddress) {
+        return null;
+      }
+
+      const pair = new ethers.Contract(pairAddress, PAIR_ABI, provider);
+      const [token0] = await Promise.all([pair.token0(), pair.token1()]);
+
+      // Get reserves
+      const [reserve0, reserve1] = await pair.getReserves();
+
+      // Determine which token is which in the pair
+      const [nativeReserve, tokenReserve] =
+        token0.toLowerCase() === wNative.toLowerCase()
+          ? [reserve0, reserve1]
+          : [reserve1, reserve0];
+
+      return {
+        nativeReserve: Number(ethers.formatEther(nativeReserve)),
+        tokenReserve: Number(
+          ethers.formatUnits(
+            tokenReserve,
+            await getTokenDecimals(tokenAddress, chainName)
+          )
+        ),
+        tokenAddress,
+        nativeAddress: wNative,
+      };
     }
-
-    const pair = new ethers.Contract(pairAddress, PAIR_ABI, provider);
-    const [token0] = await Promise.all([pair.token0(), pair.token1()]);
-
-    // Get reserves
-    const [reserve0, reserve1] = await pair.getReserves();
-
-    // Determine which token is which in the pair
-    const [nativeReserve, tokenReserve] =
-      token0.toLowerCase() === wNativeAddress.toLowerCase()
-        ? [reserve0, reserve1]
-        : [reserve1, reserve0];
-
-    return {
-      nativeReserve: Number(ethers.formatEther(nativeReserve)),
-      tokenReserve: Number(
-        ethers.formatUnits(
-          tokenReserve,
-          await getTokenDecimals(tokenAddress, chainName)
-        )
-      ),
-      tokenAddress,
-      nativeAddress: wNativeAddress,
-    };
   } catch (error) {
     console.error('Failed to get pool info:', error);
     return null;
@@ -722,7 +946,378 @@ export async function approveTokens(
 }
 
 /**
- * Adds liquidity to PancakeSwap
+ * Wrap native tokens (ETH/BNB/SOMI) to wrapped version (WETH/WBNB/WSOMI)
+ * @param amount The amount to wrap in native token units (e.g., "1.5" for 1.5 SOMI)
+ * @param signer The ethers signer
+ * @param chainName The chain name
+ * @returns Transaction receipt
+ */
+export async function wrapNativeToken(
+  amount: string,
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const config = CHAIN_CONFIGS[chainName];
+    const wrappedNativeAddress = config.wrappedNativeCurrency;
+
+    if (!wrappedNativeAddress) {
+      throw new Error('Wrapped native currency not configured for this chain');
+    }
+
+    const wNativeContract = new ethers.Contract(
+      wrappedNativeAddress,
+      WETH_ABI,
+      signer
+    );
+
+    const amountInWei = safeParseEther(amount);
+    console.log(`Wrapping ${amount} native tokens to wrapped version...`);
+
+    const tx = await wNativeContract.deposit({ value: amountInWei });
+    const receipt = await tx.wait();
+    console.log('✅ Native tokens wrapped successfully');
+
+    return receipt;
+  } catch (error) {
+    console.error('Failed to wrap native tokens:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check if wrapped native token (WSOMI/WETH/WBNB) has sufficient allowance for a spender
+ * @param spenderAddress The spender address (Position Manager for Algebra V4)
+ * @param amount The amount to check allowance for
+ * @param signer The ethers signer
+ * @param chainName The chain name
+ * @returns True if allowance is sufficient
+ */
+export async function hasWrappedNativeAllowance(
+  spenderAddress: string,
+  amount: string,
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
+): Promise<boolean> {
+  try {
+    const config = CHAIN_CONFIGS[chainName];
+    const wrappedNativeAddress = config.wrappedNativeCurrency;
+
+    if (!wrappedNativeAddress) {
+      throw new Error('Wrapped native currency not configured for this chain');
+    }
+
+    const signerAddress = await signer.getAddress();
+    const wNativeContract = new ethers.Contract(
+      wrappedNativeAddress,
+      ERC20_ABI,
+      signer
+    );
+
+    const allowance = await wNativeContract.allowance(
+      signerAddress,
+      spenderAddress
+    );
+    const amountInWei = safeParseEther(amount);
+
+    console.log(
+      `Wrapped native allowance: ${ethers.formatEther(allowance)}, required: ${amount}`
+    );
+
+    return allowance >= amountInWei;
+  } catch (error) {
+    console.error('Failed to check wrapped native allowance:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get wrapped native token balance
+ * @param signer The ethers signer
+ * @param chainName The chain name
+ * @returns Balance as string in native units
+ */
+export async function getWrappedNativeBalance(
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
+): Promise<string> {
+  try {
+    const config = CHAIN_CONFIGS[chainName];
+    const wrappedNativeAddress = config.wrappedNativeCurrency;
+
+    if (!wrappedNativeAddress) {
+      throw new Error('Wrapped native currency not configured for this chain');
+    }
+
+    const signerAddress = await signer.getAddress();
+    const wNativeContract = new ethers.Contract(
+      wrappedNativeAddress,
+      ERC20_ABI,
+      signer
+    );
+
+    const balance = await wNativeContract.balanceOf(signerAddress);
+    return ethers.formatEther(balance);
+  } catch (error) {
+    console.error('Failed to get wrapped native balance:', error);
+    throw error;
+  }
+}
+
+/**
+ * Approve wrapped native token (WSOMI/WETH/WBNB) to a spender
+ * @param spenderAddress The spender address (Position Manager for Algebra V4)
+ * @param amount The amount to approve
+ * @param signer The ethers signer
+ * @param chainName The chain name
+ * @returns Transaction receipt
+ */
+export async function approveWrappedNative(
+  spenderAddress: string,
+  amount: string,
+  signer: ethers.Signer,
+  chainName: string = 'BSC_MAINNET'
+): Promise<ethers.TransactionReceipt> {
+  try {
+    const config = CHAIN_CONFIGS[chainName];
+    const wrappedNativeAddress = config.wrappedNativeCurrency;
+
+    if (!wrappedNativeAddress) {
+      throw new Error('Wrapped native currency not configured for this chain');
+    }
+
+    const wNativeContract = new ethers.Contract(
+      wrappedNativeAddress,
+      ERC20_ABI,
+      signer
+    );
+
+    // Add 10% buffer to avoid rounding issues
+    const amountInWei = safeParseEther(amount);
+    const amountWithBuffer = amountInWei + amountInWei / BigInt(10);
+
+    console.log(
+      `Approving ${ethers.formatEther(amountWithBuffer)} wrapped native to ${spenderAddress}...`
+    );
+
+    const tx = await wNativeContract.approve(spenderAddress, amountWithBuffer);
+    const receipt = await tx.wait();
+    console.log('✅ Wrapped native token approved');
+
+    return receipt;
+  } catch (error) {
+    console.error('Failed to approve wrapped native token:', error);
+    throw error;
+  }
+}
+
+/**
+ * Helper function to calculate price from amounts (sqrtPriceX96)
+ * @param amount0 Amount of token0
+ * @param amount1 Amount of token1
+ * @param decimals0 Decimals of token0
+ * @param decimals1 Decimals of token1
+ * @returns sqrtPriceX96
+ */
+function getSqrtPriceX96(
+  amount0: bigint,
+  amount1: bigint,
+  decimals0: number,
+  decimals1: number
+): bigint {
+  console.log('getSqrtPriceX96 inputs:', {
+    amount0: amount0.toString(),
+    amount1: amount1.toString(),
+    decimals0,
+    decimals1,
+  });
+
+  // To avoid precision issues with very large BigInts, we'll work with the decimal-adjusted values
+  // Convert to strings and use parseFloat for the calculation
+  const amount0Decimal = parseFloat(ethers.formatUnits(amount0, decimals0));
+  const amount1Decimal = parseFloat(ethers.formatUnits(amount1, decimals1));
+
+  console.log('Decimal amounts:', {
+    amount0Decimal,
+    amount1Decimal,
+  });
+
+  // Calculate price: price = amount1 / amount0
+  const price = amount1Decimal / amount0Decimal;
+
+  if (!isFinite(price) || price <= 0) {
+    throw new Error(`Invalid price calculation: ${price}`);
+  }
+
+  console.log('Price:', price);
+
+  // Calculate sqrt(price)
+  const sqrtPrice = Math.sqrt(price);
+
+  console.log('Sqrt price:', sqrtPrice);
+
+  // Multiply by 2^96 to get sqrtPriceX96
+  // We use BigInt arithmetic for the final result
+  // 2^96 = 79228162514264337593543950336
+  const Q96 = 79228162514264337593543950336;
+  const sqrtPriceX96Value = sqrtPrice * Q96;
+
+  if (!isFinite(sqrtPriceX96Value) || sqrtPriceX96Value <= 0) {
+    throw new Error(`Invalid sqrtPriceX96 calculation: ${sqrtPriceX96Value}`);
+  }
+
+  const sqrtPriceX96 = BigInt(Math.floor(sqrtPriceX96Value));
+
+  console.log('sqrtPriceX96 result:', sqrtPriceX96.toString());
+
+  // Sanity check: sqrtPriceX96 should be within reasonable bounds
+  // Min: sqrt(10^-12) * 2^96 ≈ 79228162514 (very small price)
+  // Max: sqrt(10^12) * 2^96 ≈ 79228162514264337593543950336000000 (very large price)
+  const minSqrtPrice = BigInt(79228162514); // ~10^-12 price
+  const maxSqrtPrice = BigInt('79228162514264337593543950336000000'); // ~10^12 price
+
+  if (sqrtPriceX96 < minSqrtPrice) {
+    console.warn('sqrtPriceX96 is very small:', sqrtPriceX96.toString());
+  }
+  if (sqrtPriceX96 > maxSqrtPrice) {
+    console.warn('sqrtPriceX96 is very large:', sqrtPriceX96.toString());
+  }
+
+  return sqrtPriceX96;
+}
+
+/**
+ * Helper function to get tick from sqrtPriceX96
+ * Algebra V4 uses concentrated liquidity with ticks
+ */
+function getTickFromPrice(sqrtPriceX96: bigint): number {
+  const Q96 = BigInt(1) << BigInt(96); // 2^96
+  const price = Number((sqrtPriceX96 * sqrtPriceX96) / (Q96 * Q96));
+  const tick = Math.floor(Math.log(price) / Math.log(1.0001));
+  return tick;
+}
+
+/**
+ * Helper function to get nearest usable tick
+ * Algebra V4 requires ticks to be multiples of tickSpacing
+ * Kept for potential future use with custom tick ranges
+ */
+function _getNearestUsableTick(tick: number, tickSpacing: number = 60): number {
+  const rounded = Math.round(tick / tickSpacing) * tickSpacing;
+  // Ensure tick is within valid range
+  const MIN_TICK = -887272;
+  const MAX_TICK = 887272;
+  return Math.max(MIN_TICK, Math.min(MAX_TICK, rounded));
+}
+
+/**
+ * Initialize a pool for Algebra V4 (if it doesn't exist)
+ * @param tokenAddress The token address
+ * @param chainName The chain name
+ * @param signer The signer
+ * @param initialSqrtPrice The initial sqrt price
+ */
+async function initializeAlgebraPool(
+  tokenAddress: string,
+  chainName: string,
+  signer: ethers.Signer,
+  initialSqrtPrice: bigint
+): Promise<void> {
+  const config = CHAIN_CONFIGS[chainName];
+  const factory = new ethers.Contract(
+    config.factoryAddress,
+    ALGEBRA_FACTORY_ABI,
+    signer
+  );
+
+  const token0 =
+    tokenAddress.toLowerCase() < config.wrappedNativeCurrency.toLowerCase()
+      ? tokenAddress
+      : config.wrappedNativeCurrency;
+  const token1 =
+    tokenAddress.toLowerCase() < config.wrappedNativeCurrency.toLowerCase()
+      ? config.wrappedNativeCurrency
+      : tokenAddress;
+
+  console.log('Checking if pool exists...');
+  console.log('Token0:', token0);
+  console.log('Token1:', token1);
+
+  // Check if pool exists
+  const poolAddress = await factory.poolByPair(token0, token1);
+  console.log('Pool address:', poolAddress);
+
+  if (poolAddress === ethers.ZeroAddress) {
+    console.log('Pool does not exist, creating pool...');
+    // Pool doesn't exist, need to create it
+    // For Algebra V4, createPool only needs token addresses (no data parameter needed)
+    const tx = await factory.createPool(token0, token1);
+    await tx.wait();
+    console.log('Pool created successfully');
+
+    // Get the newly created pool address
+    const newPoolAddress = await factory.poolByPair(token0, token1);
+    console.log('New pool address:', newPoolAddress);
+
+    // Initialize the pool with the initial price
+    const pool = new ethers.Contract(newPoolAddress, ALGEBRA_POOL_ABI, signer);
+
+    console.log(
+      'Initializing pool with sqrtPriceX96:',
+      initialSqrtPrice.toString()
+    );
+    const initTx = await pool.initialize(initialSqrtPrice);
+    await initTx.wait();
+    console.log('Pool initialized successfully');
+  } else {
+    console.log('Pool already exists at:', poolAddress);
+
+    // Check if pool is initialized by checking the liquidity or trying to read globalState
+    const pool = new ethers.Contract(poolAddress, ALGEBRA_POOL_ABI, signer);
+
+    try {
+      // Try to get globalState - if this works, pool is initialized
+      const globalState = await pool.globalState();
+      const currentPrice = globalState[0]; // First value is sqrtPriceX96
+      const currentTick = globalState[1]; // Second value is tick
+
+      console.log('Pool current sqrtPriceX96:', currentPrice.toString());
+      console.log('Pool current tick:', currentTick.toString());
+
+      // If price is 0, pool is not initialized
+      if (currentPrice === BigInt(0)) {
+        console.log(
+          'Pool exists but not initialized (price = 0), initializing...'
+        );
+        console.log(
+          'Initializing pool with sqrtPriceX96:',
+          initialSqrtPrice.toString()
+        );
+        const initTx = await pool.initialize(initialSqrtPrice);
+        await initTx.wait();
+        console.log('Pool initialized successfully');
+      } else {
+        console.log('✅ Pool is already initialized');
+      }
+    } catch (error) {
+      console.error('Error checking pool state:', error);
+      console.log('Attempting to initialize pool anyway...');
+      try {
+        const initTx = await pool.initialize(initialSqrtPrice);
+        await initTx.wait();
+        console.log('Pool initialized successfully');
+      } catch {
+        console.log(
+          'Pool initialization failed or pool is already initialized'
+        );
+        console.log('Continuing with liquidity addition...');
+      }
+    }
+  }
+}
+
+/**
+ * Adds liquidity to DEX (PancakeSwap/Uniswap V2 or Algebra V4)
  * @param tokenAddress The token contract address
  * @param tokenAmount The amount of tokens to add
  * @param nativeAmount The amount of native currency to add
@@ -737,8 +1332,7 @@ export async function addLiquidity(
   chainName: string = 'BSC_MAINNET'
 ): Promise<ethers.TransactionReceipt> {
   try {
-    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
-    const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
+    const config = CHAIN_CONFIGS[chainName];
     const signerAddress = await signer.getAddress();
 
     // Pre-flight checks
@@ -753,21 +1347,6 @@ export async function addLiquidity(
     console.log(`Token decimals: ${tokenDecimals}`);
 
     // 2. Check if trading is enabled
-    try {
-      const tradingEnabled = await isTokenTradingEnabled(
-        tokenAddress,
-        chainName,
-        signer
-      );
-      console.log(`Trading enabled: ${tradingEnabled}`);
-      if (!tradingEnabled) {
-        throw new Error(
-          'Trading is not enabled on this token. Please enable trading first.'
-        );
-      }
-    } catch (e) {
-      console.warn('Could not check trading status:', e);
-    }
 
     // 3. Check token balance
     const tokenBalance = await getTokenBalance(
@@ -785,6 +1364,374 @@ export async function addLiquidity(
         `Insufficient token balance. You have ${ethers.formatUnits(tokenBalance, tokenDecimals)} but trying to add ${tokenAmount}`
       );
     }
+
+    // Convert amounts to wei
+    const nativeAmountInWei = safeParseEther(nativeAmount);
+
+    // HANDLE ALGEBRA V4 (QuickSwap concentrated liquidity)
+    if (isAlgebraV4(chainName)) {
+      console.log('=== Using Algebra V4 NonfungiblePositionManager ===');
+
+      const positionManagerAddress = config.positionManagerAddress;
+      if (!positionManagerAddress) {
+        throw new Error(
+          'Position manager address not configured for this chain'
+        );
+      }
+
+      const wrappedNative = config.wrappedNativeCurrency;
+
+      // Step 1: Check wrapped token balance and wrap if needed
+      console.log('Step 1: Checking wrapped native token balance...');
+      const wNativeContract = new ethers.Contract(
+        wrappedNative,
+        WETH_ABI,
+        signer
+      );
+
+      const wNativeBalance = await wNativeContract.balanceOf(signerAddress);
+      console.log(
+        `Wrapped native balance: ${ethers.formatEther(wNativeBalance)}`
+      );
+      console.log(`Required: ${ethers.formatEther(nativeAmountInWei)}`);
+
+      if (wNativeBalance < nativeAmountInWei) {
+        const amountToWrap = nativeAmountInWei - wNativeBalance;
+        console.log(
+          `Wrapping ${ethers.formatEther(amountToWrap)} native tokens...`
+        );
+        const wrapTx = await wNativeContract.deposit({ value: amountToWrap });
+        await wrapTx.wait();
+        console.log('✅ Native tokens wrapped successfully');
+      } else {
+        console.log('✅ Already have enough wrapped tokens, skipping wrap');
+      }
+
+      // Step 2: Approve wrapped native tokens to Position Manager
+      console.log('Step 2: Checking wrapped native token approval...');
+      const wNativeAllowance = await wNativeContract.allowance(
+        signerAddress,
+        positionManagerAddress
+      );
+
+      // Add a 10% buffer to approval to account for any rounding
+      const requiredWNativeAllowance =
+        nativeAmountInWei + nativeAmountInWei / BigInt(10);
+
+      if (wNativeAllowance < requiredWNativeAllowance) {
+        console.log(
+          `Approving WSOMI/WETH to Position Manager (need ${ethers.formatEther(requiredWNativeAllowance)}, have ${ethers.formatEther(wNativeAllowance)})...`
+        );
+        const approveTx = await wNativeContract.approve(
+          positionManagerAddress,
+          requiredWNativeAllowance
+        );
+        await approveTx.wait();
+        console.log('✅ WSOMI/WETH approved');
+      } else {
+        console.log('✅ WSOMI/WETH already approved');
+      }
+
+      // Step 3: Check token approval for position manager
+      const tokenContract = new ethers.Contract(
+        tokenAddress,
+        ERC20_ABI,
+        signer
+      );
+      const tokenAllowance = await tokenContract.allowance(
+        signerAddress,
+        positionManagerAddress
+      );
+      console.log(
+        `Token allowance for position manager: ${ethers.formatUnits(tokenAllowance, tokenDecimals)}`
+      );
+      if (tokenAllowance < tokenAmountInWei) {
+        throw new Error(
+          `Insufficient token allowance for position manager. Please approve tokens to the Position Manager at ${positionManagerAddress}`
+        );
+      }
+
+      // Determine token0 and token1 (token0 < token1)
+      const isToken0 = tokenAddress.toLowerCase() < wrappedNative.toLowerCase();
+      const token0 = isToken0 ? tokenAddress : wrappedNative;
+      const token1 = isToken0 ? wrappedNative : tokenAddress;
+      const amount0Desired = isToken0 ? tokenAmountInWei : nativeAmountInWei;
+      const amount1Desired = isToken0 ? nativeAmountInWei : tokenAmountInWei;
+
+      console.log('Token0:', token0, 'Amount0:', amount0Desired.toString());
+      console.log('Token1:', token1, 'Amount1:', amount1Desired.toString());
+
+      // Calculate initial sqrt price
+      const nativeDecimals = 18; // Native token is always 18 decimals
+      const sqrtPriceX96 = isToken0
+        ? getSqrtPriceX96(
+            tokenAmountInWei,
+            nativeAmountInWei,
+            tokenDecimals,
+            nativeDecimals
+          )
+        : getSqrtPriceX96(
+            nativeAmountInWei,
+            tokenAmountInWei,
+            nativeDecimals,
+            tokenDecimals
+          );
+
+      console.log('Initial sqrtPriceX96:', sqrtPriceX96.toString());
+
+      // Initialize pool if it doesn't exist
+      await initializeAlgebraPool(
+        tokenAddress,
+        chainName,
+        signer,
+        sqrtPriceX96
+      );
+
+      // Get current tick from pool
+      const poolAddress = await new ethers.Contract(
+        config.factoryAddress,
+        ALGEBRA_FACTORY_ABI,
+        signer
+      ).poolByPair(token0, token1);
+
+      const pool = new ethers.Contract(poolAddress, ALGEBRA_POOL_ABI, signer);
+
+      let currentTick = 0;
+      let tickSpacing = 60; // Default tick spacing for QuickSwap
+
+      try {
+        const globalState = await pool.globalState();
+        currentTick = Number(globalState[1]); // tick is second element
+        console.log('Current pool tick:', currentTick);
+        console.log('Current pool sqrtPriceX96:', globalState[0].toString());
+
+        // Try to get tick spacing from pool
+        try {
+          tickSpacing = Number(await pool.tickSpacing());
+          console.log('Pool tick spacing:', tickSpacing);
+        } catch {
+          console.log(
+            'Could not read tick spacing, using default:',
+            tickSpacing
+          );
+        }
+      } catch {
+        console.warn('Could not read pool state, using calculated tick');
+        currentTick = getTickFromPrice(sqrtPriceX96);
+        console.log('Calculated tick:', currentTick);
+      }
+
+      // Use FULL RANGE liquidity for QuickSwap/Algebra V4
+      // This provides liquidity across all possible prices (similar to Uniswap V2)
+      // QuickSwap uses tick spacing of 60, so full range is -887220 to 887220
+      // These values match the successful transaction on QuickSwap Somnia
+      // (Math.ceil(-887272 / 60) * 60 = -887220, Math.floor(887272 / 60) * 60 = 887220)
+      const QUICKSWAP_TICK_SPACING = 60;
+      const tickLower = -887220; // Full range lower tick (with spacing 60)
+      const tickUpper = 887220; // Full range upper tick (with spacing 60)
+
+      // Override tickSpacing if it wasn't read correctly
+      if (tickSpacing !== QUICKSWAP_TICK_SPACING) {
+        console.warn(
+          `Tick spacing was ${tickSpacing}, overriding to ${QUICKSWAP_TICK_SPACING} for QuickSwap`
+        );
+        tickSpacing = QUICKSWAP_TICK_SPACING;
+      }
+
+      console.log('=== Using FULL RANGE Liquidity ===');
+      console.log('Tick range:', tickLower, 'to', tickUpper, '(Full Range)');
+      console.log('Tick spacing:', tickSpacing);
+      console.log('Current pool tick:', currentTick);
+
+      // Set slippage tolerance to 1% for safety (pool price may have moved)
+      // For initial liquidity, 0.25% works fine, but for subsequent adds we need more tolerance
+      const slippageTolerance = 0.01; // 1%
+      const slippageMultiplier = BigInt(
+        Math.floor((1 - slippageTolerance) * 10000)
+      );
+      const amount0Min = (amount0Desired * slippageMultiplier) / BigInt(10000);
+      const amount1Min = (amount1Desired * slippageMultiplier) / BigInt(10000);
+
+      // Set deadline to 20 minutes from now
+      const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+
+      // Create position manager contract
+      const positionManager = new ethers.Contract(
+        positionManagerAddress,
+        ALGEBRA_POSITION_MANAGER_ABI,
+        signer
+      );
+
+      console.log('=== Minting Algebra V4 Position ===');
+      console.log('Position Manager:', positionManagerAddress);
+      console.log('Token0:', token0);
+      console.log('Token1:', token1);
+      console.log('TickLower:', tickLower);
+      console.log('TickUpper:', tickUpper);
+      console.log('Amount0Desired:', amount0Desired.toString());
+      console.log('Amount1Desired:', amount1Desired.toString());
+      console.log('Amount0Min:', amount0Min.toString());
+      console.log('Amount1Min:', amount1Min.toString());
+      console.log('Recipient:', signerAddress);
+      console.log('Deadline:', deadline);
+
+      // Final balance and approval verification
+      console.log('=== Final Balance & Approval Check ===');
+      const finalWNativeBalance =
+        await wNativeContract.balanceOf(signerAddress);
+      const finalTokenBalance = await tokenContract.balanceOf(signerAddress);
+      const finalWNativeAllowance = await wNativeContract.allowance(
+        signerAddress,
+        positionManagerAddress
+      );
+      const finalTokenAllowance = await tokenContract.allowance(
+        signerAddress,
+        positionManagerAddress
+      );
+
+      console.log('WSOMI Balance:', ethers.formatEther(finalWNativeBalance));
+      console.log(
+        'WSOMI Allowance:',
+        ethers.formatEther(finalWNativeAllowance)
+      );
+      console.log(
+        'WSOMI Required (amount0):',
+        ethers.formatEther(amount0Desired)
+      );
+      console.log(
+        'Token Balance:',
+        ethers.formatUnits(finalTokenBalance, tokenDecimals)
+      );
+      console.log(
+        'Token Allowance:',
+        ethers.formatUnits(finalTokenAllowance, tokenDecimals)
+      );
+      console.log(
+        'Token Required (amount1):',
+        ethers.formatUnits(amount1Desired, tokenDecimals)
+      );
+
+      // Verify balances
+      if (isToken0) {
+        // token0 is the custom token, token1 is WSOMI
+        if (finalTokenBalance < amount0Desired) {
+          throw new Error(
+            `Insufficient token balance. Have ${ethers.formatUnits(finalTokenBalance, tokenDecimals)}, need ${ethers.formatUnits(amount0Desired, tokenDecimals)}`
+          );
+        }
+        if (finalWNativeBalance < amount1Desired) {
+          throw new Error(
+            `Insufficient WSOMI balance. Have ${ethers.formatEther(finalWNativeBalance)}, need ${ethers.formatEther(amount1Desired)}`
+          );
+        }
+      } else {
+        // token0 is WSOMI, token1 is the custom token
+        if (finalWNativeBalance < amount0Desired) {
+          throw new Error(
+            `Insufficient WSOMI balance. Have ${ethers.formatEther(finalWNativeBalance)}, need ${ethers.formatEther(amount0Desired)}`
+          );
+        }
+        if (finalTokenBalance < amount1Desired) {
+          throw new Error(
+            `Insufficient token balance. Have ${ethers.formatUnits(finalTokenBalance, tokenDecimals)}, need ${ethers.formatUnits(amount1Desired, tokenDecimals)}`
+          );
+        }
+      }
+
+      // Verify approvals
+      if (isToken0) {
+        if (finalTokenAllowance < amount0Desired) {
+          throw new Error(
+            `Insufficient token allowance. Have ${ethers.formatUnits(finalTokenAllowance, tokenDecimals)}, need ${ethers.formatUnits(amount0Desired, tokenDecimals)}`
+          );
+        }
+        if (finalWNativeAllowance < amount1Desired) {
+          throw new Error(
+            `Insufficient WSOMI allowance. Have ${ethers.formatEther(finalWNativeAllowance)}, need ${ethers.formatEther(amount1Desired)}`
+          );
+        }
+      } else {
+        if (finalWNativeAllowance < amount0Desired) {
+          throw new Error(
+            `Insufficient WSOMI allowance. Have ${ethers.formatEther(finalWNativeAllowance)}, need ${ethers.formatEther(amount0Desired)}`
+          );
+        }
+        if (finalTokenAllowance < amount1Desired) {
+          throw new Error(
+            `Insufficient token allowance. Have ${ethers.formatUnits(finalTokenAllowance, tokenDecimals)}, need ${ethers.formatUnits(amount1Desired, tokenDecimals)}`
+          );
+        }
+      }
+
+      console.log('✅ All balances and allowances verified');
+
+      // For QuickSwap on Somnia, the deployer parameter should be zero address
+      // This matches the successful transaction format:
+      // mint((address,address,address,int24,int24,uint256,uint256,uint256,uint256,address,uint256))
+      // where deployer = 0x0000000000000000000000000000000000000000
+      const poolDeployer = ethers.ZeroAddress;
+      console.log('Using zero address as deployer (QuickSwap standard)');
+
+      // Mint params matching the successful transaction format
+      const mintParams = [
+        token0, // token0 address
+        token1, // token1 address
+        poolDeployer, // deployer (zero address)
+        tickLower, // tickLower (-887220 for full range)
+        tickUpper, // tickUpper (887220 for full range)
+        amount0Desired, // amount0Desired
+        amount1Desired, // amount1Desired
+        amount0Min, // amount0Min (with slippage)
+        amount1Min, // amount1Min (with slippage)
+        signerAddress, // recipient
+        deadline, // deadline
+      ];
+
+      console.log('=== Mint Parameters ===');
+      console.log(
+        'Mint params:',
+        mintParams.map((p) => p.toString())
+      );
+
+      // Try to estimate gas first
+      try {
+        const gasEstimate = await positionManager.mint.estimateGas(mintParams);
+        console.log('Estimated gas:', gasEstimate.toString());
+      } catch (estimateError) {
+        console.error('Gas estimation failed:', estimateError);
+        if (estimateError instanceof Error) {
+          const errorMsg = estimateError.message;
+          if (errorMsg.includes('tickOutOfRange')) {
+            throw new Error(
+              'Invalid tick range. The price range is out of bounds.'
+            );
+          } else if (errorMsg.includes('insufficient')) {
+            throw new Error(
+              'Insufficient balance or allowance. Please check your token approvals.'
+            );
+          }
+          // Log but continue - sometimes estimation fails but tx succeeds
+          console.warn(
+            'Gas estimation failed, proceeding with default gas limit...'
+          );
+        }
+      }
+
+      // Execute the mint transaction
+      const tx = await positionManager.mint(mintParams, {
+        gasLimit: 5000000,
+      });
+
+      const receipt = await tx.wait();
+      console.log('✅ Algebra V4 Position minted successfully!');
+      console.log('Transaction hash:', receipt.hash);
+
+      return receipt;
+    }
+
+    // HANDLE UNISWAP V2 STYLE (PancakeSwap, etc.)
+    const routerAddress = config.routerAddress;
+    const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
 
     // 4. Check pair address
     try {
@@ -823,9 +1770,6 @@ export async function addLiquidity(
       console.warn('Could not check allowance:', e);
     }
 
-    // Convert amounts to wei
-    const nativeAmountInWei = safeParseEther(nativeAmount);
-
     // Set slippage tolerance (e.g., 5%)
     const slippageTolerance = 0.05;
     const minTokenAmount =
@@ -849,26 +1793,15 @@ export async function addLiquidity(
     console.log(`Deadline: ${deadline}`);
 
     // Add liquidity
-    const tx =
-      chainName === 'SOMNIA_TESTNET'
-        ? await router.addLiquiditySTT(
-            tokenAddress,
-            tokenAmountInWei,
-            minTokenAmount,
-            minNativeAmount,
-            signerAddress,
-            deadline,
-            { value: nativeAmountInWei }
-          )
-        : await router.addLiquidityETH(
-            tokenAddress,
-            tokenAmountInWei,
-            minTokenAmount,
-            minNativeAmount,
-            signerAddress,
-            deadline,
-            { value: nativeAmountInWei }
-          );
+    const tx = await router.addLiquidityETH(
+      tokenAddress,
+      tokenAmountInWei,
+      minTokenAmount,
+      minNativeAmount,
+      signerAddress,
+      deadline,
+      { value: nativeAmountInWei }
+    );
 
     const receipt = await tx.wait();
     console.log('✅ Liquidity added successfully!');
@@ -893,17 +1826,29 @@ export async function getLPTokenBalance(
 ): Promise<number> {
   try {
     const provider = getProvider(chainName);
-    // Get the factory address
-    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
-    const factoryAddress = CHAIN_CONFIGS[chainName].factoryAddress;
+    const chainConfig = CHAIN_CONFIGS[chainName];
+
+    if (isAlgebraV4(chainName)) {
+      // Algebra V4 uses concentrated liquidity - LP tokens are NFTs managed by PositionManager
+      // For now, return 0 as we don't have a simple way to check NFT positions
+      // Users would need to query the NonfungiblePositionManager for their positions
+      console.warn(
+        'Algebra V4 uses NFT-based liquidity positions. LP balance check not supported via this function.'
+      );
+      return 0;
+    }
+
+    // Uniswap V2 logic
+    const routerAddress = chainConfig.routerAddress;
+    const factoryAddress = chainConfig.factoryAddress;
     const factory = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
 
     // Get W native currency address
     const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
-    const wNativeAddress = await router.WETH();
+    const wNative = await router.WETH();
 
     // Get the pair address
-    const pairAddress = await factory.getPair(tokenAddress, wNativeAddress);
+    const pairAddress = await factory.getPair(tokenAddress, wNative);
 
     // If pair doesn't exist, return 0
     if (pairAddress === ethers.ZeroAddress) {
@@ -996,24 +1941,403 @@ export async function burnLiquidity(
 }
 
 /**
- * Removes liquidity from a PancakeSwap pool
+ * Helper function to get all NFT positions for a user from Algebra V4 Position Manager
+ * @param positionManagerAddress The position manager address
+ * @param walletAddress The user's wallet address
+ * @param signer The signer
+ * @returns Array of token IDs owned by the user
+ */
+async function getAlgebraPositions(
+  positionManagerAddress: string,
+  walletAddress: string,
+  signer: ethers.Signer
+): Promise<bigint[]> {
+  const positionManager = new ethers.Contract(
+    positionManagerAddress,
+    [
+      'function balanceOf(address owner) external view returns (uint256)',
+      'function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)',
+    ],
+    signer
+  );
+
+  const balance = await positionManager.balanceOf(walletAddress);
+  const positions: bigint[] = [];
+
+  for (let i = 0; i < Number(balance); i++) {
+    const tokenId = await positionManager.tokenOfOwnerByIndex(walletAddress, i);
+    positions.push(tokenId);
+  }
+
+  return positions;
+}
+
+/**
+ * Helper function to get position details from Algebra V4 Position Manager
+ * @param positionManagerAddress The position manager address
+ * @param tokenId The NFT token ID
+ * @param signer The signer
+ * @returns Position details
+ */
+async function getAlgebraPositionDetails(
+  positionManagerAddress: string,
+  tokenId: bigint,
+  signer: ethers.Signer
+): Promise<{
+  token0: string;
+  token1: string;
+  tickLower: number;
+  tickUpper: number;
+  liquidity: bigint;
+}> {
+  const positionManager = new ethers.Contract(
+    positionManagerAddress,
+    ALGEBRA_POSITION_MANAGER_ABI,
+    signer
+  );
+
+  const position = await positionManager.positions(tokenId);
+
+  return {
+    token0: position.token0,
+    token1: position.token1,
+    tickLower: position.tickLower,
+    tickUpper: position.tickUpper,
+    liquidity: position.liquidity,
+  };
+}
+
+/**
+ * Remove liquidity from Algebra V4 position (concentrated liquidity)
+ * @param signer The signer
+ * @param tokenAddress The token address
+ * @param tokenId The NFT position ID (optional, will use first position if not provided)
+ * @param percentage Percentage of liquidity to remove (0-100)
+ * @param chainName The chain name
+ * @returns Object with success flag, error message, and amounts returned
+ */
+async function removeAlgebraV4Liquidity(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  tokenId: bigint | null,
+  percentage: number,
+  chainName: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  tokenAmount?: number;
+  nativeAmount?: number;
+  tokenId?: string;
+}> {
+  try {
+    const config = CHAIN_CONFIGS[chainName];
+    const positionManagerAddress = config.positionManagerAddress;
+
+    if (!positionManagerAddress) {
+      return {
+        success: false,
+        error: 'Position manager address not configured for this chain',
+      };
+    }
+
+    const walletAddress = await signer.getAddress();
+    const positionManager = new ethers.Contract(
+      positionManagerAddress,
+      ALGEBRA_POSITION_MANAGER_ABI,
+      signer
+    );
+
+    // If tokenId not provided, find the first position for this token pair
+    let positionTokenId = tokenId;
+    if (!positionTokenId) {
+      console.log('Finding positions for wallet:', walletAddress);
+      const positions = await getAlgebraPositions(
+        positionManagerAddress,
+        walletAddress,
+        signer
+      );
+
+      if (positions.length === 0) {
+        return {
+          success: false,
+          error: 'No liquidity positions found for this wallet',
+        };
+      }
+
+      // Find position matching the token pair
+      const wrappedNative = config.wrappedNativeCurrency;
+      for (const pos of positions) {
+        const details = await getAlgebraPositionDetails(
+          positionManagerAddress,
+          pos,
+          signer
+        );
+
+        // Check if this position matches our token pair
+        const hasToken =
+          details.token0.toLowerCase() === tokenAddress.toLowerCase() ||
+          details.token1.toLowerCase() === tokenAddress.toLowerCase();
+        const hasWrappedNative =
+          details.token0.toLowerCase() === wrappedNative.toLowerCase() ||
+          details.token1.toLowerCase() === wrappedNative.toLowerCase();
+
+        if (hasToken && hasWrappedNative && details.liquidity > 0) {
+          positionTokenId = pos;
+          break;
+        }
+      }
+
+      if (!positionTokenId) {
+        return {
+          success: false,
+          error: 'No liquidity position found for this token pair',
+        };
+      }
+    }
+
+    console.log('Using position NFT ID:', positionTokenId.toString());
+
+    // Get position details
+    const positionDetails = await getAlgebraPositionDetails(
+      positionManagerAddress,
+      positionTokenId,
+      signer
+    );
+
+    console.log('Position details:', {
+      token0: positionDetails.token0,
+      token1: positionDetails.token1,
+      liquidity: positionDetails.liquidity.toString(),
+    });
+
+    if (positionDetails.liquidity === BigInt(0)) {
+      return {
+        success: false,
+        error: 'Position has no liquidity',
+      };
+    }
+
+    // Calculate amount of liquidity to remove
+    const liquidityToRemove =
+      (positionDetails.liquidity * BigInt(percentage)) / BigInt(100);
+
+    console.log('Removing liquidity:', liquidityToRemove.toString());
+
+    // Set deadline to 20 minutes from now
+    const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+
+    // Decrease liquidity (with 5% slippage)
+    const decreaseParams = {
+      tokenId: positionTokenId,
+      liquidity: liquidityToRemove,
+      amount0Min: 0, // We'll set to 0 for simplicity, but you can calculate based on current price
+      amount1Min: 0,
+      deadline: deadline,
+    };
+
+    console.log('Decreasing liquidity with params:', decreaseParams);
+    const decreaseTx = await positionManager.decreaseLiquidity(decreaseParams);
+    const _decreaseReceipt = await decreaseTx.wait();
+    console.log('✅ Liquidity decreased successfully');
+
+    // Collect the tokens
+    const collectParams = {
+      tokenId: positionTokenId,
+      recipient: walletAddress,
+      amount0Max: ethers.MaxUint256, // Collect all available
+      amount1Max: ethers.MaxUint256,
+    };
+
+    console.log('Collecting tokens...');
+    const collectTx = await positionManager.collect(collectParams);
+    const _collectReceipt = await collectTx.wait();
+    console.log('✅ Tokens collected successfully');
+
+    // Parse events to get amounts (simplified - you may want to parse actual events)
+    return {
+      success: true,
+      tokenId: positionTokenId.toString(),
+      tokenAmount: 0, // Would need to parse events for actual amounts
+      nativeAmount: 0,
+    };
+  } catch (error) {
+    console.error('Failed to remove Algebra V4 liquidity:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Burn an empty Algebra V4 NFT position
+ * @param signer The signer
+ * @param tokenId The NFT position ID
+ * @param chainName The chain name
+ * @returns Object with success flag and error message
+ */
+export async function burnAlgebraV4Position(
+  signer: ethers.Signer,
+  tokenId: bigint,
+  chainName: string
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const config = CHAIN_CONFIGS[chainName];
+    const positionManagerAddress = config.positionManagerAddress;
+
+    if (!positionManagerAddress) {
+      return {
+        success: false,
+        error: 'Position manager address not configured for this chain',
+      };
+    }
+
+    const positionManager = new ethers.Contract(
+      positionManagerAddress,
+      ALGEBRA_POSITION_MANAGER_ABI,
+      signer
+    );
+
+    // Check if position has liquidity
+    const positionDetails = await getAlgebraPositionDetails(
+      positionManagerAddress,
+      tokenId,
+      signer
+    );
+
+    if (positionDetails.liquidity > 0) {
+      return {
+        success: false,
+        error: 'Cannot burn position with liquidity. Remove liquidity first.',
+      };
+    }
+
+    console.log('Burning NFT position:', tokenId.toString());
+    const burnTx = await positionManager.burn(tokenId);
+    await burnTx.wait();
+    console.log('✅ NFT position burned successfully');
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error('Failed to burn Algebra V4 position:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Get all Algebra V4 positions for a wallet
+ * @param signer The signer
+ * @param chainName The chain name
+ * @returns Array of position details
+ */
+export async function getAlgebraV4Positions(
+  signer: ethers.Signer,
+  chainName: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  positions?: Array<{
+    tokenId: string;
+    token0: string;
+    token1: string;
+    liquidity: string;
+    tickLower: number;
+    tickUpper: number;
+  }>;
+}> {
+  try {
+    const config = CHAIN_CONFIGS[chainName];
+    const positionManagerAddress = config.positionManagerAddress;
+
+    if (!positionManagerAddress) {
+      return {
+        success: false,
+        error: 'Position manager address not configured for this chain',
+      };
+    }
+
+    const walletAddress = await signer.getAddress();
+    const tokenIds = await getAlgebraPositions(
+      positionManagerAddress,
+      walletAddress,
+      signer
+    );
+
+    const positions = [];
+    for (const tokenId of tokenIds) {
+      const details = await getAlgebraPositionDetails(
+        positionManagerAddress,
+        tokenId,
+        signer
+      );
+
+      positions.push({
+        tokenId: tokenId.toString(),
+        token0: details.token0,
+        token1: details.token1,
+        liquidity: details.liquidity.toString(),
+        tickLower: details.tickLower,
+        tickUpper: details.tickUpper,
+      });
+    }
+
+    return {
+      success: true,
+      positions,
+    };
+  } catch (error) {
+    console.error('Failed to get Algebra V4 positions:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Removes liquidity from a DEX pool (PancakeSwap/Uniswap V2 or Algebra V4)
  * @param signer The signer to execute the transaction
  * @param tokenAddress The token address
  * @param percentage The percentage of LP tokens to remove (0-100)
+ * @param chainName The chain name
+ * @param tokenId Optional NFT token ID for Algebra V4 positions
  * @returns Object with success flag, error message, and amounts returned
  */
 export async function removeLiquidity(
   signer: ethers.Signer,
   tokenAddress: string,
   percentage: number = 100, // Default to 100% (remove all)
-  chainName: string = 'BSC_MAINNET'
+  chainName: string = 'BSC_MAINNET',
+  tokenId?: bigint | null
 ): Promise<{
   success: boolean;
   error?: string;
   tokenAmount?: number;
   nativeAmount?: number;
+  tokenId?: string;
 }> {
   try {
+    // Handle Algebra V4 (concentrated liquidity)
+    if (isAlgebraV4(chainName)) {
+      return await removeAlgebraV4Liquidity(
+        signer,
+        tokenAddress,
+        tokenId || null,
+        percentage,
+        chainName
+      );
+    }
+
+    // Handle Uniswap V2-style DEXes (below is the existing implementation)
+
     const walletAddress = await signer.getAddress();
     const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
     const factoryAddress = CHAIN_CONFIGS[chainName].factoryAddress;
@@ -1198,25 +2522,15 @@ export async function removeLiquidity(
       try {
         console.log('Attempting removeLiquidityETH (ETH method)...');
         // Try with ETH method as fallback
-        const removeTx =
-          chainName === 'SOMNIA_TESTNET'
-            ? await (routerWithSigner as any).removeLiquiditySTT(
-                tokenAddress,
-                amountToRemove,
-                minTokens,
-                minNative,
-                walletAddress,
-                deadline
-              )
-            : await (routerWithSigner as any).removeLiquidityETH(
-                tokenAddress,
-                amountToRemove,
-                minTokens,
-                minNative,
-                walletAddress,
-                deadline,
-                { gasLimit: 800000 }
-              );
+        const removeTx = await (routerWithSigner as any).removeLiquidityETH(
+          tokenAddress,
+          amountToRemove,
+          minTokens,
+          minNative,
+          walletAddress,
+          deadline,
+          { gasLimit: 800000 }
+        );
 
         console.log(
           'Remove liquidity ETH transaction sent, waiting for confirmation...'
@@ -1313,6 +2627,34 @@ export async function removeLiquidity(
 }
 
 /**
+ * Helper function to calculate price from sqrtPriceX96 (Algebra V4)
+ */
+function calculatePriceFromSqrtPriceX96(
+  sqrtPriceX96: bigint,
+  token0Decimals: number,
+  token1Decimals: number,
+  token0IsNative: boolean
+): number {
+  // sqrtPriceX96 = sqrt(price) * 2^96
+  // price = (sqrtPriceX96 / 2^96)^2
+  const Q96 = BigInt(2 ** 96);
+  const sqrtPrice = Number(sqrtPriceX96) / Number(Q96);
+  const price = sqrtPrice * sqrtPrice;
+
+  // Adjust for decimals
+  const decimalsAdjustment =
+    Math.pow(10, token0Decimals) / Math.pow(10, token1Decimals);
+
+  if (token0IsNative) {
+    // price is native/token, so token price = 1 / price * decimalsAdjustment
+    return (1 / price) * decimalsAdjustment;
+  } else {
+    // price is token/native, so token price = price * decimalsAdjustment
+    return price * decimalsAdjustment;
+  }
+}
+
+/**
  * Gets the current token price in USD
  * @param tokenAddress The token contract address
  * @param pairAddress Optional pair address for the token (if known)
@@ -1333,31 +2675,56 @@ export async function getTokenPrice(
     console.debug('Current native currency price in USD:', nativeCurrencyPrice);
 
     const provider = getProvider(chainName);
-    // If no pair address is specified, try to find the pair
+    const chainConfig = CHAIN_CONFIGS[chainName];
+    const wNativeAddress = chainConfig.wrappedNativeCurrency;
+
+    // If no pair address is specified, try to find the pool/pair
     if (!pairAddress) {
-      const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
-      const factoryAddress = CHAIN_CONFIGS[chainName].factoryAddress;
-      const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
-      const factory = new ethers.Contract(
-        factoryAddress,
-        FACTORY_ABI,
-        provider
-      );
+      const factoryAddress = chainConfig.factoryAddress;
 
-      // Try to find pair with W native currency first
-      const wNativeAddress = await router.WETH();
-      pairAddress = await factory.getPair(tokenAddress, wNativeAddress);
+      if (isAlgebraV4(chainName)) {
+        // Algebra V4 logic
+        const factory = new ethers.Contract(
+          factoryAddress,
+          ALGEBRA_FACTORY_ABI,
+          provider
+        );
 
-      // If no W native currency pair, try to find pair with stablecoins
-      if (pairAddress === ethers.ZeroAddress) {
-        for (const stablecoin of CHAIN_CONFIGS[chainName].stablecoins) {
-          pairAddress = await factory.getPair(tokenAddress, stablecoin);
-          if (pairAddress !== ethers.ZeroAddress) break;
+        // Try to find pool with W native currency first
+        pairAddress = await factory.poolByPair(tokenAddress, wNativeAddress);
+
+        // If no W native currency pool, try to find pool with stablecoins
+        if (!pairAddress || pairAddress === ethers.ZeroAddress) {
+          for (const stablecoin of chainConfig.stablecoins) {
+            pairAddress = await factory.poolByPair(tokenAddress, stablecoin);
+            if (pairAddress && pairAddress !== ethers.ZeroAddress) break;
+          }
+        }
+      } else {
+        // Uniswap V2 logic
+        const routerAddress = chainConfig.routerAddress;
+        const router = new ethers.Contract(routerAddress, ROUTER_ABI, provider);
+        const factory = new ethers.Contract(
+          factoryAddress,
+          FACTORY_ABI,
+          provider
+        );
+
+        // Try to find pair with W native currency first
+        const wNative = await router.WETH();
+        pairAddress = await factory.getPair(tokenAddress, wNative);
+
+        // If no W native currency pair, try to find pair with stablecoins
+        if (pairAddress === ethers.ZeroAddress) {
+          for (const stablecoin of chainConfig.stablecoins) {
+            pairAddress = await factory.getPair(tokenAddress, stablecoin);
+            if (pairAddress !== ethers.ZeroAddress) break;
+          }
         }
       }
 
-      // If still no pair found, return null
-      if (pairAddress === ethers.ZeroAddress) {
+      // If still no pool/pair found, return null
+      if (!pairAddress || pairAddress === ethers.ZeroAddress) {
         console.debug('No trading pair found for token:', tokenAddress);
         return null;
       }
@@ -1369,112 +2736,160 @@ export async function getTokenPrice(
       return null;
     }
 
-    // Get pair contract
-    const pairContract = new ethers.Contract(pairAddress, PAIR_ABI, provider);
-    const [reserves, token0, token1] = await Promise.all([
-      pairContract.getReserves(),
-      pairContract.token0(),
-      pairContract.token1(),
-    ]);
-    const [reserve0, reserve1] = reserves;
+    if (isAlgebraV4(chainName)) {
+      // Algebra V4 logic - use globalState to get price
+      const poolContract = new ethers.Contract(
+        pairAddress,
+        ALGEBRA_POOL_ABI,
+        provider
+      );
 
-    // Get token contract and decimals
-    const tokenContract = new ethers.Contract(
-      tokenAddress,
-      ERC20_ABI,
-      provider
-    );
-    const [tokenDecimals, pairedTokenDecimals] = await Promise.all([
-      tokenContract.decimals(),
-      getTokenDecimals(
-        token0.toLowerCase() === tokenAddress.toLowerCase() ? token1 : token0,
-        chainName
-      ),
-    ]);
+      const [token0, token1, globalState] = await Promise.all([
+        poolContract.token0(),
+        poolContract.token1(),
+        poolContract.globalState(),
+      ]);
 
-    // Check if paired token is a stablecoin
-    const pairedTokenAddress =
-      token0.toLowerCase() === tokenAddress.toLowerCase() ? token1 : token0;
-    const isPairedWithStablecoin = CHAIN_CONFIGS[chainName].stablecoins.some(
-      (stablecoin) =>
-        stablecoin.toLowerCase() === pairedTokenAddress.toLowerCase()
-    );
+      const sqrtPriceX96 = globalState[0]; // First element is price
+      const token0IsNative =
+        token0.toLowerCase() === wNativeAddress.toLowerCase();
 
-    // Convert BigInt reserves to numbers with proper decimal adjustment
-    const reserve0Adjusted = Number(
-      ethers.formatUnits(
-        reserve0,
-        token0.toLowerCase() === tokenAddress.toLowerCase()
-          ? tokenDecimals
-          : pairedTokenDecimals
-      )
-    );
-    const reserve1Adjusted = Number(
-      ethers.formatUnits(
-        reserve1,
-        token1.toLowerCase() === tokenAddress.toLowerCase()
-          ? tokenDecimals
-          : pairedTokenDecimals
-      )
-    );
+      // Get decimals
+      const token0Contract = new ethers.Contract(token0, ERC20_ABI, provider);
+      const token1Contract = new ethers.Contract(token1, ERC20_ABI, provider);
+      const [token0Decimals, token1Decimals] = await Promise.all([
+        token0Contract.decimals(),
+        token1Contract.decimals(),
+      ]);
 
-    // Calculate price based on pair type
-    let price: number | null = null;
+      // Calculate price from sqrtPriceX96
+      const priceInNative = calculatePriceFromSqrtPriceX96(
+        sqrtPriceX96,
+        Number(token0Decimals),
+        Number(token1Decimals),
+        token0IsNative
+      );
 
-    if (token0.toLowerCase() === tokenAddress.toLowerCase()) {
-      // Token is token0
-      if (isPairedWithStablecoin) {
-        // Token/Stablecoin pair (stablecoin is token1)
-        price = reserve1Adjusted / reserve0Adjusted;
-      } else if (
-        pairedTokenAddress.toLowerCase() ===
-        CHAIN_CONFIGS[chainName].wrappedNativeCurrency.toLowerCase()
-      ) {
-        // Token/W native currency pair (W native currency is token1)
-        price = (reserve1Adjusted / reserve0Adjusted) * nativeCurrencyPrice;
-      } else {
-        // Token/Other pair - try to find the other token's price
-        const otherTokenPrice = await getTokenPrice(
-          pairedTokenAddress,
-          chainName
-        );
-        price = otherTokenPrice
-          ? (reserve1Adjusted / reserve0Adjusted) * otherTokenPrice
-          : null;
-      }
+      // Convert to USD
+      const priceInUSD = priceInNative * (nativeCurrencyPrice || 0);
+
+      console.debug('Token price calculated (Algebra V4):', {
+        tokenAddress,
+        pairAddress,
+        priceInUSD,
+        priceInNative,
+        nativeCurrencyPrice,
+      });
+
+      return priceInUSD;
     } else {
-      // Token is token1
-      if (isPairedWithStablecoin) {
-        // Stablecoin/Token pair (stablecoin is token0)
-        price = reserve0Adjusted / reserve1Adjusted;
-      } else if (
-        pairedTokenAddress.toLowerCase() ===
-        CHAIN_CONFIGS[chainName].wrappedNativeCurrency.toLowerCase()
-      ) {
-        // W native currency/Token pair (W native currency is token0)
-        price = (reserve0Adjusted / reserve1Adjusted) * nativeCurrencyPrice;
-      } else {
-        // Other/Token pair - try to find the other token's price
-        const otherTokenPrice = await getTokenPrice(
-          pairedTokenAddress,
+      // Uniswap V2 logic
+      const pairContract = new ethers.Contract(pairAddress, PAIR_ABI, provider);
+      const [reserves, token0, token1] = await Promise.all([
+        pairContract.getReserves(),
+        pairContract.token0(),
+        pairContract.token1(),
+      ]);
+      const [reserve0, reserve1] = reserves;
+
+      // Get token contract and decimals
+      const tokenContract = new ethers.Contract(
+        tokenAddress,
+        ERC20_ABI,
+        provider
+      );
+      const [tokenDecimals, pairedTokenDecimals] = await Promise.all([
+        tokenContract.decimals(),
+        getTokenDecimals(
+          token0.toLowerCase() === tokenAddress.toLowerCase() ? token1 : token0,
           chainName
-        );
-        price = otherTokenPrice
-          ? (reserve0Adjusted / reserve1Adjusted) * otherTokenPrice
-          : null;
+        ),
+      ]);
+
+      // Check if paired token is a stablecoin
+      const pairedTokenAddress =
+        token0.toLowerCase() === tokenAddress.toLowerCase() ? token1 : token0;
+      const isPairedWithStablecoin = CHAIN_CONFIGS[chainName].stablecoins.some(
+        (stablecoin) =>
+          stablecoin.toLowerCase() === pairedTokenAddress.toLowerCase()
+      );
+
+      // Convert BigInt reserves to numbers with proper decimal adjustment
+      const reserve0Adjusted = Number(
+        ethers.formatUnits(
+          reserve0,
+          token0.toLowerCase() === tokenAddress.toLowerCase()
+            ? tokenDecimals
+            : pairedTokenDecimals
+        )
+      );
+      const reserve1Adjusted = Number(
+        ethers.formatUnits(
+          reserve1,
+          token1.toLowerCase() === tokenAddress.toLowerCase()
+            ? tokenDecimals
+            : pairedTokenDecimals
+        )
+      );
+
+      // Calculate price based on pair type
+      let price: number | null = null;
+
+      if (token0.toLowerCase() === tokenAddress.toLowerCase()) {
+        // Token is token0
+        if (isPairedWithStablecoin) {
+          // Token/Stablecoin pair (stablecoin is token1)
+          price = reserve1Adjusted / reserve0Adjusted;
+        } else if (
+          pairedTokenAddress.toLowerCase() ===
+          CHAIN_CONFIGS[chainName].wrappedNativeCurrency.toLowerCase()
+        ) {
+          // Token/W native currency pair (W native currency is token1)
+          price = (reserve1Adjusted / reserve0Adjusted) * nativeCurrencyPrice;
+        } else {
+          // Token/Other pair - try to find the other token's price
+          const otherTokenPrice = await getTokenPrice(
+            pairedTokenAddress,
+            chainName
+          );
+          price = otherTokenPrice
+            ? (reserve1Adjusted / reserve0Adjusted) * otherTokenPrice
+            : null;
+        }
+      } else {
+        // Token is token1
+        if (isPairedWithStablecoin) {
+          // Stablecoin/Token pair (stablecoin is token0)
+          price = reserve0Adjusted / reserve1Adjusted;
+        } else if (
+          pairedTokenAddress.toLowerCase() ===
+          CHAIN_CONFIGS[chainName].wrappedNativeCurrency.toLowerCase()
+        ) {
+          // W native currency/Token pair (W native currency is token0)
+          price = (reserve0Adjusted / reserve1Adjusted) * nativeCurrencyPrice;
+        } else {
+          // Other/Token pair - try to find the other token's price
+          const otherTokenPrice = await getTokenPrice(
+            pairedTokenAddress,
+            chainName
+          );
+          price = otherTokenPrice
+            ? (reserve0Adjusted / reserve1Adjusted) * otherTokenPrice
+            : null;
+        }
       }
+
+      console.debug('Token price calculated:', {
+        tokenAddress,
+        pairAddress,
+        price,
+        pairedWith: pairedTokenAddress,
+        isPairedWithStablecoin,
+      });
+
+      return price;
     }
-
-    console.debug('Token price calculated:', {
-      tokenAddress,
-      pairAddress,
-      price,
-      pairedWith: pairedTokenAddress,
-      isPairedWithStablecoin,
-    });
-
-    return price;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Failed to get token price:', {
       tokenAddress,
       pairAddress,
@@ -1485,7 +2900,7 @@ export async function getTokenPrice(
 }
 
 /**
- * Buys tokens with native currency (BNB/ETH)
+ * Buys tokens with native currency (BNB/ETH/SOMI)
  * @param signer The ethers signer
  * @param tokenAddress The token address to buy
  * @param amountIn The amount of native currency to spend
@@ -1500,33 +2915,89 @@ export async function buyTokens(
   chainName: string = 'BSC_MAINNET'
 ): Promise<ethers.TransactionReceipt> {
   try {
-    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
-    const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
-    const wNativeAddress = CHAIN_CONFIGS[chainName].wrappedNativeCurrency;
+    const chainConfig = CHAIN_CONFIGS[chainName];
+    const routerAddress = chainConfig.routerAddress;
+    const wNativeAddress = chainConfig.wrappedNativeCurrency;
 
     // Convert amount to wei
     const amountInWei = safeParseEther(amountIn);
 
-    // Calculate minimum amount out with slippage
-    const path = [wNativeAddress, tokenAddress];
-    const amounts = await router.getAmountsOut(amountInWei, path);
-    const amountOutMin =
-      (amounts[1] * BigInt(Math.floor((100 - slippageTolerance) * 1000))) /
-      BigInt(100000);
+    if (isAlgebraV4(chainName)) {
+      // Algebra V4 logic
+      const router = new ethers.Contract(
+        routerAddress,
+        ALGEBRA_ROUTER_ABI,
+        signer
+      );
 
-    // Set deadline to 20 minutes from now
-    const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+      // Use QuoterV2 to get quote
+      const quoterV2Address = chainConfig.quoterV2Address;
+      if (!quoterV2Address) {
+        throw new Error('QuoterV2 address not configured for Algebra V4');
+      }
 
-    // Execute swap
-    const tx = await router.swapExactETHForTokens(
-      amountOutMin,
-      path,
-      await signer.getAddress(),
-      deadline,
-      { value: amountInWei, gasLimit: 500000 }
-    );
+      const quoter = new ethers.Contract(
+        quoterV2Address,
+        ALGEBRA_QUOTER_V2_ABI,
+        signer.provider
+      );
 
-    return await tx.wait();
+      // Get quote for exact input
+      const quote = await quoter.quoteExactInputSingle.staticCall({
+        tokenIn: wNativeAddress,
+        tokenOut: tokenAddress,
+        amountIn: amountInWei,
+        limitSqrtPrice: 0, // No price limit
+      });
+
+      const amountOut = quote[0]; // First element is amountOut
+      const amountOutMin =
+        (amountOut * BigInt(Math.floor((100 - slippageTolerance) * 1000))) /
+        BigInt(100000);
+
+      // Set deadline to 20 minutes from now
+      const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+
+      // Execute swap using exactInputSingle
+      const tx = await router.exactInputSingle(
+        {
+          tokenIn: wNativeAddress,
+          tokenOut: tokenAddress,
+          recipient: await signer.getAddress(),
+          deadline: deadline,
+          amountIn: amountInWei,
+          amountOutMinimum: amountOutMin,
+          limitSqrtPrice: 0, // No price limit
+        },
+        { value: amountInWei, gasLimit: 500000 }
+      );
+
+      return await tx.wait();
+    } else {
+      // Uniswap V2 logic (BSC, ETH, etc.)
+      const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
+
+      // Calculate minimum amount out with slippage
+      const path = [wNativeAddress, tokenAddress];
+      const amounts = await router.getAmountsOut(amountInWei, path);
+      const amountOutMin =
+        (amounts[1] * BigInt(Math.floor((100 - slippageTolerance) * 1000))) /
+        BigInt(100000);
+
+      // Set deadline to 20 minutes from now
+      const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+
+      // Execute swap
+      const tx = await router.swapExactETHForTokens(
+        amountOutMin,
+        path,
+        await signer.getAddress(),
+        deadline,
+        { value: amountInWei, gasLimit: 500000 }
+      );
+
+      return await tx.wait();
+    }
   } catch (error) {
     console.error('Failed to buy tokens:', error);
     throw error;
@@ -1534,7 +3005,7 @@ export async function buyTokens(
 }
 
 /**
- * Sells tokens for native currency (BNB/ETH)
+ * Sells tokens for native currency (BNB/ETH/SOMI)
  * @param signer The ethers signer
  * @param tokenAddress The token address to sell
  * @param amountIn The amount of tokens to sell
@@ -1549,9 +3020,9 @@ export async function sellTokens(
   chainName: string = 'BSC_MAINNET'
 ): Promise<ethers.TransactionReceipt> {
   try {
-    const routerAddress = CHAIN_CONFIGS[chainName].routerAddress;
-    const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
-    const wNativeAddress = CHAIN_CONFIGS[chainName].wrappedNativeCurrency;
+    const chainConfig = CHAIN_CONFIGS[chainName];
+    const routerAddress = chainConfig.routerAddress;
+    const wNativeAddress = chainConfig.wrappedNativeCurrency;
 
     // Get token contract and decimals
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
@@ -1574,89 +3045,92 @@ export async function sellTokens(
       await approveTx.wait();
     }
 
-    // Calculate minimum amount out with slippage
-    const path = [tokenAddress, wNativeAddress];
-    const amounts = await router.getAmountsOut(amountInWei, path);
-    const amountOutMin =
-      (amounts[1] * BigInt(Math.floor((100 - slippageTolerance) * 1000))) /
-      BigInt(100000);
+    if (isAlgebraV4(chainName)) {
+      // Algebra V4 logic
+      const router = new ethers.Contract(
+        routerAddress,
+        ALGEBRA_ROUTER_ABI,
+        signer
+      );
 
-    // Set deadline to 20 minutes from now
-    const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+      // Use QuoterV2 to get quote
+      const quoterV2Address = chainConfig.quoterV2Address;
+      if (!quoterV2Address) {
+        throw new Error('QuoterV2 address not configured for Algebra V4');
+      }
 
-    // Log for debugging
-    console.log({
-      amountInWei: amountInWei.toString(),
-      amountOutMin: amountOutMin.toString(),
-      path,
-    });
+      const quoter = new ethers.Contract(
+        quoterV2Address,
+        ALGEBRA_QUOTER_V2_ABI,
+        signer.provider
+      );
 
-    // Use the supporting fee on transfer function
-    const tx = await router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-      amountInWei?.toString(),
-      amountOutMin,
-      path,
-      await signer.getAddress(),
-      deadline
-    );
+      // Get quote for exact input
+      const quote = await quoter.quoteExactInputSingle.staticCall({
+        tokenIn: tokenAddress,
+        tokenOut: wNativeAddress,
+        amountIn: amountInWei,
+        limitSqrtPrice: 0, // No price limit
+      });
 
-    return await tx.wait();
+      const amountOut = quote[0]; // First element is amountOut
+      const amountOutMin =
+        (amountOut * BigInt(Math.floor((100 - slippageTolerance) * 1000))) /
+        BigInt(100000);
+
+      // Set deadline to 20 minutes from now
+      const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+
+      // Execute swap using exactInputSingle
+      const tx = await router.exactInputSingle(
+        {
+          tokenIn: tokenAddress,
+          tokenOut: wNativeAddress,
+          recipient: await signer.getAddress(),
+          deadline: deadline,
+          amountIn: amountInWei,
+          amountOutMinimum: amountOutMin,
+          limitSqrtPrice: 0, // No price limit
+        },
+        { gasLimit: 500000 }
+      );
+
+      return await tx.wait();
+    } else {
+      // Uniswap V2 logic (BSC, ETH, etc.)
+      const router = new ethers.Contract(routerAddress, ROUTER_ABI, signer);
+
+      // Calculate minimum amount out with slippage
+      const path = [tokenAddress, wNativeAddress];
+      const amounts = await router.getAmountsOut(amountInWei, path);
+      const amountOutMin =
+        (amounts[1] * BigInt(Math.floor((100 - slippageTolerance) * 1000))) /
+        BigInt(100000);
+
+      // Set deadline to 20 minutes from now
+      const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+
+      // Log for debugging
+      console.log({
+        amountInWei: amountInWei.toString(),
+        amountOutMin: amountOutMin.toString(),
+        path,
+      });
+
+      // Use the supporting fee on transfer function
+      const tx =
+        await router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+          amountInWei?.toString(),
+          amountOutMin,
+          path,
+          await signer.getAddress(),
+          deadline
+        );
+
+      return await tx.wait();
+    }
   } catch (error) {
     console.error('Failed to sell tokens:', error);
     throw error;
-  }
-}
-
-export function safeParseEther(value: string | number): bigint {
-  return safeParseUnits(value, 18);
-}
-
-export function safeParseUnits(
-  value: string | number,
-  decimals: number | string | bigint = 18
-): bigint {
-  try {
-    // Ensure decimals is a number, handle BigInt conversion
-    let decimalsNum: number;
-    if (typeof decimals === 'string') {
-      decimalsNum = parseInt(decimals, 10);
-    } else if (typeof decimals === 'bigint') {
-      decimalsNum = Number(decimals); // Convert BigInt to number
-    } else {
-      decimalsNum = decimals;
-    }
-
-    console.log('safeParseUnits decimals', {
-      originalDecimals: decimals,
-      decimalsNum,
-      decimalsType: typeof decimals,
-    });
-
-    // Validate decimals
-    if (isNaN(decimalsNum) || decimalsNum < 0 || decimalsNum > 18) {
-      console.log('Invalid decimals value, using default 18', {
-        originalDecimals: decimals,
-        fallbackDecimals: 18,
-      });
-      return safeParseUnits(value, 18);
-    }
-
-    console.log(`[safeParseUnits] input: ${value}`);
-
-    // Use Decimal.js for precise rounding down
-    const decimalValue = new Decimal(value);
-    const strValue = decimalValue
-      .toDecimalPlaces(decimalsNum, Decimal.ROUND_DOWN)
-      .toString();
-
-    console.log(`[safeParseUnits] normalized: ${strValue}`);
-
-    return ethers.parseUnits(strValue, decimalsNum);
-  } catch (error) {
-    console.log('Failed to parse ether value, using fallback', {
-      value,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-    return BigInt(1); // fallback to 1 wei
   }
 }

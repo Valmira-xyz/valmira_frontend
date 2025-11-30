@@ -119,6 +119,7 @@ export function TrendingBotWizardDialog({
     timeSpanBetweenTransactions: 15000, // 5 seconds
     trend: 'upward' as 'upward' | 'downward',
     targetMinutes: 30,
+    chainName: 'BSC_MAINNET',
   });
 
   // Update local project state when currentProject changes
@@ -141,6 +142,7 @@ export function TrendingBotWizardDialog({
           trendingBot.timeSpanBetweenTransactions || 15000,
         trend: trendingBot.trend || 'upward',
         targetMinutes: trendingBot.targetMinutes || 30,
+        chainName: currentProject.chainName,
       });
     }
   }, [currentProject]);
@@ -150,7 +152,10 @@ export function TrendingBotWizardDialog({
       ? 'BNB'
       : project?.chainName === 'ETH_MAINNET'
         ? 'ETH'
-        : 'SOL';
+        : project?.chainName === 'SOMNIA_TESTNET' ||
+            project?.chainName === 'SOMNIA_MAINNET'
+          ? 'SOMI'
+          : 'SOL';
 
   const handleExecute = async () => {
     if (!project?.addons?.TrendingBot?._id) {

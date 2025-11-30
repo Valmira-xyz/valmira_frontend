@@ -514,6 +514,9 @@ export default function FeeManagement() {
                     <SelectItem value="ETH_MAINNET">
                       Ethereum Mainnet
                     </SelectItem>
+                    <SelectItem value="SOMNIA_TESTNET">
+                      Somnia Testnet
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -577,7 +580,11 @@ export default function FeeManagement() {
                 Select all projects on{' '}
                 {selectedChain === 'BSC_MAINNET'
                   ? 'Binance Smart Chain'
-                  : 'Ethereum'}
+                  : selectedChain === 'ETH_MAINNET'
+                    ? 'Ethereum'
+                    : selectedChain === 'SOMNIA_TESTNET'
+                      ? 'Somnia Testnet'
+                      : selectedChain}
               </Label>
             </div>
 
@@ -615,10 +622,20 @@ export default function FeeManagement() {
                         className={`px-2 py-1 rounded text-xs ${
                           project.chainName === 'BSC_MAINNET'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-blue-100 text-blue-800'
+                            : project.chainName === 'ETH_MAINNET'
+                              ? 'bg-blue-100 text-blue-800'
+                              : project.chainName === 'SOMNIA_TESTNET'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-gray-100 text-gray-800'
                         }`}
                       >
-                        {project.chainName === 'BSC_MAINNET' ? 'BSC' : 'ETH'}
+                        {project.chainName === 'BSC_MAINNET'
+                          ? 'BSC'
+                          : project.chainName === 'ETH_MAINNET'
+                            ? 'ETH'
+                            : project.chainName === 'SOMNIA_TESTNET'
+                              ? 'SOMNIA'
+                              : project.chainName}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -707,7 +724,11 @@ export default function FeeManagement() {
               project(s) on{' '}
               {selectedChain === 'BSC_MAINNET'
                 ? 'Binance Smart Chain'
-                : 'Ethereum'}{' '}
+                : selectedChain === 'ETH_MAINNET'
+                  ? 'Ethereum'
+                  : selectedChain === 'SOMNIA_TESTNET'
+                    ? 'Somnia Testnet'
+                    : selectedChain}{' '}
               to the admin wallet:
               <br />
               <code className="px-2 py-2 rounded mt-2 block text-green-400">
